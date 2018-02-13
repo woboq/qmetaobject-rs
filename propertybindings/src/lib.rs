@@ -140,7 +140,7 @@ macro_rules! rsml {
     (@parse_fields $(#[$attrs:meta])*, [$($vis:tt)*], $name:ident,
             $(/*$fvis:vis*/ $field:ident : $typ:ty  $(= $value:expr )* ),* $(,)*) => {
         $(#[$attrs])* $($vis)* struct $name<'a> {
-            $( /*$fvis*/ $field : Property<'a, $typ> ),*
+            $( pub $field : Property<'a, $typ> ),*
         }
         /*impl<'a> Default for $name<'a> {
             fn default() -> Self {
@@ -250,6 +250,37 @@ mod tests {
     }
 
 
+
+/*
+    rsml!{
+        struct Item {
+            width: u32 = Item.parent.get().upgrade().map(|parent|parent.width).unwrap_or_default(),
+            height: u32 = Item.parent.get().upgrade().map(|parent|parent.height).unwrap_or_default(),
+            x: u32,
+            y: u32,
+            parent: Weak<Item>,
+        }
+    }
+
+    rsml!{
+        struct Rectangle {
+            base: Rc<Item>,
+            color: u32 = 0xffffffff,
+            border_color: u32,
+            border_width: 0
+        }
+    }
+
+    rsml!{
+        struct MyComponent {
+            base: Rc<Item>,
+            r1: Rc<Rectangle> = rsml_instance!{Rectangle {
+                base: rsml_instance!{Item {
+
+            }}
+        }
+    }
+*/
 
 
 }
