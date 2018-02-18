@@ -183,16 +183,15 @@ impl QObject for MyStruct {
             }*/
         }
 
-
-        let x = Box::new(QMetaObject {
-            superdata: Self::base_meta_object(),
+        lazy_static! { static ref MO: QMetaObject = QMetaObject {
+            superdata: MyStruct::base_meta_object(),
             string_data: STRING_DATA.as_ptr(),
             data: INT_DATA.as_ptr(),
             static_metacall: static_metacall,
             r: std::ptr::null(),
             e: std::ptr::null(),
-        });
-        return Box::into_raw(x);
+        };};
+        return &*MO;
     }
 }
 

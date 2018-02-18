@@ -6,7 +6,6 @@ extern crate cpp;
 
 // extern crate libc;
 use std::os::raw::c_void;
-use std::mem;
 
 // #![feature(trace_macros)]
 // trace_macros!(true);
@@ -16,6 +15,10 @@ use std::mem;
 extern crate proc_macro_hack;
 #[macro_use]
 extern crate qmetaobject_impl;
+
+#[macro_use]
+extern crate lazy_static;
+
 
 proc_macro_expr_decl! {
     /// Add one to an expression.
@@ -77,6 +80,7 @@ pub struct QMetaObject {
     r: *const c_void,
     e: *const c_void,
 }
+unsafe impl Sync for QMetaObject {}
 
 
 trait QObject {
