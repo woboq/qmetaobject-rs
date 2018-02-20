@@ -66,7 +66,7 @@ cpp!{{
 
 #[no_mangle]
 pub extern "C" fn RustObject_metaObject(_p: *mut c_void) -> *const QMetaObject {
-    let s = MyStruct{};
+    let s = MyStruct::default();
     return s.meta_object();
 }
 
@@ -102,13 +102,23 @@ trait QAIM : QObject {
 macro_rules! qt_method {
     ($t:ident) => { t :u32 };
 }
-#[derive(QObject)]
+
+macro_rules! qt_property {
+    ($t:ty) => { std::marker::PhantomData<$t> };
+}
+
+#[derive(QObject,Default)]
 struct MyStruct {
 
   //  qt_method!(xx),
 
 
 //     qt_method!(xx)
+    yy : qt_property!(u32),
+
+
+    foovar : u32
+
 
 }
 impl MyStruct {
@@ -134,6 +144,9 @@ fn main() {
         QApplication app(argc, argv);
         QQmlApplicationEngine engine;
         RustObject x;
+
+        qDebug() << x.metaObject()->property(1).isReadable();
+
         engine.rootContext()->setContextProperty("_foo", &x);
 //        QLabel w("dds");
 //        w.show();
@@ -152,7 +165,7 @@ Window {
 
         Text {
             id: helloText
-            text: 'Hello world!' + _foo.xx()
+            text: 'Hello world!' + _foo.xx() + '\n' + _foo.yy
             y: 30
             anchors.horizontalCenter: page.horizontalCenter
             font.pointSize: 24; font.bold: true
