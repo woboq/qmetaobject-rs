@@ -137,7 +137,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                         properties.push(MetaProperty {
                             name: f.ident.expect("Property does not have a name").as_ref().to_string(),
                             typ: 3,
-                            flags: 1 | 2 | 0x00004000 | 0x00001000,
+                            flags: 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000,
                         });
                     }
                 }
@@ -165,12 +165,19 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let property_meta_call : Vec<_> = properties.iter().enumerate().map(|(i, prop)| {
         let i = i as u32;
         let name : syn::Ident = prop.name.clone().into();
-        quote! {
-            #i => unsafe {
+        quote! { #i => match c {
+            1 /*QMetaObject::ReadProperty*/ => unsafe {
                 let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut u32>(*a);
                 *r = obj.#name;
             },
-        }
+            2 /*QMetaObject::WriteProperty*/ => unsafe {
+                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut u32>(*a);
+                obj.#name = *r;
+            },
+            3 /*QMetaObject::WriteProperty*/ => { /* TODO */},
+            11 /*QMetaObject::RegisterPropertyMetaType*/ => {/*TODO*/},
+            _ => {}
+        }}
     }).collect();
 
     let body =   quote!{
@@ -196,7 +203,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                             },
                             _ => {}
                         }
-                    } else if c == 1 /*QMetaObject::ReadProperty*/ {
+                    } else {
                         match idx {
                             #(#property_meta_call)*
                             _ => {}

@@ -73,6 +73,10 @@ Window {
             anchors.horizontalCenter: page.horizontalCenter
             font.pointSize: 24; font.bold: true
         }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: { _foo.yy += 5; console.log(_foo.yy) }
+        }
     }
 }
 
