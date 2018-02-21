@@ -9,6 +9,8 @@ extern crate quote;
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
+use std::iter::Iterator;
+
 fn write_u32(val : i32) -> [u8;4] {
     [(val & 0xff) as u8 , ((val >> 8) & 0xff) as u8, ((val >> 16) & 0xff) as u8, ((val >> 24) & 0xff) as u8]
 }
@@ -160,6 +162,17 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     let crate_ : syn::Ident = "qmetaobject".to_owned().into();
 
+    let property_meta_call : Vec<_> = properties.iter().enumerate().map(|(i, prop)| {
+        let i = i as u32;
+        let name : syn::Ident = prop.name.clone().into();
+        quote! {
+            #i => unsafe {
+                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut u32>(*a);
+                *r = obj.#name;
+            },
+        }
+    }).collect();
+
     let body =   quote!{
         impl QObject for #name {
             fn meta_object(&self)->*const #crate_::QMetaObject {
@@ -169,11 +182,9 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
                 extern "C" fn static_metacall(o: *mut std::os::raw::c_void, c: u32, idx: u32,
                                               a: *const *mut std::os::raw::c_void) {
-                    // get the actual object
                     //std::mem::transmute::<*mut c_void, *mut u8>(*a)
-                    let obj = unsafe { std::mem::transmute::<*mut std::os::raw::c_void, &mut #name>(
-                        o.offset(8/*virtual_table*/ + 8 /* d_ptr */)) }; // FIXME
-
+                    // get the actual object
+                    let obj : &mut #name = unsafe { #crate_::get_rust_object(&mut *o) };
                     if c == 0 /*QMetaObject::InvokeMetaMethod*/ {
                         match idx {
                             0 => {
@@ -186,6 +197,10 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                             _ => {}
                         }
                     } else if c == 1 /*QMetaObject::ReadProperty*/ {
+                        match idx {
+                            #(#property_meta_call)*
+                            _ => {}
+                        }
                     }
                 }
 

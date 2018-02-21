@@ -16,10 +16,6 @@ cpp!{{
 #[derive(QObject,Default)]
 struct MyStruct {
 
-  //  qt_method!(xx),
-
-
-//     qt_method!(xx)
     yy : qt_property!(u32),
 
 
@@ -34,18 +30,12 @@ impl MyStruct {
     }
 }
 
-trait QAIM : QObject {
-    //fn create() { println!("Create OBJECT"); }
-}
-
-
-impl QAIM for MyStruct {
-}
 
 
 fn main() {
 
     let mut xx = MyStruct::default();
+    xx.yy = 85;
     let ptr : *mut QObject = &mut xx;
 
     unsafe { cpp!{[ptr as "TraitObject"] {
