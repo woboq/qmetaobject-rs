@@ -12,6 +12,7 @@ fn main() {
     cpp_build::Config::new()
 //         .file("src/ffi.rs")
         .include("/usr/include/qt")
+        .include("../qmetaobject")
 //         .flag("-lQt5Core").flag("-lQt5Gui").flag("-lQt5Widgets")
         .build("src/main.rs");
 

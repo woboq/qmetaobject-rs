@@ -1,6 +1,4 @@
 #![recursion_limit="256"]
-#[macro_use]
-extern crate proc_macro_hack;
 
 // #[macro_use]
 // extern crate synstructure;
@@ -10,13 +8,6 @@ extern crate quote;
 
 extern crate proc_macro;
 use proc_macro::TokenStream;
-
-proc_macro_expr_impl! {
-    /// Add one to an expression.
-    pub fn add_one_impl(input: &str) -> String {
-        format!("1 + {}", input)
-    }
-}
 
 fn write_u32(val : i32) -> [u8;4] {
     [(val & 0xff) as u8 , ((val >> 8) & 0xff) as u8, ((val >> 16) & 0xff) as u8, ((val >> 24) & 0xff) as u8]
@@ -167,25 +158,27 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let str_data = mo.build_string_data();
     let int_data = mo.int_data;
 
+    let crate_ : syn::Ident = "qmetaobject".to_owned().into();
+
     let body =   quote!{
         impl QObject for #name {
-            fn meta_object(&self)->*const QMetaObject {
+            fn meta_object(&self)->*const #crate_::QMetaObject {
 
                 static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
                 static INT_DATA : &'static [i32] = & [ #(#int_data),* ];
 
-                extern "C" fn static_metacall(o: *mut
-                c_void, c: u32, idx: u32, a: *const *mut c_void) {
+                extern "C" fn static_metacall(o: *mut std::os::raw::c_void, c: u32, idx: u32,
+                                              a: *const *mut std::os::raw::c_void) {
                     // get the actual object
                     //std::mem::transmute::<*mut c_void, *mut u8>(*a)
-                    let obj = unsafe { std::mem::transmute::<*mut c_void, &mut #name>(
+                    let obj = unsafe { std::mem::transmute::<*mut std::os::raw::c_void, &mut #name>(
                         o.offset(8/*virtual_table*/ + 8 /* d_ptr */)) }; // FIXME
 
                     if c == 0 /*QMetaObject::InvokeMetaMethod*/ {
                         match idx {
                             0 => {
                                 unsafe {
-                                    let r = std::mem::transmute::<*mut c_void, *mut i32>(*a);
+                                    let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
                                     *r = obj.xx();
                                     //*r = foobar(*a);
                                 }
@@ -196,8 +189,8 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                     }
                 }
 
-                lazy_static! { static ref MO: QMetaObject = QMetaObject {
-                    superdata: #name::base_meta_object(),
+                lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
+                    superdata: #crate_::base_meta_object(),
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: static_metacall,
