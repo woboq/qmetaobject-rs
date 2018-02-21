@@ -19,16 +19,21 @@ struct MyStruct {
     yy : qt_property!(u32),
 
 
-    foovar : u32
+    foovar : u32,
+
+    xx: qt_method!( fn xx(&self) -> i32 {
+        println!("MyStruct.xx Called" );
+        return 42;
+    } )
 
 
 }
-impl MyStruct {
+/*impl MyStruct {
     fn xx(&self) -> i32 {
         println!("MyStruct.xx Called" );
         return 42;
     }
-}
+}*/
 
 
 

@@ -127,18 +127,32 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let name = &ast.ident;
 
     let mut properties = vec![];
+    let mut methods = vec![];
+    let mut func_bodies = vec![];
 
     if let syn::Data::Struct(ref data) = ast.data {
         for f in data.fields.iter() {
             use syn::Type::Macro;
             if let Macro(ref mac) = f.ty {
                 if let Some(ref segment) = mac.mac.path.segments.last() {
-                    if segment.value().ident == "qt_property" {
-                        properties.push(MetaProperty {
-                            name: f.ident.expect("Property does not have a name").as_ref().to_string(),
-                            typ: 3,
-                            flags: 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000,
-                        });
+                    match segment.value().ident.as_ref() {
+                        "qt_property" => {
+                            properties.push(MetaProperty {
+                                name: f.ident.expect("Property does not have a name").as_ref().to_string(),
+                                typ: 3,
+                                flags: 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000,
+                            });
+                        }
+                        "qt_method" => {
+                            methods.push(MetaMethod {
+                                name: f.ident.expect("Method does not have a name").as_ref().to_string(),
+                                args: Vec::new(),
+                                flags: 0x2,
+                                ret_type: 2, // int
+                            });
+                            func_bodies.push(mac.mac.tts.clone());
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -148,14 +162,8 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
        panic!("#[derive(HelloWorld)] is only defined for structs, not for enums!");
     }
 
-    let m = MetaMethod {
-            name: "xx".to_owned(),
-            args: Vec::new(),
-            flags: 0x2,
-            ret_type: 2 // int
-    };
     let mut mo : MetaObject = Default::default();
-    mo.compute_int_data(name.to_string(), &properties, &vec![m]);
+    mo.compute_int_data(name.to_string(), &properties, &methods);
 
     let str_data = mo.build_string_data();
     let int_data = mo.int_data;
@@ -180,7 +188,21 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         }}
     }).collect();
 
+    let method_meta_call : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
+        let i = i as u32;
+        let name : syn::Ident = method.name.clone().into();
+        quote! { #i =>
+            unsafe {
+                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
+                *r = obj.#name();
+            }
+        }
+    }).collect();
+
     let body =   quote!{
+        impl #name {
+            #(#func_bodies)*
+        }
         impl QObject for #name {
             fn meta_object(&self)->*const #crate_::QMetaObject {
 
@@ -194,13 +216,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                     let obj : &mut #name = unsafe { #crate_::get_rust_object(&mut *o) };
                     if c == 0 /*QMetaObject::InvokeMetaMethod*/ {
                         match idx {
-                            0 => {
-                                unsafe {
-                                    let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
-                                    *r = obj.xx();
-                                    //*r = foobar(*a);
-                                }
-                            },
+                            #(#method_meta_call)*
                             _ => {}
                         }
                     } else {

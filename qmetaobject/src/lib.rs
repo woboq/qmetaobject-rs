@@ -62,7 +62,10 @@ macro_rules! qt_property {
 }
 
 
-
+#[macro_export]
+macro_rules! qt_method {
+    ($($t:tt)*) => { std::marker::PhantomData<()> };
+}
 
 #[cfg(test)]
 mod tests {
