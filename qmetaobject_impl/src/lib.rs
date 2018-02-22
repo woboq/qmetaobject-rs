@@ -34,6 +34,7 @@ struct MetaProperty {
     name : String,
     typ : i32,
     flags : i32,
+    notify_signal : i32,
 }
 
 #[derive(Default)]
@@ -65,18 +66,19 @@ impl MetaObject {
         return result;
     }
 
-    fn compute_int_data(&mut self, class_name: String, properties : &[MetaProperty], methods : &[MetaMethod]) {
+    fn compute_int_data(&mut self, class_name: String, properties : &[MetaProperty],
+                        methods : &[MetaMethod], signal_count : usize) {
 
 
-        let has_notify = false;
+        let has_notify = properties.iter().any(|p| p.notify_signal >= 0);
 
         self.add_string(class_name.clone());
         self.add_string("".to_owned());
 
-        let offset = 14;
+        let mut offset = 14;
         let property_offset = offset + methods.len() as i32 * 5;
         //...
-        let param_offest = property_offset + properties.len() as i32 * (if has_notify {4} else {3});
+
 
         self.int_data.extend_from_slice(&[
             7, // revision
@@ -87,18 +89,25 @@ impl MetaObject {
             0, 0, // enum count and offset
             0, 0, // constructor count and offset
             0x4 /* PropertyAccessInStaticMetaCall */,   // flags
-            0, // signalCount
+            signal_count as i32, // signalCount
         ]);
 
+        offset = property_offset + properties.len() as i32 * (if has_notify {4} else {3});
 
         for ref m in methods {
             let n = self.add_string(m.name.clone());
-            self.int_data.extend_from_slice(&[n , m.args.len() as i32, param_offest, 1, m.flags]);
+            self.int_data.extend_from_slice(&[n , m.args.len() as i32, offset, 1, m.flags]);
+            offset += 1 + 2 * m.args.len() as i32;
         }
 
         for ref p in properties {
             let n = self.add_string(p.name.clone());
             self.int_data.extend_from_slice(&[n , p.typ, p.flags]);
+        }
+        if has_notify {
+            for ref p in properties {
+                self.int_data.push(p.notify_signal);
+            }
         }
 
         for ref m in methods {
@@ -141,10 +150,14 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 if let Some(ref segment) = mac.mac.path.segments.last() {
                     match segment.value().ident.as_ref() {
                         "qt_property" => {
+                            let notify_signal = 0;
+                            let mut flags = 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000;
+                            if notify_signal >= 0 { flags |= 0x00400000 };
                             properties.push(MetaProperty {
                                 name: f.ident.expect("Property does not have a name").as_ref().to_string(),
                                 typ: 3,
-                                flags: 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000,
+                                flags: flags,
+                                notify_signal: notify_signal
                             });
                         }
                         "qt_method" => {
@@ -162,7 +175,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                 name: f.ident.expect("Signal does not have a name").as_ref().to_string(),
                                 args: Vec::new(),
                                 flags: 0x2 | 0x4,
-                                ret_type: 0, // void
+                                ret_type: 43, // void
                             });
                         }
                         _ => {}
@@ -181,10 +194,12 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let methods = methods2;
 
     let mut mo : MetaObject = Default::default();
-    mo.compute_int_data(name.to_string(), &properties, &methods);
+    mo.compute_int_data(name.to_string(), &properties, &methods, signals.len());
 
     let str_data = mo.build_string_data();
     let int_data = mo.int_data;
+
+    println!("data: {:?}", int_data );
 
     let crate_ : syn::Ident = "qmetaobject".to_owned().into();
     let base : syn::Ident = "QObject".to_owned().into();
@@ -210,7 +225,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let method_meta_call : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
         let i = i as u32;
         let method_name : syn::Ident = method.name.clone().into();
-        if method.ret_type == 0 {
+        if method.ret_type == 43 /* Void */ {
             quote! { #i => obj.#method_name(), }
         } else {
             quote! { #i =>
@@ -275,14 +290,12 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 return &*MO;
             }
 
-            fn get_cpp_object<'a>(&'a mut self)->&'a #crate_::QObjectCppWrapper {
-                &self.base
+            fn get_cpp_object<'a>(&'a mut self)->&'a mut #crate_::QObjectCppWrapper {
+                &mut self.base
             }
         }
 
     };
-
-    println!("RESULT: {:?} \n --{:?}", body, mo.string_data);
 
     body.into()
 }

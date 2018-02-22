@@ -39,7 +39,7 @@ pub trait QObject {
     // these are reimplemented by the QObject procedural macro
     fn meta_object(&self)->*const QMetaObject;
     fn static_meta_object()->*const QMetaObject where Self:Sized;
-    fn get_cpp_object<'a>(&'a mut self)->&'a QObjectCppWrapper;
+    fn get_cpp_object<'a>(&'a mut self)->&'a mut QObjectCppWrapper;
 
 
     // These are not, they are part of the trait structure that sub trait must have
@@ -58,14 +58,17 @@ pub trait QObject {
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
     fn construct_cpp_object(&mut self) where Self:Sized {
-        unsafe {
+        let p = unsafe {
             let p : *mut QObject = self;
             cpp!{[p as "TraitObject"] -> *mut c_void as "void*"  {
                 auto q = new RustObject<QObject>();
                 q->data = p;
                 return q;
-            }};
+            }}
         };
+        let cpp_object = self.get_cpp_object();
+        assert!(cpp_object.ptr.is_null(), "The cpp object was already created");
+        cpp_object.ptr = p;
     }
 }
 

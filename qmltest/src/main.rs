@@ -44,23 +44,23 @@ fn main() {
 
     let mut xx = MyStruct::default();
     xx.yy = 85;
-    let ptr : *mut QObject = &mut xx;
+    xx.construct_cpp_object();
+    let ptr = xx.get_cpp_object().ptr;
 
-    unsafe { cpp!{[ptr as "TraitObject"] {
+
+    unsafe { cpp!{[ptr as "QObject*"] {
 
         int argc = 1;
         char name[] = "hello";
         char *argv[] = { name };
         QApplication app(argc, argv);
         QQmlApplicationEngine engine;
-        RustObject<QObject> x;
-        x.data = ptr;
 
+        qDebug() << ptr->metaObject()->method(4).methodSignature();
+        qDebug() << ptr->metaObject()->method(5).methodSignature();
+        qDebug() << ptr->metaObject()->method(6).methodSignature();
 
-
-       qDebug() << x.metaObject()->method(4).methodSignature();
-
-        engine.rootContext()->setContextProperty("_foo", &x);
+        engine.rootContext()->setContextProperty("_foo", ptr);
 //        QLabel w("dds");
 //        w.show();
         engine.loadData(R"(
@@ -78,14 +78,18 @@ Window {
 
         Text {
             id: helloText
-            text: 'Hello world!' + _foo.xx() + '\n' + _foo.yy
+            text: 'Hello world! \n' + _foo.xx() + '\n' + _foo.yy
             y: 30
             anchors.horizontalCenter: page.horizontalCenter
             font.pointSize: 24; font.bold: true
         }
         MouseArea {
             anchors.fill: parent
-            onClicked: { _foo.yy += 5; console.log(_foo.yy); _foo.yyChanged() }
+            onClicked: {
+                _foo.yy += 5;
+                console.log(_foo.yy);
+                _foo.yyChanged()
+            }
         }
     }
 }
