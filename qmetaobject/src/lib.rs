@@ -27,7 +27,12 @@ pub struct QObjectCppWrapper {
 impl Drop for QObjectCppWrapper {
     fn drop(&mut self) {
         let ptr = self.ptr;
-        unsafe { cpp!([ptr as "QObject*"] { delete ptr; }) };
+        unsafe { cpp!([ptr as "QObject*"] {
+            // The event 513 is catched by RustObject and deletes the object.
+            QEvent e(QEvent::Type(513));
+            if (ptr)
+                ptr->event(&e);
+        }) };
     }
 }
 impl Default for QObjectCppWrapper {
@@ -72,10 +77,15 @@ pub trait QObject {
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {
     return unsafe { (*p).meta_object() };
+}
+
+#[no_mangle]
+pub extern "C" fn RustObject_destruct(p: *mut QObject) {
+    let mut b = unsafe { Box::from_raw(p) };
+    b.get_cpp_object().ptr = std::ptr::null_mut();
 }
 
 pub fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
