@@ -4,6 +4,7 @@
 extern crate cpp;
 
 #[allow(unused_imports)]
+#[macro_use]
 extern crate qmetaobject_impl;
 #[doc(hidden)]
 pub use qmetaobject_impl::*;
@@ -20,29 +21,67 @@ cpp!{{
     #include <qmetaobject_rust.hpp>
 }}
 
-pub trait QObject {
-    fn meta_object(&self)->*const QMetaObject;
+pub struct QObjectCppWrapper {
+    pub ptr: *mut c_void
+}
+impl Drop for QObjectCppWrapper {
+    fn drop(&mut self) {
+        let ptr = self.ptr;
+        unsafe { cpp!([ptr as "QObject*"] { delete ptr; }) };
+    }
+}
+impl Default for QObjectCppWrapper {
+    fn default() -> QObjectCppWrapper { QObjectCppWrapper{ ptr: std::ptr::null_mut() } }
 }
 
-pub fn base_meta_object()->*const QMetaObject {
-    unsafe {
-        cpp!{[] -> *const QMetaObject as "const void*" { return &QObject::staticMetaObject; } }
+pub trait QObject {
+
+    // these are reimplemented by the QObject procedural macro
+    fn meta_object(&self)->*const QMetaObject;
+    fn static_meta_object()->*const QMetaObject where Self:Sized;
+    fn get_cpp_object<'a>(&'a mut self)->&'a QObjectCppWrapper;
+
+
+    // These are not, they are part of the trait structure that sub trait must have
+    // Copy/paste this code replacing QObject with the type
+    fn base_meta_object()->*const QMetaObject where Self:Sized {
+        unsafe {
+            cpp!{[] -> *const QMetaObject as "const void*" { return &QObject::staticMetaObject; } }
+        }
+    }
+    unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
+        //std::mem::transmute::<*mut std::os::raw::c_void, &mut #name>(
+        //                  p.offset(8/*virtual_table*/ + 8 /* d_ptr */)) }; // FIXME
+        let ptr = cpp!{[p as "RustObject<QObject>*"] -> *mut c_void as "void*" {
+            return p->data.a;
+        }};
+        std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
+    }
+    fn construct_cpp_object(&mut self) where Self:Sized {
+        unsafe {
+            let p : *mut QObject = self;
+            cpp!{[p as "TraitObject"] -> *mut c_void as "void*"  {
+                auto q = new RustObject<QObject>();
+                q->data = p;
+                return q;
+            }};
+        };
     }
 }
 
-pub unsafe fn get_rust_object<'a, T>(p: &'a mut c_void)->&'a mut T {
-    //std::mem::transmute::<*mut std::os::raw::c_void, &mut #name>(
-      //                  p.offset(8/*virtual_table*/ + 8 /* d_ptr */)) }; // FIXME
-    let ptr = cpp!{[p as "RustObject<QObject>*"] -> *mut c_void as "void*" {
-        return p->data.a;
-    }};
-    std::mem::transmute::<*mut c_void, &'a mut T>(ptr)
-}
 
 #[no_mangle]
 pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {
     return unsafe { (*p).meta_object() };
 }
+
+pub fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
+    let a = a.as_ptr();
+    unsafe { cpp!([object as "QObject*", meta as "const QMetaObject*", id as "int", a as "void**"] {
+        QMetaObject::activate(object, meta, id, a);
+    })}
+}
+
 
 
 #[repr(C)]
@@ -61,9 +100,19 @@ macro_rules! qt_property {
     ($t:ty) => { $t };
 }
 
+#[macro_export]
+macro_rules! qt_base_class {
+    ($($t:tt)*) => { $crate::QObjectCppWrapper };
+}
+
 
 #[macro_export]
 macro_rules! qt_method {
+    ($($t:tt)*) => { std::marker::PhantomData<()> };
+}
+
+#[macro_export]
+macro_rules! qt_signal {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
 
@@ -74,3 +123,4 @@ mod tests {
         assert_eq!(2 + 2, 4);
     }
 }
+

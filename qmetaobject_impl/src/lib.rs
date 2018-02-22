@@ -15,11 +15,13 @@ fn write_u32(val : i32) -> [u8;4] {
     [(val & 0xff) as u8 , ((val >> 8) & 0xff) as u8, ((val >> 16) & 0xff) as u8, ((val >> 24) & 0xff) as u8]
 }
 
+#[derive(Clone)]
 struct MetaMethodParameter {
     typ : i32,
     name : String
 }
 
+#[derive(Clone)]
 struct MetaMethod {
     name: String,
     args: Vec<MetaMethodParameter>,
@@ -27,6 +29,7 @@ struct MetaMethod {
     ret_type: i32,
 }
 
+#[derive(Clone)]
 struct MetaProperty {
     name : String,
     typ : i32,
@@ -128,6 +131,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     let mut properties = vec![];
     let mut methods = vec![];
+    let mut signals = vec![];
     let mut func_bodies = vec![];
 
     if let syn::Data::Struct(ref data) = ast.data {
@@ -150,7 +154,16 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                 flags: 0x2,
                                 ret_type: 2, // int
                             });
-                            func_bodies.push(mac.mac.tts.clone());
+                            let tts = &mac.mac.tts;
+                            func_bodies.push(quote! { #tts } );
+                        }
+                        "qt_signal" => {
+                            signals.push(MetaMethod {
+                                name: f.ident.expect("Signal does not have a name").as_ref().to_string(),
+                                args: Vec::new(),
+                                flags: 0x2 | 0x4,
+                                ret_type: 0, // void
+                            });
                         }
                         _ => {}
                     }
@@ -162,6 +175,11 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
        panic!("#[derive(HelloWorld)] is only defined for structs, not for enums!");
     }
 
+    // prepend the methods in the signal
+    let mut methods2 = signals.clone();
+    methods2.extend(methods);
+    let methods = methods2;
+
     let mut mo : MetaObject = Default::default();
     mo.compute_int_data(name.to_string(), &properties, &methods);
 
@@ -169,6 +187,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let int_data = mo.int_data;
 
     let crate_ : syn::Ident = "qmetaobject".to_owned().into();
+    let base : syn::Ident = "QObject".to_owned().into();
 
     let property_meta_call : Vec<_> = properties.iter().enumerate().map(|(i, prop)| {
         let i = i as u32;
@@ -190,14 +209,28 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     let method_meta_call : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
         let i = i as u32;
-        let name : syn::Ident = method.name.clone().into();
-        quote! { #i =>
-            unsafe {
-                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
-                *r = obj.#name();
+        let method_name : syn::Ident = method.name.clone().into();
+        if method.ret_type == 0 {
+            quote! { #i => obj.#method_name(), }
+        } else {
+            quote! { #i =>
+                unsafe {
+                    let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
+                    if r.is_null() { obj.#method_name(); }
+                    else { *r = obj.#method_name(); }
+                }
             }
         }
     }).collect();
+
+    func_bodies.extend(signals.iter().enumerate().map(|(i, signal)| {
+        let sig_name : syn::Ident = signal.name.clone().into();
+        let i = i as u32;
+        quote! { fn #sig_name(&mut self) {
+            let a : [*mut std::os::raw::c_void; 1] = [ std::ptr::null_mut() ];
+            #crate_::invoke_signal(self.get_cpp_object().ptr, #name::static_meta_object(), #i, &a)
+        }}
+    }));
 
     let body =   quote!{
         impl #name {
@@ -205,6 +238,10 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         }
         impl QObject for #name {
             fn meta_object(&self)->*const #crate_::QMetaObject {
+                Self::static_meta_object()
+            }
+
+            fn static_meta_object()->*const #crate_::QMetaObject {
 
                 static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
                 static INT_DATA : &'static [i32] = & [ #(#int_data),* ];
@@ -213,7 +250,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                               a: *const *mut std::os::raw::c_void) {
                     //std::mem::transmute::<*mut c_void, *mut u8>(*a)
                     // get the actual object
-                    let obj : &mut #name = unsafe { #crate_::get_rust_object(&mut *o) };
+                    let obj : &mut #name = unsafe { <#name as #base>::get_rust_object(&mut *o) };
                     if c == 0 /*QMetaObject::InvokeMetaMethod*/ {
                         match idx {
                             #(#method_meta_call)*
@@ -228,7 +265,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 }
 
                 lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                    superdata: #crate_::base_meta_object(),
+                    superdata:  <#name as #base>::base_meta_object(),
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: static_metacall,
@@ -237,9 +274,16 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 };};
                 return &*MO;
             }
+
+            fn get_cpp_object<'a>(&'a mut self)->&'a #crate_::QObjectCppWrapper {
+                &self.base
+            }
         }
 
     };
+
+    println!("RESULT: {:?} \n --{:?}", body, mo.string_data);
+
     body.into()
 }
 

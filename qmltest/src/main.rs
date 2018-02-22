@@ -16,6 +16,9 @@ cpp!{{
 #[derive(QObject,Default)]
 struct MyStruct {
 
+    base : qt_base_class!(trait QObject),
+    //base : *mut std::os::raw::c_void,
+
     yy : qt_property!(u32),
 
 
@@ -24,7 +27,9 @@ struct MyStruct {
     xx: qt_method!( fn xx(&self) -> i32 {
         println!("MyStruct.xx Called" );
         return 42;
-    } )
+    } ),
+
+    yyChanged: qt_signal!()
 
 
 }
@@ -34,8 +39,6 @@ struct MyStruct {
         return 42;
     }
 }*/
-
-
 
 fn main() {
 
@@ -53,7 +56,9 @@ fn main() {
         RustObject<QObject> x;
         x.data = ptr;
 
-       // qDebug() << x.metaObject()->property(1).isReadable();
+
+
+       qDebug() << x.metaObject()->method(4).methodSignature();
 
         engine.rootContext()->setContextProperty("_foo", &x);
 //        QLabel w("dds");
@@ -80,7 +85,7 @@ Window {
         }
         MouseArea {
             anchors.fill: parent
-            onClicked: { _foo.yy += 5; console.log(_foo.yy) }
+            onClicked: { _foo.yy += 5; console.log(_foo.yy); _foo.yyChanged() }
         }
     }
 }
