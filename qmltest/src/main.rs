@@ -34,7 +34,9 @@ struct MyStruct {
         return (a + self.yy) as f32 + b as f32;
     } ),
 
-    yyChanged: qt_signal!()
+    yyChanged: qt_signal!(),
+
+    another_signa: qt_signal!(foo: u32)
 
 
 }

@@ -1,7 +1,6 @@
 #![recursion_limit="256"]
 
-// #[macro_use]
-// extern crate synstructure;
+#[macro_use]
 extern crate syn;
 #[macro_use]
 extern crate quote;
@@ -185,6 +184,18 @@ impl MetaObject {
     }
 }
 
+fn map_method_parameters(args : &syn::punctuated::Punctuated<syn::FnArg, Token![,]>) -> Vec<MetaMethodParameter> {
+    args.iter().map(|x| {
+        match x {
+            &syn::FnArg::Captured(ref cap) => MetaMethodParameter{
+                name: format!("{}",cap.pat.clone().into_tokens()),
+                typ: format!("{}",cap.ty.clone().into_tokens())
+            },
+            _ => MetaMethodParameter{ name: "".to_owned(), typ:"()".to_owned()  }
+        }
+    }).filter(|x| x.typ != "()" ).collect()
+}
+
 #[proc_macro_derive(QObject)]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
@@ -222,16 +233,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                 syn::ReturnType::Default => "()".to_owned(),
                                 syn::ReturnType::Type(_, ref typ) =>  format!("{}",typ.clone().into_tokens())
                             };
-                            let args : Vec<_> = method_ast.decl.inputs.iter().map(|x| {
-                                match x {
-                                    &syn::FnArg::Captured(ref cap) => MetaMethodParameter{
-                                        name: format!("{}",cap.pat.clone().into_tokens()),
-                                        typ: format!("{}",cap.ty.clone().into_tokens())
-                                    },
-                                    _ => MetaMethodParameter{ name: "".to_owned(), typ:"()".to_owned()  }
-                                }
-                            }).filter(|x| x.typ != "()" ).collect();
-
+                            let args = map_method_parameters(&method_ast.decl.inputs);
                             methods.push(MetaMethod {
                                 name: f.ident.expect("Method does not have a name").as_ref().to_string(),
                                 args: args,
@@ -242,9 +244,13 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                             func_bodies.push(quote! { #tts } );
                         }
                         "qt_signal" => {
+                            use syn::synom::Parser;
+                            let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated;
+                            let args_list = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse signal");
+                            let args = map_method_parameters(&args_list);
                             signals.push(MetaMethod {
                                 name: f.ident.expect("Signal does not have a name").as_ref().to_string(),
-                                args: Vec::new(),
+                                args: args,
                                 flags: 0x2 | 0x4,
                                 ret_type: "()".to_owned(),
                             });
@@ -317,8 +323,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         } else {
             let ret_type : syn::Ident = method.ret_type.clone().into();
             let args_call2 = args_call.clone();
-            quote! { #i =>
-                unsafe {
+            quote! { #i => {
                     let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #ret_type>(*a);
                     if r.is_null() { obj.#method_name(#(#args_call),*); }
                     else { *r = obj.#method_name(#(#args_call2),*); }
@@ -330,10 +335,22 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     func_bodies.extend(signals.iter().enumerate().map(|(i, signal)| {
         let sig_name : syn::Ident = signal.name.clone().into();
         let i = i as u32;
+        let args_decl : Vec<_> = signal.args.iter().map(|arg| {
+            // FIXME!  we should probably use the signature verbatim
+            let n : syn::Ident = arg.name.clone().into();
+            let ty : syn::Ident = arg.typ.clone().into();
+            quote! { #n : #ty }
+        }).collect();
+        let args_ptr : Vec<_> = signal.args.iter().map(|arg| {
+            let n : syn::Ident = arg.name.clone().into();
+            let ty : syn::Ident = arg.typ.clone().into();
+            quote! { unsafe { std::mem::transmute::<& #ty , *mut std::os::raw::c_void>(& #n) } }
+        }).collect();
+        let array_size = signal.args.len() + 1;
         quote! {
             #[allow(non_snake_case)]
-            fn #sig_name(&mut self) {
-                let a : [*mut std::os::raw::c_void; 1] = [ std::ptr::null_mut() ];
+            fn #sig_name(&mut self #(, #args_decl)*) {
+                let a : [*mut std::os::raw::c_void; #array_size] = [ std::ptr::null_mut() #(, #args_ptr)* ];
                 #crate_::invoke_signal(self.get_cpp_object().ptr, #name::static_meta_object(), #i, &a)
             }
         }
@@ -355,13 +372,13 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
                 extern "C" fn static_metacall(o: *mut std::os::raw::c_void, c: u32, idx: u32,
                                               a: *const *mut std::os::raw::c_void) {
-                    if c == #InvokeMetaMethod {
-                        let obj : &mut #name = unsafe { <#name as #base>::get_rust_object(&mut *o) };
+                    if c == #InvokeMetaMethod { unsafe {
+                        let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
                         match idx {
                             #(#method_meta_call)*
                             _ => {}
                         }
-                    } else {
+                    }} else {
                         match idx {
                             #(#property_meta_call)*
                             _ => {}
