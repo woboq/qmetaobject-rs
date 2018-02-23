@@ -101,7 +101,7 @@ pub fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, 
 pub struct QMetaObject {
     pub superdata : *const QMetaObject,
     pub string_data: *const u8,
-    pub data: *const i32,
+    pub data: *const u32,
     pub static_metacall: extern fn(o: *mut c_void, c: u32, idx: u32, a: *const *mut c_void),
     pub r: *const c_void,
     pub e: *const c_void,

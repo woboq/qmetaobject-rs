@@ -21,8 +21,8 @@ struct MyStruct {
 
     yy : qt_property!(u32),
 
+    qq : qt_property!(String),
 
-    foovar : u32,
 
     xx: qt_method!( fn xx(&self) -> i32 {
         println!("MyStruct.xx Called" );

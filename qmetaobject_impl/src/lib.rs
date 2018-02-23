@@ -11,13 +11,53 @@ use proc_macro::TokenStream;
 
 use std::iter::Iterator;
 
+
+#[allow(non_snake_case)]
+#[allow(non_upper_case_globals)]
+#[allow(dead_code)]
+mod MetaObjectCall {
+    // QMetaObject::Call
+    pub const InvokeMetaMethod               : u32 = 0;
+    pub const ReadProperty                   : u32 = 1;
+    pub const WriteProperty                  : u32 = 2;
+    pub const ResetProperty                  : u32 = 3;
+    pub const QueryPropertyDesignable        : u32 = 4;
+    pub const QueryPropertyScriptable        : u32 = 5;
+    pub const QueryPropertyStored            : u32 = 6;
+    pub const QueryPropertyEditable          : u32 = 7;
+    pub const QueryPropertyUser              : u32 = 8;
+    pub const CreateInstance                 : u32 = 9;
+    pub const IndexOfMethod                  : u32 = 10;
+    pub const RegisterPropertyMetaType       : u32 = 11;
+    pub const RegisterMethodArgumentMetaType : u32 = 12;
+}
+
+fn builtin_type(name : &str) -> u32 {
+    match name {
+        "()" => 43,
+        "bool" => 1,
+        "i32" => 2,
+        "u32" => 3,
+        "i64" => 4,
+        "u64" => 5,
+        "f64" => 6,
+        "i16" => 33,
+        "i8" => 34,
+        "u16" => 36,
+        "u8" => 37,
+        //"*c_void" => 31,
+        _ => 0
+    }
+}
+
+
 fn write_u32(val : i32) -> [u8;4] {
     [(val & 0xff) as u8 , ((val >> 8) & 0xff) as u8, ((val >> 16) & 0xff) as u8, ((val >> 24) & 0xff) as u8]
 }
 
 #[derive(Clone)]
 struct MetaMethodParameter {
-    typ : i32,
+    typ : u32,
     name : String
 }
 
@@ -25,21 +65,21 @@ struct MetaMethodParameter {
 struct MetaMethod {
     name: String,
     args: Vec<MetaMethodParameter>,
-    flags: i32,
-    ret_type: i32,
+    flags: u32,
+    ret_type: u32,
 }
 
 #[derive(Clone)]
 struct MetaProperty {
     name : String,
-    typ : i32,
-    flags : i32,
+    typ : String,
+    flags : u32,
     notify_signal : i32,
 }
 
 #[derive(Default)]
 struct MetaObject {
-    int_data : Vec<i32>,
+    int_data : Vec<u32>,
     string_data : Vec<String>,
 }
 impl MetaObject {
@@ -76,7 +116,7 @@ impl MetaObject {
         self.add_string("".to_owned());
 
         let mut offset = 14;
-        let property_offset = offset + methods.len() as i32 * 5;
+        let property_offset = offset + methods.len() as u32 * 5;
         //...
 
 
@@ -84,29 +124,33 @@ impl MetaObject {
             7, // revision
             0, // classname
             0, 0, // class info count and offset
-            methods.len() as i32, offset, // method count and offset
-            properties.len() as i32, property_offset, // properties count and offset
+            methods.len() as u32, offset, // method count and offset
+            properties.len() as u32, property_offset, // properties count and offset
             0, 0, // enum count and offset
             0, 0, // constructor count and offset
             0x4 /* PropertyAccessInStaticMetaCall */,   // flags
-            signal_count as i32, // signalCount
+            signal_count as u32, // signalCount
         ]);
 
-        offset = property_offset + properties.len() as i32 * (if has_notify {4} else {3});
+        offset = property_offset + properties.len() as u32 * (if has_notify {4} else {3});
 
         for ref m in methods {
             let n = self.add_string(m.name.clone());
-            self.int_data.extend_from_slice(&[n , m.args.len() as i32, offset, 1, m.flags]);
-            offset += 1 + 2 * m.args.len() as i32;
+            self.int_data.extend_from_slice(&[n , m.args.len() as u32, offset, 1, m.flags]);
+            offset += 1 + 2 * m.args.len() as u32;
         }
 
         for ref p in properties {
             let n = self.add_string(p.name.clone());
-            self.int_data.extend_from_slice(&[n , p.typ, p.flags]);
+            let mut type_id = builtin_type(&p.typ);
+            if type_id == 0 {
+                type_id = self.add_string(p.typ.clone()) | 0x80000000 /*IsUnresolvedType */;
+            }
+            self.int_data.extend_from_slice(&[n , type_id, p.flags]);
         }
         if has_notify {
             for ref p in properties {
-                self.int_data.push(p.notify_signal);
+                self.int_data.push(p.notify_signal as u32);
             }
         }
 
@@ -125,12 +169,11 @@ impl MetaObject {
         }
     }
 
-    fn add_string(&mut self, string : String) -> i32 {
+    fn add_string(&mut self, string : String) -> u32 {
         self.string_data.push(string);
-        return self.string_data.len() as i32 - 1;
+        return self.string_data.len() as u32 - 1;
     }
 }
-
 
 #[proc_macro_derive(QObject)]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
@@ -155,7 +198,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                             if notify_signal >= 0 { flags |= 0x00400000 };
                             properties.push(MetaProperty {
                                 name: f.ident.expect("Property does not have a name").as_ref().to_string(),
-                                typ: 3,
+                                typ: format!("{}", mac.mac.tts),
                                 flags: flags,
                                 notify_signal: notify_signal
                             });
@@ -199,25 +242,28 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let str_data = mo.build_string_data();
     let int_data = mo.int_data;
 
-    println!("data: {:?}", int_data );
-
     let crate_ : syn::Ident = "qmetaobject".to_owned().into();
     let base : syn::Ident = "QObject".to_owned().into();
+
+
+    use MetaObjectCall::*;
+
 
     let property_meta_call : Vec<_> = properties.iter().enumerate().map(|(i, prop)| {
         let i = i as u32;
         let name : syn::Ident = prop.name.clone().into();
+        let typ : syn::Ident = prop.typ.clone().into();
         quote! { #i => match c {
-            1 /*QMetaObject::ReadProperty*/ => unsafe {
-                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut u32>(*a);
-                *r = obj.#name;
+            #ReadProperty => unsafe {
+                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #typ>(*a);
+                *r = obj.#name.clone();
             },
-            2 /*QMetaObject::WriteProperty*/ => unsafe {
-                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut u32>(*a);
-                obj.#name = *r;
+            #WriteProperty => unsafe {
+                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #typ>(*a);
+                obj.#name = (*r).clone();
             },
-            3 /*QMetaObject::WriteProperty*/ => { /* TODO */},
-            11 /*QMetaObject::RegisterPropertyMetaType*/ => {/*TODO*/},
+            #ResetProperty => { /* TODO */},
+            #RegisterPropertyMetaType => {/*TODO*/},
             _ => {}
         }}
     }).collect();
@@ -241,10 +287,13 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     func_bodies.extend(signals.iter().enumerate().map(|(i, signal)| {
         let sig_name : syn::Ident = signal.name.clone().into();
         let i = i as u32;
-        quote! { fn #sig_name(&mut self) {
-            let a : [*mut std::os::raw::c_void; 1] = [ std::ptr::null_mut() ];
-            #crate_::invoke_signal(self.get_cpp_object().ptr, #name::static_meta_object(), #i, &a)
-        }}
+        quote! {
+            #[allow(non_snake_case)]
+            fn #sig_name(&mut self) {
+                let a : [*mut std::os::raw::c_void; 1] = [ std::ptr::null_mut() ];
+                #crate_::invoke_signal(self.get_cpp_object().ptr, #name::static_meta_object(), #i, &a)
+            }
+        }
     }));
 
     let body =   quote!{
@@ -259,14 +308,14 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             fn static_meta_object()->*const #crate_::QMetaObject {
 
                 static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
-                static INT_DATA : &'static [i32] = & [ #(#int_data),* ];
+                static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
                 extern "C" fn static_metacall(o: *mut std::os::raw::c_void, c: u32, idx: u32,
                                               a: *const *mut std::os::raw::c_void) {
                     //std::mem::transmute::<*mut c_void, *mut u8>(*a)
                     // get the actual object
                     let obj : &mut #name = unsafe { <#name as #base>::get_rust_object(&mut *o) };
-                    if c == 0 /*QMetaObject::InvokeMetaMethod*/ {
+                    if c == #InvokeMetaMethod {
                         match idx {
                             #(#method_meta_call)*
                             _ => {}
