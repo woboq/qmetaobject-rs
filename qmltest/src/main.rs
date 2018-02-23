@@ -29,6 +29,11 @@ struct MyStruct {
         return 42.5;
     } ),
 
+    add: qt_method!( fn add(&self, a: u32, b: f64) -> f32 {
+        println!("MyStruct.xx Called" );
+        return (a + self.yy) as f32 + b as f32;
+    } ),
+
     yyChanged: qt_signal!()
 
 
@@ -80,6 +85,7 @@ Window {
         Text {
             id: helloText
             text: 'Hello world! \n' + _foo.xx() + '\n' + _foo.yy +  '\n' + _foo.qq
+                    + '\n' + _foo.add(2.2 , 3.3)
             y: 30
             anchors.horizontalCenter: page.horizontalCenter
             font.pointSize: 24; font.bold: true

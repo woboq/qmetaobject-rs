@@ -60,7 +60,7 @@ fn write_u32(val : i32) -> [u8;4] {
 
 #[derive(Clone)]
 struct MetaMethodParameter {
-    typ : u32,
+    typ : String,
     name : String
 }
 
@@ -160,7 +160,8 @@ impl MetaObject {
             self.int_data.push(ret_type);
             // types
             for ref a in &m.args {
-                self.int_data.push(a.typ);
+                let ty = self.add_type(&a.typ);
+                self.int_data.push(ty);
             }
             // names
             for ref a in &m.args {
@@ -183,9 +184,6 @@ impl MetaObject {
         return self.string_data.len() as u32 - 1;
     }
 }
-
-use syn::{Type, Ident};
-
 
 #[proc_macro_derive(QObject)]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
@@ -222,12 +220,21 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                             // TODO: compare f.ident and method_ast.ident
                             let ret_type = match method_ast.decl.output {
                                 syn::ReturnType::Default => "()".to_owned(),
-                                syn::ReturnType::Type(_, typ) =>  format!("{}",typ.clone().into_tokens())
+                                syn::ReturnType::Type(_, ref typ) =>  format!("{}",typ.clone().into_tokens())
                             };
+                            let args : Vec<_> = method_ast.decl.inputs.iter().map(|x| {
+                                match x {
+                                    &syn::FnArg::Captured(ref cap) => MetaMethodParameter{
+                                        name: format!("{}",cap.pat.clone().into_tokens()),
+                                        typ: format!("{}",cap.ty.clone().into_tokens())
+                                    },
+                                    _ => MetaMethodParameter{ name: "".to_owned(), typ:"()".to_owned()  }
+                                }
+                            }).filter(|x| x.typ != "()" ).collect();
 
                             methods.push(MetaMethod {
                                 name: f.ident.expect("Method does not have a name").as_ref().to_string(),
-                                args: Vec::new(),
+                                args: args,
                                 flags: 0x2,
                                 ret_type: ret_type,
                             });
@@ -297,15 +304,24 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let method_meta_call : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
         let i = i as u32;
         let method_name : syn::Ident = method.name.clone().into();
+        let args_call : Vec<_> = method.args.iter().enumerate().map(|(i, arg)| {
+            let i = i as isize;
+            let ty : syn::Ident = arg.typ.clone().into();
+            quote! {
+                *(std::mem::transmute::<*mut std::os::raw::c_void, *const #ty>(*(a.offset(#i + 1))))
+            }
+        }).collect();
+
         if method.ret_type == "()" /* Void */ {
-            quote! { #i => obj.#method_name(), }
+            quote! { #i => obj.#method_name(#(#args_call),*), }
         } else {
             let ret_type : syn::Ident = method.ret_type.clone().into();
+            let args_call2 = args_call.clone();
             quote! { #i =>
                 unsafe {
                     let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #ret_type>(*a);
-                    if r.is_null() { obj.#method_name(); }
-                    else { *r = obj.#method_name(); }
+                    if r.is_null() { obj.#method_name(#(#args_call),*); }
+                    else { *r = obj.#method_name(#(#args_call2),*); }
                 }
             }
         }
