@@ -21,7 +21,7 @@ struct MyStruct {
 
     yy : qt_property!(u32),
 
-    qq : qt_property!(String),
+    qq : qt_property!(f32),
 
 
     xx: qt_method!( fn xx(&self) -> i32 {
@@ -78,7 +78,7 @@ Window {
 
         Text {
             id: helloText
-            text: 'Hello world! \n' + _foo.xx() + '\n' + _foo.yy
+            text: 'Hello world! \n' + _foo.xx() + '\n' + _foo.yy +  '\n' + _foo.qq
             y: 30
             anchors.horizontalCenter: page.horizontalCenter
             font.pointSize: 24; font.bold: true

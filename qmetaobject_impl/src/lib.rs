@@ -45,6 +45,7 @@ fn builtin_type(name : &str) -> u32 {
         "i8" => 34,
         "u16" => 36,
         "u8" => 37,
+        "f32" => 38,
         //"*c_void" => 31,
         _ => 0
     }
@@ -314,6 +315,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                               a: *const *mut std::os::raw::c_void) {
                     //std::mem::transmute::<*mut c_void, *mut u8>(*a)
                     // get the actual object
+                    if o.is_null() { return }
                     let obj : &mut #name = unsafe { <#name as #base>::get_rust_object(&mut *o) };
                     if c == #InvokeMetaMethod {
                         match idx {
