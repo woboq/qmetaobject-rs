@@ -24,9 +24,9 @@ struct MyStruct {
     qq : qt_property!(String),
 
 
-    xx: qt_method!( fn xx(&self) -> i32 {
+    xx: qt_method!( fn xx(&self) -> f32 {
         println!("MyStruct.xx Called" );
-        return 42;
+        return 42.5;
     } ),
 
     yyChanged: qt_signal!()

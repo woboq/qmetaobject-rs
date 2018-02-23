@@ -6,6 +6,8 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
+use quote::ToTokens;
+
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
@@ -67,7 +69,7 @@ struct MetaMethod {
     name: String,
     args: Vec<MetaMethodParameter>,
     flags: u32,
-    ret_type: u32,
+    ret_type: String,
 }
 
 #[derive(Clone)]
@@ -143,10 +145,7 @@ impl MetaObject {
 
         for ref p in properties {
             let n = self.add_string(p.name.clone());
-            let mut type_id = builtin_type(&p.typ);
-            if type_id == 0 {
-                type_id = self.add_string(p.typ.clone()) | 0x80000000 /*IsUnresolvedType */;
-            }
+            let type_id = self.add_type(&p.typ);
             self.int_data.extend_from_slice(&[n , type_id, p.flags]);
         }
         if has_notify {
@@ -157,7 +156,8 @@ impl MetaObject {
 
         for ref m in methods {
             // return type
-            self.int_data.push(m.ret_type);
+            let ret_type = self.add_type(&m.ret_type);
+            self.int_data.push(ret_type);
             // types
             for ref a in &m.args {
                 self.int_data.push(a.typ);
@@ -170,11 +170,22 @@ impl MetaObject {
         }
     }
 
+    fn add_type(&mut self, string : &str) -> u32 {
+        let mut type_id = builtin_type(string);
+        if type_id == 0 {
+            type_id = self.add_string(string.to_owned()) | 0x80000000 /*IsUnresolvedType */;
+        }
+        type_id
+    }
+
     fn add_string(&mut self, string : String) -> u32 {
         self.string_data.push(string);
         return self.string_data.len() as u32 - 1;
     }
 }
+
+use syn::{Type, Ident};
+
 
 #[proc_macro_derive(QObject)]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
@@ -205,11 +216,20 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                             });
                         }
                         "qt_method" => {
+
+                            let method_ast : syn::ItemFn = syn::parse(mac.mac.tts.clone().into())
+                                .expect("Could not parse method");
+                            // TODO: compare f.ident and method_ast.ident
+                            let ret_type = match method_ast.decl.output {
+                                syn::ReturnType::Default => "()".to_owned(),
+                                syn::ReturnType::Type(_, typ) =>  format!("{}",typ.clone().into_tokens())
+                            };
+
                             methods.push(MetaMethod {
                                 name: f.ident.expect("Method does not have a name").as_ref().to_string(),
                                 args: Vec::new(),
                                 flags: 0x2,
-                                ret_type: 2, // int
+                                ret_type: ret_type,
                             });
                             let tts = &mac.mac.tts;
                             func_bodies.push(quote! { #tts } );
@@ -219,7 +239,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                 name: f.ident.expect("Signal does not have a name").as_ref().to_string(),
                                 args: Vec::new(),
                                 flags: 0x2 | 0x4,
-                                ret_type: 43, // void
+                                ret_type: "()".to_owned(),
                             });
                         }
                         _ => {}
@@ -277,12 +297,13 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let method_meta_call : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
         let i = i as u32;
         let method_name : syn::Ident = method.name.clone().into();
-        if method.ret_type == 43 /* Void */ {
+        if method.ret_type == "()" /* Void */ {
             quote! { #i => obj.#method_name(), }
         } else {
+            let ret_type : syn::Ident = method.ret_type.clone().into();
             quote! { #i =>
                 unsafe {
-                    let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
+                    let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #ret_type>(*a);
                     if r.is_null() { obj.#method_name(); }
                     else { *r = obj.#method_name(); }
                 }
