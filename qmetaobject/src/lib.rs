@@ -14,7 +14,6 @@ pub use qmetaobject_impl::*;
 extern crate lazy_static;
 pub use lazy_static::*;
 
-
 use std::os::raw::c_void;
 
 cpp!{{
@@ -95,6 +94,47 @@ pub fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, 
     })}
 }
 
+pub fn register_metatype<T : Sized + Clone + Default>(name : &str) -> i32 {
+    let size = std::mem::size_of::<T>() as u32;
+
+    extern fn deleter_fn<T>(_v: Box<T>) {
+    };
+    let deleter_fn : extern fn(_v: Box<T>) = deleter_fn;
+
+    extern fn creator_fn<T : Default + Clone>(c : *const T) -> Box<T> {
+        if c.is_null() { Box::new( Default::default() ) }
+        else { Box::new(unsafe { (*c).clone() }) }
+    };
+    let creator_fn : extern fn(c : *const T) -> Box<T> = creator_fn;
+
+    extern fn destructor_fn<T>(ptr : *mut T) {
+        unsafe { std::ptr::read(ptr); }
+    };
+    let destructor_fn : extern fn(ptr : *mut T) = destructor_fn;
+
+    extern fn constructor_fn<T : Default + Clone>(dst : *mut T, c : *const T) -> *mut T {
+        unsafe {
+            let n = if c.is_null() {  Default::default() }
+                    else { (*c).clone() };
+            std::ptr::write(dst, n);
+        }
+        dst
+    };
+    let constructor_fn : extern fn(ptr : *mut T, c : *const T) -> *mut T = constructor_fn;
+
+    let name = std::ffi::CString::new(name).unwrap();
+    unsafe {
+        let name = name.as_ptr();
+        cpp!([name as "const char*", size as "int", deleter_fn as "QMetaType::Deleter",
+                   creator_fn as "QMetaType::Creator", destructor_fn as "QMetaType::Destructor",
+                   constructor_fn as "QMetaType::Constructor"] -> i32 as "int" {
+            return QMetaType::registerType(name, deleter_fn, creator_fn, destructor_fn,
+                constructor_fn, size,
+                QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType,
+                nullptr);
+        })
+    }
+}
 
 
 #[repr(C)]

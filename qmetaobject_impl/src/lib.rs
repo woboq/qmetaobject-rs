@@ -252,19 +252,24 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     let property_meta_call : Vec<_> = properties.iter().enumerate().map(|(i, prop)| {
         let i = i as u32;
-        let name : syn::Ident = prop.name.clone().into();
+        let property_name : syn::Ident = prop.name.clone().into();
         let typ : syn::Ident = prop.typ.clone().into();
         quote! { #i => match c {
             #ReadProperty => unsafe {
+                let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
                 let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #typ>(*a);
-                *r = obj.#name.clone();
+                *r = obj.#property_name.clone();
             },
             #WriteProperty => unsafe {
+                let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
                 let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #typ>(*a);
-                obj.#name = (*r).clone();
+                obj.#property_name = (*r).clone();
             },
             #ResetProperty => { /* TODO */},
-            #RegisterPropertyMetaType => {/*TODO*/},
+            #RegisterPropertyMetaType => unsafe {
+                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
+                *r = #crate_::register_metatype::<#typ>(stringify!(#typ));
+            },
             _ => {}
         }}
     }).collect();
@@ -313,11 +318,8 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
                 extern "C" fn static_metacall(o: *mut std::os::raw::c_void, c: u32, idx: u32,
                                               a: *const *mut std::os::raw::c_void) {
-                    //std::mem::transmute::<*mut c_void, *mut u8>(*a)
-                    // get the actual object
-                    if o.is_null() { return }
-                    let obj : &mut #name = unsafe { <#name as #base>::get_rust_object(&mut *o) };
                     if c == #InvokeMetaMethod {
+                        let obj : &mut #name = unsafe { <#name as #base>::get_rust_object(&mut *o) };
                         match idx {
                             #(#method_meta_call)*
                             _ => {}

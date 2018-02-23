@@ -2,6 +2,7 @@
 
 #include <QtCore/QObject>
 #include <QtCore/QEvent>
+#include <QtCore/QDebug>
 
 struct TraitObject {
     void *a;

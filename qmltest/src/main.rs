@@ -21,7 +21,7 @@ struct MyStruct {
 
     yy : qt_property!(u32),
 
-    qq : qt_property!(f32),
+    qq : qt_property!(String),
 
 
     xx: qt_method!( fn xx(&self) -> i32 {
@@ -44,6 +44,7 @@ fn main() {
 
     let mut xx = MyStruct::default();
     xx.yy = 85;
+    xx.qq = "Hello".to_owned();
     xx.construct_cpp_object();
     let ptr = xx.get_cpp_object().ptr;
 
