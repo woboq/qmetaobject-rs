@@ -2,6 +2,7 @@
 
 #[macro_use]
 extern crate syn;
+use syn::synom::Parser;
 #[macro_use]
 extern crate quote;
 
@@ -214,12 +215,33 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 if let Some(ref segment) = mac.mac.path.segments.last() {
                     match segment.value().ident.as_ref() {
                         "qt_property" => {
+                            #[derive(Debug)]
+                            enum Flag {
+                                Notify(syn::Ident),
+                            }
+                            named!(property_flag -> Flag, do_parse!(
+                                k: syn!(syn::Ident) >>
+                                i: cond_reduce!(&k == "NOTIFY", syn!(syn::Ident)) >>
+                                (Flag::Notify(i))));
+                            named!(property_parser -> (syn::Type, Vec<Flag>), do_parse!(
+                                ty: syn!(syn::Type) >>
+                                //trail: call!(syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated_with, property_flags) >>
+                                trail: many0!(do_parse!(
+                                    punct!(;) >>
+                                    flag: call!(property_flag) >>
+                                    (flag)
+                                )) >>
+                                ((ty, trail))));
+                            let parsed = property_parser.parse(mac.mac.tts.clone().into()).expect("Could not parse property");
+                            println!("YOYOYOYO {:?}", parsed);
+
+
                             let notify_signal = 0;
                             let mut flags = 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000;
                             if notify_signal >= 0 { flags |= 0x00400000 };
                             properties.push(MetaProperty {
                                 name: f.ident.expect("Property does not have a name").as_ref().to_string(),
-                                typ: format!("{}", mac.mac.tts),
+                                typ: format!("{}", parsed.0.into_tokens()),
                                 flags: flags,
                                 notify_signal: notify_signal
                             });
@@ -244,7 +266,6 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                             func_bodies.push(quote! { #tts } );
                         }
                         "qt_signal" => {
-                            use syn::synom::Parser;
                             let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated;
                             let args_list = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse signal");
                             let args = map_method_parameters(&args_list);

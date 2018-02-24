@@ -19,7 +19,7 @@ struct MyStruct {
     base : qt_base_class!(trait QObject),
     //base : *mut std::os::raw::c_void,
 
-    yy : qt_property!(u32),
+    yy : qt_property!(u32; NOTIFY yyChanged),
 
     qq : qt_property!(String),
 

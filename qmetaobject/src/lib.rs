@@ -150,7 +150,7 @@ unsafe impl Sync for QMetaObject {}
 
 #[macro_export]
 macro_rules! qt_property {
-    ($t:ty) => { $t };
+    ($t:ty $(; $($rest:tt)*)*) => { $t };
 }
 
 #[macro_export]
