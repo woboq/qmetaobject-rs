@@ -321,6 +321,12 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         let i = i as u32;
         let property_name : syn::Ident = prop.name.clone().into();
         let typ : syn::Ident = prop.typ.clone().into();
+        let mut notify = quote! {};
+        if let Some(ref signal) = prop.notify_signal {
+            let signal : syn::Ident = signal.clone().into();
+            notify = quote!{ obj.#signal() };
+        }
+
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
@@ -331,6 +337,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
                 let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #typ>(*a);
                 obj.#property_name = (*r).clone();
+                #notify
             },
             #ResetProperty => { /* TODO */},
             #RegisterPropertyMetaType => unsafe {

@@ -97,7 +97,6 @@ Window {
             onClicked: {
                 _foo.yy += 5;
                 console.log(_foo.yy);
-                 _foo.yyChanged()
             }
         }
     }
