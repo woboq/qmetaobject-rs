@@ -77,7 +77,7 @@ struct MetaProperty {
     name : String,
     typ : String,
     flags : u32,
-    notify_signal : i32,
+    notify_signal : Option<String>,
 }
 
 #[derive(Default)]
@@ -113,7 +113,7 @@ impl MetaObject {
                         methods : &[MetaMethod], signal_count : usize) {
 
 
-        let has_notify = properties.iter().any(|p| p.notify_signal >= 0);
+        let has_notify = properties.iter().any(|p| p.notify_signal.is_some());
 
         self.add_string(class_name.clone());
         self.add_string("".to_owned());
@@ -150,7 +150,13 @@ impl MetaObject {
         }
         if has_notify {
             for ref p in properties {
-                self.int_data.push(p.notify_signal as u32);
+                match p.notify_signal {
+                    None => self.int_data.push(0 as u32),
+                    Some(ref signal) => self.int_data.push(methods.iter().position(
+                        |x| x.name == *signal && (x.flags & 0x4) != 0).expect("Invalid NOTIFY signal") as u32)
+
+                }
+                ;
             }
         }
 
@@ -232,13 +238,20 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                     (flag)
                                 )) >>
                                 ((ty, trail))));
-                            let parsed = property_parser.parse(mac.mac.tts.clone().into()).expect("Could not parse property");
-                            println!("YOYOYOYO {:?}", parsed);
+                            let parsed = property_parser.parse(mac.mac.tts.clone().into())
+                                .expect("Could not parse property");
 
-
-                            let notify_signal = 0;
+                            let mut notify_signal = None;
                             let mut flags = 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000;
-                            if notify_signal >= 0 { flags |= 0x00400000 };
+                            for it in parsed.1 {
+                                match it {
+                                    Flag::Notify(signal) => {
+                                        assert!(notify_signal.is_none(), "Two NOTIFY for a property");
+                                        notify_signal = Some(signal.as_ref().to_string());
+                                        flags |= 0x00400000;
+                                    }
+                                }
+                            }
                             properties.push(MetaProperty {
                                 name: f.ident.expect("Property does not have a name").as_ref().to_string(),
                                 typ: format!("{}", parsed.0.into_tokens()),
