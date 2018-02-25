@@ -54,8 +54,6 @@ pub trait QObject {
         }
     }
     unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
-        //std::mem::transmute::<*mut std::os::raw::c_void, &mut #name>(
-        //                  p.offset(8/*virtual_table*/ + 8 /* d_ptr */)) }; // FIXME
         let ptr = cpp!{[p as "RustObject<QObject>*"] -> *mut c_void as "void*" {
             return p->data.a;
         }};

@@ -52,3 +52,5 @@ struct RustObject : Base {
             RustObject_destruct(data);
     }
 };
+
+

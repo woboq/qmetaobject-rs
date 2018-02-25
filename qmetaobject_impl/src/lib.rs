@@ -330,18 +330,18 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
-                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #typ>(*a);
+                let r = *a as *mut #typ;
                 *r = obj.#property_name.clone();
             },
             #WriteProperty => unsafe {
                 let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
-                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #typ>(*a);
+                let r = *a as *mut #typ;
                 obj.#property_name = (*r).clone();
                 #notify
             },
             #ResetProperty => { /* TODO */},
             #RegisterPropertyMetaType => unsafe {
-                let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut i32>(*a);
+                let r = *a as *mut i32;
                 *r = #crate_::register_metatype::<#typ>(stringify!(#typ));
             },
             _ => {}
@@ -355,7 +355,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             let i = i as isize;
             let ty : syn::Ident = arg.typ.clone().into();
             quote! {
-                *(std::mem::transmute::<*mut std::os::raw::c_void, *const #ty>(*(a.offset(#i + 1))))
+                *(*(a.offset(#i + 1)) as *const #ty)
             }
         }).collect();
 
@@ -365,7 +365,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             let ret_type : syn::Ident = method.ret_type.clone().into();
             let args_call2 = args_call.clone();
             quote! { #i => {
-                    let r = std::mem::transmute::<*mut std::os::raw::c_void, *mut #ret_type>(*a);
+                    let r = *a as *mut #ret_type;
                     if r.is_null() { obj.#method_name(#(#args_call),*); }
                     else { *r = obj.#method_name(#(#args_call2),*); }
                 }
