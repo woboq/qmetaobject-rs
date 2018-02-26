@@ -14,9 +14,9 @@ extern "C" void RustObject_destruct(TraitObject);
 
 template <typename Base>
 struct RustObject : Base {
-    TraitObject data;
+    TraitObject rust_object;
     const QMetaObject *metaObject() const override {
-        return RustObject_metaObject(data);
+        return RustObject_metaObject(rust_object);
     }
     int qt_metacall(QMetaObject::Call _c, int _id, void **_a) override {
         _id = Base::qt_metacall(_c, _id, _a);
@@ -41,15 +41,15 @@ struct RustObject : Base {
         if (event->type() == 513) {
             // "513 reserved for Qt Jambi's DeleteOnMainThread event"
             // This event is sent by rust when we are deleted.
-            data = { nullptr, nullptr }; // so the destructor don't recurse
+            rust_object = { nullptr, nullptr }; // so the destructor don't recurse
             delete this;
             return true;
         }
         return Base::event(event);
     }
     ~RustObject() {
-        if (data.a || data.b)
-            RustObject_destruct(data);
+        if (rust_object.a || rust_object.b)
+            RustObject_destruct(rust_object);
     }
 };
 

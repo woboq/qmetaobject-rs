@@ -58,7 +58,7 @@ pub trait QObject {
     }
     unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
         let ptr = cpp!{[p as "RustObject<QObject>*"] -> *mut c_void as "void*" {
-            return p->data.a;
+            return p->rust_object.a;
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
@@ -67,7 +67,7 @@ pub trait QObject {
             let p : *mut QObject = self;
             cpp!{[p as "TraitObject"] -> *mut c_void as "void*"  {
                 auto q = new RustObject<QObject>();
-                q->data = p;
+                q->rust_object = p;
                 return q;
             }}
         };
