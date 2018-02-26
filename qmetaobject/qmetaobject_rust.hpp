@@ -54,3 +54,15 @@ struct RustObject : Base {
 };
 
 
+// Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor
+// is a friend
+namespace QtPrivate {
+template<>
+struct ConverterFunctor<TraitObject, TraitObject, TraitObject> : public AbstractConverterFunction
+{
+    using AbstractConverterFunction::AbstractConverterFunction;
+    bool registerConverter(int from, int to) {
+        return QMetaType::registerConverterFunction(this, from, to);
+    }
+};
+}

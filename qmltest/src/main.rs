@@ -12,6 +12,18 @@ cpp!{{
     #include <qmetaobject_rust.hpp>
 }}
 
+/*
+cpp_class!(struct QString)
+impl QString {
+    fn from_str()
+}
+impl Default for QString {
+    fn default() -> QString {
+        cpp!([] -> QString as "QString" { return QString(); })
+    }
+}*/
+
+use qmetaobject::QByteArray;
 
 #[derive(QObject,Default)]
 struct MyStruct {
@@ -36,7 +48,11 @@ struct MyStruct {
 
     yyChanged: qt_signal!(),
 
-    another_signa: qt_signal!(foo: u32)
+    another_signa: qt_signal!(foo: u32),
+
+    toString_: qt_method!(fn toString_(&self) -> QByteArray {
+        QByteArray::from_str("I'm the object")
+    } ),
 
 
 }
@@ -96,7 +112,7 @@ Window {
             anchors.fill: parent
             onClicked: {
                 _foo.yy += 5;
-                console.log(_foo.yy);
+                console.log(_foo.toString_());
             }
         }
     }

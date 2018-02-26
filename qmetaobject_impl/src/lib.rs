@@ -49,6 +49,9 @@ fn builtin_type(name : &str) -> u32 {
         "u8" => 37,
         "f32" => 38,
         //"*c_void" => 31,
+        "QString" => 10,
+        "QByteArray" => 12,
+        "QVariant" => 41,
         _ => 0
     }
 }
