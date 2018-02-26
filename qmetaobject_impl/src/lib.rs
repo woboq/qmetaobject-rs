@@ -420,7 +420,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                         let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
                         match idx {
                             #(#method_meta_call)*
-                            _ => {}
+                            _ => { let _ = obj; }
                         }
                     }} else {
                         match idx {

@@ -253,11 +253,6 @@ macro_rules! qt_signal {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+//#[cfg(test)]
+pub mod test;
 
