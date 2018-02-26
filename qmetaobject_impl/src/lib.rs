@@ -358,7 +358,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             let i = i as isize;
             let ty : syn::Ident = arg.typ.clone().into();
             quote! {
-                *(*(a.offset(#i + 1)) as *const #ty)
+                (*(*(a.offset(#i + 1)) as *const #ty)).clone()
             }
         }).collect();
 
