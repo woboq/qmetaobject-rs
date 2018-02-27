@@ -147,11 +147,13 @@ Window {
             anchors.bottom: parent.bottom
             model: _model
             delegate: Rectangle {
-                color: blue;
+                //color: 'blue';
+                border.width: 3
+                border.color: 'green'
                 width: parent.width
                 height: 123;
                 Text {
-                    text: modelData
+                    text: display
                 }
             }
         }

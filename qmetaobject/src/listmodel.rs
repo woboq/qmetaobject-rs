@@ -61,10 +61,13 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
     //int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        return rust!(Rust_QAbstractListModel_data[rust_object : *const QAbstractListModel as "TraitObject",
-                index : QModelIndex as "QModelIndex", role : i32 as "int"] -> QVariant as "QVariant" {
-            unsafe { (*rust_object).data(index, role) }
+        QVariant ret;
+        QVariant *ptr = &ret;
+        rust!(Rust_QAbstractListModel_data[rust_object : *const QAbstractListModel as "TraitObject",
+                index : QModelIndex as "QModelIndex", role : i32 as "int", ptr : *mut QVariant as "QVariant*"] {
+            unsafe { *ptr = (*rust_object).data(index, role) };
         });
+        return ret;
     }
 
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
