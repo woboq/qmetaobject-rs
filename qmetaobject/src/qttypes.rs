@@ -50,6 +50,16 @@ impl Default for QString {
 
 cpp_class!(pub struct QVariant, "QVariant");
 impl QVariant {
+    pub fn to_qbytearray(&self) -> QByteArray {
+        // FIXME
+        unsafe {
+            cpp!([self as "const QVariant*"] -> QByteArray as "QByteArray" { return self->toByteArray(); })
+        }
+    }
+
+    pub fn from_qbytearray(a : QByteArray) -> QVariant {
+        unsafe {cpp!([a as "QByteArray"] -> QVariant as "QVariant" { return QVariant(a); })}
+    }
 }
 impl Default for QVariant {
     fn default() -> QVariant {
@@ -60,6 +70,11 @@ impl Default for QVariant {
 
 cpp_class!(pub struct QModelIndex, "QModelIndex");
 impl QModelIndex {
+    pub fn row(&self) -> i32 {
+        unsafe {
+            cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->row(); })
+        }
+    }
 }
 impl Default for QModelIndex {
     fn default() -> QModelIndex {

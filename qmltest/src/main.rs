@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate qmetaobject;
-use qmetaobject::QObject;
+use qmetaobject::{QObject, QVariant, QAbstractListModel, QModelIndex};
 
 #[macro_use]
 extern crate cpp;
@@ -63,6 +63,32 @@ struct MyStruct {
     }
 }*/
 
+
+#[derive(QObject,Default)]
+struct MyModel {
+
+    base : qt_base_class!(trait QAbstractListModel),
+
+    values : Vec<String>
+
+}
+impl QAbstractListModel for MyModel {
+    fn row_count(&self) -> i32 {
+        println!("ROWCOUND {}", self.values.len());
+        self.values.len() as i32
+    }
+    fn data(&self, index: QModelIndex, role:i32) -> QVariant {
+        let idx = index.row();
+        if idx >= 0 && (idx as usize) < self.values.len() {
+            QVariant::from_qbytearray(QByteArray::from_str(&self.values[idx as usize]))
+        } else {
+            QVariant::default()
+        }
+    }
+}
+
+
+
 fn main() {
 
     let mut xx = MyStruct::default();
@@ -71,8 +97,12 @@ fn main() {
     xx.construct_cpp_object();
     let ptr = xx.get_cpp_object().ptr;
 
+    let mut mm = MyModel::default();
+    mm.values = vec!["hello, ".to_owned(), "world".to_owned()];
+    mm.construct_cpp_object_xx();
+    let ptr2 = mm.get_cpp_object().ptr;
 
-    unsafe { cpp!{[ptr as "QObject*"] {
+    unsafe { cpp!{[ptr as "QObject*", ptr2 as "QObject*"] {
 
         int argc = 1;
         char name[] = "hello";
@@ -80,11 +110,8 @@ fn main() {
         QApplication app(argc, argv);
         QQmlApplicationEngine engine;
 
-        qDebug() << ptr->metaObject()->method(4).methodSignature();
-        qDebug() << ptr->metaObject()->method(5).methodSignature();
-        qDebug() << ptr->metaObject()->method(6).methodSignature();
-
         engine.rootContext()->setContextProperty("_foo", ptr);
+        engine.rootContext()->setContextProperty("_model", ptr2);
 //        QLabel w("dds");
 //        w.show();
         engine.loadData(R"(
@@ -94,7 +121,7 @@ import QtQuick.Window 2.0
 
 Window {
     visible: true
-    width: 320; height: 480
+    width: 520; height: 680
     Rectangle {
         id: page
         color: 'lightgray'
@@ -104,17 +131,31 @@ Window {
             id: helloText
             text: 'Hello world! \n' + _foo.xx() + '\n' + _foo.yy +  '\n' + _foo.qq
                     + '\n' + _foo.add(2.2 , 3.3)
-            y: 30
             anchors.horizontalCenter: page.horizontalCenter
             font.pointSize: 24; font.bold: true
         }
         MouseArea {
-            anchors.fill: parent
+            anchors.fill: helloText
             onClicked: {
                 _foo.yy += 5;
                 console.log(_foo.toString_());
             }
         }
+        ListView {
+            width: parent.width;
+            anchors.top: helloText.bottom
+            anchors.bottom: parent.bottom
+            model: _model
+            delegate: Rectangle {
+                color: blue;
+                width: parent.width
+                height: 123;
+                Text {
+                    text: modelData
+                }
+            }
+        }
+
     }
 }
 

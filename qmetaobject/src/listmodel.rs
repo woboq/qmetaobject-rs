@@ -5,9 +5,9 @@ pub trait QAbstractListModel : QObject {
     // These are not, they are part of the trait structure that sub trait must have
     // Copy/paste this code replacing QObject with the type
     fn base_meta_object()->*const QMetaObject where Self:Sized {
-        unsafe {
-            cpp!{[] -> *const QMetaObject as "const void*" { return &QAbstractListModel::staticMetaObject; } }
-        }
+        unsafe { cpp!{[] -> *const QMetaObject as "const QMetaObject*" {
+            return &QAbstractListModel::staticMetaObject;
+        }}}
     }
     unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
         let ptr = cpp!{[p as "RustObject<QAbstractListModel>*"] -> *mut c_void as "void*" {
@@ -15,7 +15,7 @@ pub trait QAbstractListModel : QObject {
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
-    fn construct_cpp_object(&mut self) where Self:Sized {
+    fn construct_cpp_object_xx(&mut self) where Self:Sized {
         let p = unsafe {
             let p : *mut QAbstractListModel = self;
             cpp!{[p as "TraitObject"] -> *mut c_void as "void*"  {
@@ -32,13 +32,23 @@ pub trait QAbstractListModel : QObject {
 
     fn row_count(&self) -> i32;
     fn data(&self, index: QModelIndex, role:i32) -> QVariant;
-    fn set_data(&self, index: QModelIndex, value: QVariant, role: i32) -> bool;
+    fn set_data(&mut self, _index: QModelIndex, _value: QVariant, _role: i32) -> bool { false }
 }
 
 
 cpp!{{
 #include <qmetaobject_rust.hpp>
 struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
+
+
+    const QMetaObject *metaObject() const override {
+        return rust!(Rust_QAbstractListModel_metaobject[rust_object : *const QAbstractListModel as "TraitObject"]
+                -> *const QMetaObject as "const QMetaObject*" {
+            unsafe { (*rust_object).meta_object() }
+        });
+    }
+
+
 
     int rowCount(const QModelIndex & = QModelIndex()) const override {
         return rust!(Rust_QAbstractListModel_rowCount[rust_object : *const QAbstractListModel as "TraitObject"]
@@ -58,7 +68,7 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
     }
 
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
-        return rust!(Rust_QAbstractListModel_setData[rust_object : *const QAbstractListModel as "TraitObject",
+        return rust!(Rust_QAbstractListModel_setData[rust_object : *mut QAbstractListModel as "TraitObject",
                 index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
                 -> bool as "bool" {
             unsafe { (*rust_object).set_data(index, value, role) }

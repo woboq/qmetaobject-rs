@@ -214,3 +214,4 @@ macro_rules! qt_signal {
 pub mod test;
 
 pub mod listmodel;
+pub use listmodel::*;

@@ -217,6 +217,11 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let mut signals = vec![];
     let mut func_bodies = vec![];
 
+    let crate_ : syn::Ident = "qmetaobject".to_owned().into();
+    let mut base : syn::Ident = "QObject".to_owned().into();
+    let mut base_prop : syn::Ident = "missing_base_class_property".to_owned().into();
+
+
     if let syn::Data::Struct(ref data) = ast.data {
         for f in data.fields.iter() {
             use syn::Type::Macro;
@@ -292,6 +297,14 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                 ret_type: "()".to_owned(),
                             });
                         }
+                        "qt_base_class" => {
+                            named!(parser -> syn::Ident, do_parse!(
+                                syn!(Token![trait]) >>
+                                t: syn!(syn::Ident) >>
+                                (t)));
+                            base = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse base trait");
+                            base_prop = f.ident.expect("base prop needs a name");
+                        }
                         _ => {}
                     }
                 }
@@ -312,9 +325,6 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     let str_data = mo.build_string_data();
     let int_data = mo.int_data;
-
-    let crate_ : syn::Ident = "qmetaobject".to_owned().into();
-    let base : syn::Ident = "QObject".to_owned().into();
 
 
     use MetaObjectCall::*;
@@ -404,7 +414,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         impl #name {
             #(#func_bodies)*
         }
-        impl QObject for #name {
+        impl #crate_::QObject for #name {
             fn meta_object(&self)->*const #crate_::QMetaObject {
                 Self::static_meta_object()
             }
@@ -442,7 +452,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             }
 
             fn get_cpp_object<'a>(&'a mut self)->&'a mut #crate_::QObjectCppWrapper {
-                &mut self.base
+                &mut self.#base_prop
             }
         }
 
