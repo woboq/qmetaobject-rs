@@ -213,3 +213,4 @@ macro_rules! qt_signal {
 //#[cfg(test)]
 pub mod test;
 
+pub mod listmodel;

@@ -46,3 +46,23 @@ impl Default for QString {
         unsafe {cpp!([] -> QString as "QString" { return QString(); })}
     }
 }
+
+
+cpp_class!(pub struct QVariant, "QVariant");
+impl QVariant {
+}
+impl Default for QVariant {
+    fn default() -> QVariant {
+        unsafe {cpp!([] -> QVariant as "QVariant" { return QVariant(); })}
+    }
+}
+
+
+cpp_class!(pub struct QModelIndex, "QModelIndex");
+impl QModelIndex {
+}
+impl Default for QModelIndex {
+    fn default() -> QModelIndex {
+        unsafe {cpp!([] -> QModelIndex as "QModelIndex" { return QModelIndex(); })}
+    }
+}
