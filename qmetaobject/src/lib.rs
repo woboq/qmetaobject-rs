@@ -177,7 +177,6 @@ pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> 
     type_id
 }
 
-
 #[repr(C)]
 pub struct QMetaObject {
     pub superdata : *const QMetaObject,

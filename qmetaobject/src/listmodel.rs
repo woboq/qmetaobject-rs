@@ -42,18 +42,16 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 
 
     const QMetaObject *metaObject() const override {
-        return rust!(Rust_QAbstractListModel_metaobject[rust_object : *const QAbstractListModel as "TraitObject"]
+        return rust!(Rust_QAbstractListModel_metaobject[rust_object : &QAbstractListModel as "TraitObject"]
                 -> *const QMetaObject as "const QMetaObject*" {
-            unsafe { (*rust_object).meta_object() }
+            rust_object.meta_object()
         });
     }
 
-
-
     int rowCount(const QModelIndex & = QModelIndex()) const override {
-        return rust!(Rust_QAbstractListModel_rowCount[rust_object : *const QAbstractListModel as "TraitObject"]
+        return rust!(Rust_QAbstractListModel_rowCount[rust_object : &QAbstractListModel as "TraitObject"]
                 -> i32 as "int" {
-            unsafe { (*rust_object).row_count() }
+            rust_object.row_count()
         });
     }
 
@@ -61,20 +59,17 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
     //int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        QVariant ret;
-        QVariant *ptr = &ret;
-        rust!(Rust_QAbstractListModel_data[rust_object : *const QAbstractListModel as "TraitObject",
-                index : QModelIndex as "QModelIndex", role : i32 as "int", ptr : *mut QVariant as "QVariant*"] {
-            unsafe { *ptr = (*rust_object).data(index, role) };
+        return rust!(Rust_QAbstractListModel_data[rust_object : &QAbstractListModel as "TraitObject",
+                index : QModelIndex as "QModelIndex", role : i32 as "int"] -> QVariant as "QVariant" {
+            rust_object.data(index, role)
         });
-        return ret;
     }
 
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
-        return rust!(Rust_QAbstractListModel_setData[rust_object : *mut QAbstractListModel as "TraitObject",
+        return rust!(Rust_QAbstractListModel_setData[rust_object : &mut QAbstractListModel as "TraitObject",
                 index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
                 -> bool as "bool" {
-            unsafe { (*rust_object).set_data(index, value, role) }
+            rust_object.set_data(index, value, role)
         });
     }
 
@@ -83,9 +78,9 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
     //QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
     /*QHash<int, QByteArray> roleNames() const override {
-        return rust!(Rust_QAbstractListModel_roleNames[rust_object : *const QAbstractListModel as "TraitObject"]
+        return rust!(Rust_QAbstractListModel_roleNames[rust_object : &QAbstractListModel as "TraitObject"]
                 -> bool as "bool" {
-            unsafe { (*rust_object).roleName(index, role) }
+            rust_object.roleName(index, role)
         });
 
     }*/
