@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashMap;
 
 pub trait QAbstractListModel : QObject {
 
@@ -33,8 +34,16 @@ pub trait QAbstractListModel : QObject {
     fn row_count(&self) -> i32;
     fn data(&self, index: QModelIndex, role:i32) -> QVariant;
     fn set_data(&mut self, _index: QModelIndex, _value: QVariant, _role: i32) -> bool { false }
+    fn role_names(&self) -> HashMap<i32, QByteArray> { HashMap::new() }
 }
 
+
+/* Small helper funciton for Rust_QAbstractListModel::roleNames */
+fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
+    unsafe { cpp!([hash as "QHash<int, QByteArray>*", key as "int", value as "QByteArray"]{
+        (*hash)[key] = std::move(value);
+    })}
+}
 
 cpp!{{
 #include <qmetaobject_rust.hpp>
@@ -77,13 +86,16 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 
     //QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
-    /*QHash<int, QByteArray> roleNames() const override {
-        return rust!(Rust_QAbstractListModel_roleNames[rust_object : &QAbstractListModel as "TraitObject"]
-                -> bool as "bool" {
-            rust_object.roleName(index, role)
+    QHash<int, QByteArray> roleNames() const override {
+        QHash<int, QByteArray> base = QAbstractListModel::roleNames();
+        rust!(Rust_QAbstractListModel_roleNames[rust_object : &QAbstractListModel as "TraitObject",
+                base: *mut c_void as "QHash<int, QByteArray>&"] {
+            for (key, val) in rust_object.role_names().iter() {
+                add_to_hash(base, key.clone(), val.clone());
+            }
         });
-
-    }*/
+        return base;
+    }
 
     //QModelIndex index(int row, int column, const QModelIndex &parent) const override;
 

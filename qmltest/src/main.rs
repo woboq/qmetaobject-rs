@@ -74,16 +74,18 @@ struct MyModel {
 }
 impl QAbstractListModel for MyModel {
     fn row_count(&self) -> i32 {
-        println!("ROWCOUND {}", self.values.len());
         self.values.len() as i32
     }
     fn data(&self, index: QModelIndex, role:i32) -> QVariant {
         let idx = index.row();
-        if idx >= 0 && (idx as usize) < self.values.len() {
+        if role == 0xff0012 && idx >= 0 && (idx as usize) < self.values.len() {
             QVariant::from_qbytearray(QByteArray::from_str(&self.values[idx as usize]))
         } else {
             QVariant::default()
         }
+    }
+    fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
+        [(0xff0012, QByteArray::from_str("the_text"))].iter().cloned().collect()
     }
 }
 
@@ -153,7 +155,7 @@ Window {
                 width: parent.width
                 height: 123;
                 Text {
-                    text: display
+                    text: the_text
                 }
             }
         }
