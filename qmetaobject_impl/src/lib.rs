@@ -217,7 +217,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let mut signals = vec![];
     let mut func_bodies = vec![];
 
-    let crate_ : syn::Ident = "qmetaobject".to_owned().into();
+    let crate_ = quote! { ::qmetaobject };
     let mut base : syn::Ident = "QObject".to_owned().into();
     let mut base_prop : syn::Ident = "missing_base_class_property".to_owned().into();
 
