@@ -15,6 +15,10 @@ pub fn do_test<T: QObject + Sized>(mut obj: T, qml: &str) -> bool {
     let obj_ptr = obj.get_cpp_object().ptr;
     unsafe { cpp!([qml_ba as "QByteArray", obj_ptr as "QObject*"] -> bool as "bool" {
 
+        static QMutex mtx;
+        // We can only have one QGuiApplication at the same time and everything must run in the same thread
+        QMutexLocker lock(&mtx);
+
         static int argc = 1;
         static char name[] = "hello";
         static char *argv[] = { name };
