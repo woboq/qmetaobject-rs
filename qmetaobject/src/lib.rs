@@ -62,18 +62,14 @@ pub trait QObject {
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
-    fn construct_cpp_object(&mut self) where Self:Sized {
-        let p = unsafe {
-            let p : *mut QObject = self;
-            cpp!{[p as "TraitObject"] -> *mut c_void as "void*"  {
+    fn construct_cpp_object(self_ : *mut QObject) -> *mut c_void where Self:Sized {
+        unsafe {
+            cpp!{[self_ as "TraitObject"] -> *mut c_void as "void*"  {
                 auto q = new RustObject<QObject>();
-                q->rust_object = p;
+                q->rust_object = self_;
                 return q;
             }}
-        };
-        let cpp_object = self.get_cpp_object();
-        assert!(cpp_object.ptr.is_null(), "The cpp object was already created");
-        cpp_object.ptr = p;
+        }
     }
 }
 

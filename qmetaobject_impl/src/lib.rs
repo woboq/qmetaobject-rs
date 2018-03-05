@@ -503,6 +503,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
+                #[allow(unused_variables)]
                 extern "C" fn static_metacall #impl_generics (o: *mut std::os::raw::c_void, c: u32, idx: u32,
                                               a: *const *mut std::os::raw::c_void) {
                     if c == #InvokeMetaMethod { unsafe {
@@ -522,13 +523,16 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             }
 
             fn get_cpp_object<'a>(&'a mut self)->&'a mut #crate_::QObjectCppWrapper {
+                if self.#base_prop.ptr.is_null() {
+                    let n =  <#name #ty_generics as #base>::construct_cpp_object(self);
+                    self.#base_prop.ptr = n;
+                }
                 &mut self.#base_prop
             }
         }
 
     };
 
-    println!("{}", body);
     body.into()
 }
 

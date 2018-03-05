@@ -1,5 +1,6 @@
 extern crate std;
 use std::os::raw::c_char;
+use std::convert::From;
 
 cpp_class!(pub struct QByteArray, "QByteArray");
 impl QByteArray {
@@ -64,6 +65,21 @@ impl QVariant {
 impl Default for QVariant {
     fn default() -> QVariant {
         unsafe {cpp!([] -> QVariant as "QVariant" { return QVariant(); })}
+    }
+}
+impl From<QString> for QVariant {
+    fn from(a : QString) -> QVariant {
+        unsafe {cpp!([a as "QString"] -> QVariant as "QVariant" { return QVariant(a); })}
+    }
+}
+impl From<i32> for QVariant {
+    fn from(a : i32) -> QVariant {
+        unsafe {cpp!([a as "int"] -> QVariant as "QVariant" { return QVariant(a); })}
+    }
+}
+impl From<u32> for QVariant {
+    fn from(a : u32) -> QVariant {
+        unsafe {cpp!([a as "uint"] -> QVariant as "QVariant" { return QVariant(a); })}
     }
 }
 

@@ -2,9 +2,6 @@ use super::*;
 use std::collections::HashMap;
 
 pub trait QAbstractListModel : QObject {
-
-    // These are not, they are part of the trait structure that sub trait must have
-    // Copy/paste this code replacing QObject with the type
     fn base_meta_object()->*const QMetaObject where Self:Sized {
         unsafe { cpp!{[] -> *const QMetaObject as "const QMetaObject*" {
             return &QAbstractListModel::staticMetaObject;
@@ -16,20 +13,15 @@ pub trait QAbstractListModel : QObject {
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
-    fn construct_cpp_object_xx(&mut self) where Self:Sized {
-        let p = unsafe {
-            let p : *mut QAbstractListModel = self;
-            cpp!{[p as "TraitObject"] -> *mut c_void as "void*"  {
+     fn construct_cpp_object(self_ : *mut QAbstractListModel) -> *mut c_void where Self:Sized {
+        unsafe {
+            cpp!{[self_ as "TraitObject"] -> *mut c_void as "void*"  {
                 auto q = new Rust_QAbstractListModel();
-                q->rust_object = p;
+                q->rust_object = self_;
                 return q;
             }}
-        };
-        let cpp_object = self.get_cpp_object();
-        assert!(cpp_object.ptr.is_null(), "The cpp object was already created");
-        cpp_object.ptr = p;
+        }
     }
-
 
     fn row_count(&self) -> i32;
     fn data(&self, index: QModelIndex, role:i32) -> QVariant;
@@ -37,6 +29,21 @@ pub trait QAbstractListModel : QObject {
     fn role_names(&self) -> HashMap<i32, QByteArray> { HashMap::new() }
 }
 
+impl QAbstractListModel {
+    pub fn begin_insert_rows(&mut self, first : i32, last: i32) {
+        let p = QModelIndex::default();
+        let obj = self.get_cpp_object().ptr;
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
+            obj->beginInsertRows(p, first, last);
+        })}
+    }
+    pub fn end_insert_rows(&mut self) {
+        let obj = self.get_cpp_object().ptr;
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+            obj->endInsertRows();
+        })}
+    }
+}
 
 /* Small helper funciton for Rust_QAbstractListModel::roleNames */
 fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
@@ -48,6 +55,13 @@ fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
 cpp!{{
 #include <qmetaobject_rust.hpp>
 struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
+
+    using QAbstractListModel::beginInsertRows;
+    using QAbstractListModel::endInsertRows;
+    using QAbstractListModel::beginRemoveRows;
+    using QAbstractListModel::endRemoveRows;
+    using QAbstractListModel::beginResetModel;
+    using QAbstractListModel::endResetModel;
 
 
     const QMetaObject *metaObject() const override {
@@ -107,15 +121,16 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 
 pub const USER_ROLE : i32 = 0x0100;
 
-trait SimpleListItem {
+pub trait SimpleListItem {
     fn get(&self, idx : i32) -> QVariant;
     fn names() -> Vec<QByteArray>;
 }
 
+// This is a bit weird because the rules are different as we are in the qmetaobject crate
 
 #[derive(QObject, Default)]
 #[QMetaObjectCrate="super"]
-struct SimpleListModel<T : SimpleListItem + 'static> {
+pub struct SimpleListModel<T : SimpleListItem + 'static> {
 //    base : qt_base_class!(trait QAbstractListModel),
     #[qt_base_class="QAbstractListModel"]
     base: QObjectCppWrapper,

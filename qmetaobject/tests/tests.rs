@@ -75,7 +75,6 @@ fn call_method() {
     let obj = MyObject::default();
     assert!(do_test(obj, "Item {
         function doTest() {
-            console.log(_obj.concatenate_strings('abc', 'def', 'hij'));
             return _obj.concatenate_strings('abc', 'def', 'hij') == 'abcdefhij';
         }}"));
 
@@ -84,4 +83,40 @@ fn call_method() {
         function doTest() {
             return _obj.concatenate_strings(123, 456, 789) == '123456789';
         }}"));
+}
+
+
+
+#[test]
+fn simple_model() {
+
+    #[derive(Default)]
+    struct TM {
+        a: QString,
+        b: u32,
+    }
+    impl qmetaobject::listmodel::SimpleListItem for TM {
+        fn get(&self, idx : i32) -> QVariant {
+            match idx {
+                0 => self.a.clone().into(),
+                1 => self.b.clone().into(),
+                _ => QVariant::default()
+            }
+        }
+        fn names() -> Vec<QByteArray> {
+            vec![ QByteArray::from_str("a"), QByteArray::from_str("b") ]
+        }
+    }
+    let model : qmetaobject::listmodel::SimpleListModel<TM> = Default::default();
+    assert!(do_test(model, "Item {
+            Repeater{
+                id: rep;
+                model:_obj;
+                Text {
+                    text: a + b;
+                }
+            }
+            function doTest() {
+                return rep.count === 0;
+            }}"));
 }
