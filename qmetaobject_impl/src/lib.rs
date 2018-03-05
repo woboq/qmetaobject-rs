@@ -13,7 +13,6 @@ use proc_macro::TokenStream;
 
 use std::iter::Iterator;
 
-
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
 #[allow(dead_code)]
@@ -206,10 +205,11 @@ fn map_method_parameters(args : &syn::punctuated::Punctuated<syn::FnArg, Token![
     }).filter(|x| x.typ != "()" ).collect()
 }
 
-#[proc_macro_derive(QObject)]
+#[proc_macro_derive(QObject, attributes(QMetaObjectCrate,qt_base_class))]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     let ast : syn::DeriveInput = syn::parse(input).expect("could not parse struct");
+
     let name = &ast.ident;
 
     let mut properties = vec![];
@@ -217,10 +217,35 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let mut signals = vec![];
     let mut func_bodies = vec![];
 
-    let crate_ = quote! { ::qmetaobject };
+    let mut crate_ = quote! { ::qmetaobject };
+    //let mut crate_ = quote! { super };
     let mut base : syn::Ident = "QObject".to_owned().into();
     let mut base_prop : syn::Ident = "missing_base_class_property".to_owned().into();
 
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+
+    for i in ast.attrs.iter() {
+        if let Some(x) = i.interpret_meta() {
+            if x.name().as_ref() == "QMetaObjectCrate" {
+                if let syn::Meta::NameValue(mnv) = x {
+                    use syn::Lit::*;
+                    let lit : syn::Path = match mnv.lit {
+                        Str(s) => s.value().into(),
+                        _ => panic!("Can't parse QMetaObjectCrate")
+/*                        ByteStr(LitByteStr),
+                        Byte(LitByte),
+                        Char(LitChar),
+                        Int(LitInt),
+                        Float(LitFloat),
+                        Bool(LitBool),
+                        Verbatim(LitVerbatim),*/
+
+                    };
+                    crate_ = quote!( #lit );
+                }
+            }
+        }
+    }
 
     if let syn::Data::Struct(ref data) = ast.data {
         for f in data.fields.iter() {
@@ -304,6 +329,21 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                                 (t)));
                             base = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse base trait");
                             base_prop = f.ident.expect("base prop needs a name");
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            for i in f.attrs.iter() {
+                if let Some(x) = i.interpret_meta() {
+                    match x.name().as_ref()  {
+                        "qt_base_class" => {
+                            if let syn::Meta::NameValue(mnv) = x {
+                                if let syn::Lit::Str(s) = mnv.lit {
+                                    base = s.value().into();
+                                    base_prop = f.ident.expect("base prop needs a name");
+                                } else { panic!("Can't parse qt_base_class"); }
+                            } else { panic!("Can't parse qt_base_class"); }
                         }
                         _ => {}
                     }
@@ -410,11 +450,50 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         }
     }));
 
+
+    let mo = if ast.generics.params.is_empty() {
+        quote! {
+            lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
+                superdata:  <#name  as #base>::base_meta_object(),
+                string_data: STRING_DATA.as_ptr(),
+                data: INT_DATA.as_ptr(),
+                static_metacall: static_metacall,
+                r: std::ptr::null(),
+                e: std::ptr::null(),
+            };};
+            return &*MO;
+        }
+    } else {
+        let turbo_generics = ty_generics.as_turbofish();
+        quote! {
+            use std::sync::Mutex;
+            use std::collections::HashMap;
+            use std::any::TypeId;
+
+            // FIXME! this could be global
+            lazy_static! {
+                static ref HASHMAP: Mutex<HashMap<TypeId, Box<#crate_::QMetaObject>>> =
+                    Mutex::new(HashMap::new());
+            };
+            let mut h = HASHMAP.lock().unwrap();
+            let mo = h.entry(TypeId::of::<#name #ty_generics>()).or_insert_with(
+                || Box::new(#crate_::QMetaObject {
+                    superdata:  <#name #ty_generics as #base>::base_meta_object(),
+                    string_data: STRING_DATA.as_ptr(),
+                    data: INT_DATA.as_ptr(),
+                    static_metacall: static_metacall #turbo_generics,
+                    r: std::ptr::null(),
+                    e: std::ptr::null(),
+            }));
+            return &**mo;
+        }
+    };
+
     let body =   quote!{
-        impl #name {
+        impl #impl_generics #name #ty_generics #where_clause {
             #(#func_bodies)*
         }
-        impl #crate_::QObject for #name {
+        impl #impl_generics #crate_::QObject for #name #ty_generics #where_clause {
             fn meta_object(&self)->*const #crate_::QMetaObject {
                 Self::static_meta_object()
             }
@@ -424,10 +503,10 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
-                extern "C" fn static_metacall(o: *mut std::os::raw::c_void, c: u32, idx: u32,
+                extern "C" fn static_metacall #impl_generics (o: *mut std::os::raw::c_void, c: u32, idx: u32,
                                               a: *const *mut std::os::raw::c_void) {
                     if c == #InvokeMetaMethod { unsafe {
-                        let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
+                        let obj : &mut #name #ty_generics = <#name #ty_generics as #base>::get_rust_object(&mut *o);
                         match idx {
                             #(#method_meta_call)*
                             _ => { let _ = obj; }
@@ -439,16 +518,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                         }
                     }
                 }
-
-                lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                    superdata:  <#name as #base>::base_meta_object(),
-                    string_data: STRING_DATA.as_ptr(),
-                    data: INT_DATA.as_ptr(),
-                    static_metacall: static_metacall,
-                    r: std::ptr::null(),
-                    e: std::ptr::null(),
-                };};
-                return &*MO;
+                #mo
             }
 
             fn get_cpp_object<'a>(&'a mut self)->&'a mut #crate_::QObjectCppWrapper {
@@ -458,6 +528,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     };
 
+    println!("{}", body);
     body.into()
 }
 

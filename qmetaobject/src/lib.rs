@@ -187,6 +187,7 @@ pub struct QMetaObject {
     pub e: *const c_void,
 }
 unsafe impl Sync for QMetaObject {}
+unsafe impl Send for QMetaObject {}
 
 #[macro_export]
 macro_rules! qt_property {

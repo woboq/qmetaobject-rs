@@ -105,3 +105,37 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 };
 }}
 
+pub const USER_ROLE : i32 = 0x0100;
+
+trait SimpleListItem {
+    fn get(&self, idx : i32) -> QVariant;
+    fn names() -> Vec<QByteArray>;
+}
+
+
+#[derive(QObject, Default)]
+#[QMetaObjectCrate="super"]
+struct SimpleListModel<T : SimpleListItem + 'static> {
+//    base : qt_base_class!(trait QAbstractListModel),
+    #[qt_base_class="QAbstractListModel"]
+    base: QObjectCppWrapper,
+    values: Vec<T>
+}
+
+impl<T> QAbstractListModel for SimpleListModel<T> where T: SimpleListItem {
+    fn row_count(&self) -> i32 {
+        self.values.len() as i32
+    }
+    fn data(&self, index: QModelIndex, role:i32) -> QVariant {
+        let idx = index.row();
+        if idx >= 0 && (idx as usize) < self.values.len() {
+            self.values[idx as usize].get(role - USER_ROLE).clone()
+        } else {
+            QVariant::default()
+        }
+    }
+    fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
+        T::names().iter().enumerate().map(|(i,x)| (i as i32+USER_ROLE, x.clone())).collect()
+    }
+}
+

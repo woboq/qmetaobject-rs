@@ -81,3 +81,5 @@ impl Default for QModelIndex {
         unsafe {cpp!([] -> QModelIndex as "QModelIndex" { return QModelIndex(); })}
     }
 }
+
+
