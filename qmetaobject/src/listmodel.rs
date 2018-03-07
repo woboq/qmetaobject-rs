@@ -1,5 +1,6 @@
 use super::*;
 use std::collections::HashMap;
+use std::iter::FromIterator;
 
 pub trait QAbstractListModel : QObject {
     fn base_meta_object()->*const QMetaObject where Self:Sized {
@@ -41,6 +42,31 @@ impl QAbstractListModel {
         let obj = self.get_cpp_object().ptr;
         unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
             obj->endInsertRows();
+        })}
+    }
+    pub fn begin_remove_rows(&mut self, first : i32, last: i32) {
+        let p = QModelIndex::default();
+        let obj = self.get_cpp_object().ptr;
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
+            obj->beginRemoveRows(p, first, last);
+        })}
+    }
+    pub fn end_remove_rows(&mut self) {
+        let obj = self.get_cpp_object().ptr;
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+            obj->endRemoveRows();
+        })}
+    }
+    pub fn begin_reset_model(&mut self) {
+        let obj = self.get_cpp_object().ptr;
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+            obj->beginResetModel();
+        })}
+    }
+    pub fn end_reset_model(&mut self) {
+        let obj = self.get_cpp_object().ptr;
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+            obj->endResetModel();
         })}
     }
 }
@@ -153,4 +179,27 @@ impl<T> QAbstractListModel for SimpleListModel<T> where T: SimpleListItem {
         T::names().iter().enumerate().map(|(i,x)| (i as i32+USER_ROLE, x.clone())).collect()
     }
 }
+impl<T : SimpleListItem> SimpleListModel<T> {
+    pub fn insert(&mut self, index: usize, element: T) {
+        (self as &mut QAbstractListModel).begin_insert_rows(index as i32, index as i32);
+        self.values.insert(index, element);
+        (self as &mut QAbstractListModel).end_insert_rows();
+    }
+    pub fn push(&mut self, value : T) {
+        let idx = self.values.len();
+        self.insert(idx, value);
+    }
+    pub fn remove(&mut self, index: usize) {
+        (self as &mut QAbstractListModel).begin_remove_rows(index as i32, index as i32);
+        self.values.remove(index);
+        (self as &mut QAbstractListModel).end_insert_rows();
+    }
+}
 
+impl<T : SimpleListItem> FromIterator<T> for SimpleListModel<T> where T: Default  {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> SimpleListModel<T> {
+        let mut m = SimpleListModel::default();
+        m.values = Vec::from_iter(iter.into_iter());
+        m
+    }
+}
