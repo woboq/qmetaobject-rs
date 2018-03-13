@@ -4,13 +4,6 @@ use std::convert::From;
 
 cpp_class!(pub struct QByteArray, "QByteArray");
 impl QByteArray {
-    pub fn from_str(s : &str) -> QByteArray {
-        let len = s.len();
-        let ptr = s.as_ptr();
-        unsafe { cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
-        { return QByteArray(ptr, len); })}
-    }
-
     pub fn to_string(&self) -> String {
         unsafe {
             let c_ptr = cpp!([self as "const QByteArray*"] -> *const c_char as "const char*"
@@ -24,16 +17,24 @@ impl Default for QByteArray {
         unsafe {cpp!([] -> QByteArray as "QByteArray" { return QByteArray(); })}
     }
 }
+impl<'a> From<&'a str> for QByteArray {
+    fn from(s : &'a str) -> QByteArray {
+        let len = s.len();
+        let ptr = s.as_ptr();
+        unsafe { cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
+        { return QByteArray(ptr, len); })}
+    }
+}
+// impl From<String> for QByteArray {
+//     fn from(s : String) -> QByteArray {
+//         let s : &str = &s;
+//         s.into()
+//     }
+// }
+
 
 cpp_class!(pub struct QString, "QString");
 impl QString {
-    pub fn from_str(s : &str) -> QString {
-        let len = s.len();
-        let ptr = s.as_ptr();
-        unsafe { cpp!([len as "size_t", ptr as "char*"] -> QString as "QString"
-        { return QString::fromUtf8(ptr, len); })}
-    }
-
     pub fn to_string(&self) -> String {
         unsafe {
             let ba = cpp!([self as "const QString*"] -> QByteArray as "QByteArray"
@@ -45,6 +46,14 @@ impl QString {
 impl Default for QString {
     fn default() -> QString {
         unsafe {cpp!([] -> QString as "QString" { return QString(); })}
+    }
+}
+impl<'a> From<&'a str> for QString {
+    fn from(s : &'a str) -> QString {
+        let len = s.len();
+        let ptr = s.as_ptr();
+        unsafe { cpp!([len as "size_t", ptr as "char*"] -> QString as "QString"
+        { return QString::fromUtf8(ptr, len); })}
     }
 }
 

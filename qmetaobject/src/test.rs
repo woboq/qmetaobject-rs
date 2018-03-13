@@ -11,7 +11,7 @@ cpp!{{
 pub fn do_test<T: QObject + Sized>(mut obj: T, qml: &str) -> bool {
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
-    let qml_ba = QByteArray::from_str(&qml_text);
+    let qml_ba = QByteArray::from(&qml_text as &str);
     let obj_ptr = obj.get_cpp_object().ptr;
     unsafe { cpp!([qml_ba as "QByteArray", obj_ptr as "QObject*"] -> bool as "bool" {
 

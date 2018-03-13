@@ -132,7 +132,7 @@ pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> 
     use std::any::TypeId;
     if TypeId::of::<String>() == TypeId::of::<T>() {
         extern fn converter_fn1(_ : *const c_void, s: &String, ptr : *mut QByteArray) {
-            unsafe { std::ptr::write(ptr, QByteArray::from_str(&s)); }
+            unsafe { std::ptr::write(ptr, QByteArray::from(&*s as &str)); }
         };
         let converter_fn1: extern fn(_ : *const c_void, s: &String, ptr : *mut QByteArray) = converter_fn1;
         extern fn converter_fn2(_ : *const c_void, s: &QByteArray, ptr : *mut String) {
@@ -140,7 +140,8 @@ pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> 
         };
         let converter_fn2: extern fn(_ : *const c_void, s: &QByteArray, ptr : *mut String) = converter_fn2;
         extern fn converter_fn3(_ : *const c_void, s: &String, ptr : *mut QString) {
-            unsafe { std::ptr::write(ptr, QString::from_str(&s)); }
+            let s : &str = &*s;
+            unsafe { std::ptr::write(ptr, QString::from(&*s as &str)); }
         };
         let converter_fn3: extern fn(_ : *const c_void, s: &String, ptr : *mut QString) = converter_fn3;
         extern fn converter_fn4(_ : *const c_void, s: &QString, ptr : *mut String) {

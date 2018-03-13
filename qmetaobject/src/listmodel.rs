@@ -196,10 +196,17 @@ impl<T : SimpleListItem> SimpleListModel<T> {
     }
 }
 
-impl<T : SimpleListItem> FromIterator<T> for SimpleListModel<T> where T: Default  {
+impl<T> FromIterator<T> for SimpleListModel<T> where T: SimpleListItem + Default  {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> SimpleListModel<T> {
         let mut m = SimpleListModel::default();
         m.values = Vec::from_iter(iter.into_iter());
         m
     }
 }
+/*impl<'a, T> FromIterator<&'a T> for SimpleListModel<T> where T: SimpleListItem + Default  {
+    fn from_iter<I: IntoIterator<Item = &'a T>>(iter: I) -> SimpleListModel<T> {
+        let mut m = SimpleListModel::<T>::default();
+        m.values = Vec::from_iter(iter.into_iter());
+        m
+    }
+}*/

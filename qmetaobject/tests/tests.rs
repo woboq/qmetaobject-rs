@@ -1,6 +1,8 @@
 extern crate qmetaobject;
 use qmetaobject::*;
 use qmetaobject::test::do_test;
+use std::iter::FromIterator;
+
 
 #[test]
 fn self_test() {
@@ -36,8 +38,8 @@ struct MyObject {
 
     concatenate_strings: qt_method!(fn concatenate_strings(
             &self, a: QString, b:QString, c: QByteArray) -> QString {
-        let a = a.to_string();
-        QString::from_str(&(a + &(b.to_string()) + &(c.to_string())))
+        let res = a.to_string() + &(b.to_string()) + &(c.to_string());
+        QString::from(&res as &str)
     })
 }
 
@@ -104,10 +106,11 @@ fn simple_model() {
             }
         }
         fn names() -> Vec<QByteArray> {
-            vec![ QByteArray::from_str("a"), QByteArray::from_str("b") ]
+            vec![ QByteArray::from("a"), QByteArray::from("b") ]
         }
     }
-    let model : qmetaobject::listmodel::SimpleListModel<TM> = Default::default();
+    // FIXME! why vec! here?
+    let model : qmetaobject::listmodel::SimpleListModel<TM> = (vec![TM{a: "hello".into(), b:1}]).into_iter().collect();
     assert!(do_test(model, "Item {
             Repeater{
                 id: rep;
@@ -117,6 +120,7 @@ fn simple_model() {
                 }
             }
             function doTest() {
-                return rep.count === 0;
+                console.log('simple_model:', rep.count, rep.itemAt(0).text);
+                return rep.count === 1 && rep.itemAt(0).text === 'hello1';
             }}"));
 }
