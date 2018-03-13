@@ -1,17 +1,9 @@
 extern crate std;
 use std::os::raw::c_char;
 use std::convert::From;
+use std::fmt::Display;
 
 cpp_class!(pub struct QByteArray, "QByteArray");
-impl QByteArray {
-    pub fn to_string(&self) -> String {
-        unsafe {
-            let c_ptr = cpp!([self as "const QByteArray*"] -> *const c_char as "const char*"
-                { return self->constData(); });
-            std::ffi::CStr::from_ptr(c_ptr).to_string_lossy().into_owned()
-        }
-    }
-}
 impl Default for QByteArray {
     fn default() -> QByteArray {
         unsafe {cpp!([] -> QByteArray as "QByteArray" { return QByteArray(); })}
@@ -25,24 +17,27 @@ impl<'a> From<&'a str> for QByteArray {
         { return QByteArray(ptr, len); })}
     }
 }
-// impl From<String> for QByteArray {
-//     fn from(s : String) -> QByteArray {
-//         let s : &str = &s;
-//         s.into()
-//     }
-// }
-
-
-cpp_class!(pub struct QString, "QString");
-impl QString {
-    pub fn to_string(&self) -> String {
+impl From<QString> for QByteArray {
+    fn from(s : QString) -> QByteArray {
         unsafe {
-            let ba = cpp!([self as "const QString*"] -> QByteArray as "QByteArray"
-                { return self->toUtf8(); });
-            ba.to_string()
+            cpp!([s as "QString"] -> QByteArray as "QByteArray"
+            { return std::move(s).toUtf8(); })
         }
     }
 }
+impl Display for QByteArray {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        unsafe {
+            let c_ptr = cpp!([self as "const QByteArray*"] -> *const c_char as "const char*" {
+                return self->constData();
+            });
+            f.write_str(std::ffi::CStr::from_ptr(c_ptr).to_str().map_err(|_| Default::default())?)
+        }
+    }
+}
+
+
+cpp_class!(pub struct QString, "QString");
 impl Default for QString {
     fn default() -> QString {
         unsafe {cpp!([] -> QString as "QString" { return QString(); })}
@@ -56,6 +51,12 @@ impl<'a> From<&'a str> for QString {
         { return QString::fromUtf8(ptr, len); })}
     }
 }
+impl Display for QString {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        QByteArray::from(self.clone()).fmt(f)
+    }
+}
+
 
 
 cpp_class!(pub struct QVariant, "QVariant");

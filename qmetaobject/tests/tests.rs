@@ -1,8 +1,6 @@
 extern crate qmetaobject;
 use qmetaobject::*;
 use qmetaobject::test::do_test;
-use std::iter::FromIterator;
-
 
 #[test]
 fn self_test() {
