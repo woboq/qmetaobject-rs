@@ -445,7 +445,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             #[allow(non_snake_case)]
             fn #sig_name(&mut self #(, #args_decl)*) {
                 let a : [*mut std::os::raw::c_void; #array_size] = [ std::ptr::null_mut() #(, #args_ptr)* ];
-                #crate_::invoke_signal(self.get_cpp_object().ptr, #name::static_meta_object(), #i, &a)
+                #crate_::invoke_signal(self.get_cpp_object().get(), #name::static_meta_object(), #i, &a)
             }
         }
     }));
@@ -522,12 +522,12 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 #mo
             }
 
-            fn get_cpp_object<'a>(&'a mut self)->&'a mut #crate_::QObjectCppWrapper {
-                if self.#base_prop.ptr.is_null() {
+            fn get_cpp_object<'a>(&'a self)->&'a #crate_::QObjectCppWrapper {
+                if self.#base_prop.get().is_null() {
                     let n =  <#name #ty_generics as #base>::construct_cpp_object(self);
-                    self.#base_prop.ptr = n;
+                    self.#base_prop.set(n);
                 }
-                &mut self.#base_prop
+                &self.#base_prop
             }
         }
 

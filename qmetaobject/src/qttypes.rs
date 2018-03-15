@@ -76,6 +76,11 @@ impl From<u32> for QVariant {
         unsafe {cpp!([a as "uint"] -> QVariant as "QVariant" { return QVariant(a); })}
     }
 }
+impl From<bool> for QVariant {
+    fn from(a : bool) -> QVariant {
+        unsafe {cpp!([a as "bool"] -> QVariant as "QVariant" { return QVariant(a); })}
+    }
+}
 
 cpp_class!(pub struct QModelIndex, "QModelIndex");
 impl QModelIndex {

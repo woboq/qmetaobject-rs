@@ -15,6 +15,7 @@ extern crate lazy_static;
 pub use lazy_static::*;
 
 use std::os::raw::c_void;
+use std::cell::Cell;
 
 pub mod qttypes;
 pub use qttypes::*;
@@ -24,11 +25,11 @@ cpp!{{
 }}
 
 pub struct QObjectCppWrapper {
-    pub ptr: *mut c_void
+    ptr: Cell<*mut c_void>
 }
 impl Drop for QObjectCppWrapper {
     fn drop(&mut self) {
-        let ptr = self.ptr;
+        let ptr = self.ptr.get();
         unsafe { cpp!([ptr as "QObject*"] {
             // The event 513 is catched by RustObject and deletes the object.
             QEvent e(QEvent::Type(513));
@@ -38,7 +39,11 @@ impl Drop for QObjectCppWrapper {
     }
 }
 impl Default for QObjectCppWrapper {
-    fn default() -> QObjectCppWrapper { QObjectCppWrapper{ ptr: std::ptr::null_mut() } }
+    fn default() -> QObjectCppWrapper { QObjectCppWrapper{ ptr: Cell::new(std::ptr::null_mut()) } }
+}
+impl QObjectCppWrapper {
+    pub fn get(&self) -> *mut c_void { self.ptr.get() }
+    pub fn set(&self, val : *mut c_void) { self.ptr.set(val); }
 }
 
 pub trait QObject {
@@ -46,7 +51,7 @@ pub trait QObject {
     // these are reimplemented by the QObject procedural macro
     fn meta_object(&self)->*const QMetaObject;
     fn static_meta_object()->*const QMetaObject where Self:Sized;
-    fn get_cpp_object<'a>(&'a mut self)->&'a mut QObjectCppWrapper;
+    fn get_cpp_object<'a>(&'a self)->&'a QObjectCppWrapper;
 
 
     // These are not, they are part of the trait structure that sub trait must have
@@ -62,7 +67,7 @@ pub trait QObject {
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
-    fn construct_cpp_object(self_ : *mut QObject) -> *mut c_void where Self:Sized {
+    fn construct_cpp_object(self_ : *const QObject) -> *mut c_void where Self:Sized {
         unsafe {
             cpp!{[self_ as "TraitObject"] -> *mut c_void as "void*"  {
                 auto q = new RustObject<QObject>();
@@ -80,8 +85,8 @@ pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {
 
 #[no_mangle]
 pub extern "C" fn RustObject_destruct(p: *mut QObject) {
-    let mut b = unsafe { Box::from_raw(p) };
-    b.get_cpp_object().ptr = std::ptr::null_mut();
+    let b = unsafe { Box::from_raw(p) };
+    b.get_cpp_object().set(std::ptr::null_mut());
 }
 
 pub fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
@@ -212,3 +217,6 @@ pub mod test;
 
 pub mod listmodel;
 pub use listmodel::*;
+pub mod qtdeclarative;
+pub use qtdeclarative::*;
+

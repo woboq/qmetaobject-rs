@@ -1,6 +1,7 @@
 use super::*;
 use std::collections::HashMap;
 use std::iter::FromIterator;
+use std::ops::Index;
 
 pub trait QAbstractListModel : QObject {
     fn base_meta_object()->*const QMetaObject where Self:Sized {
@@ -14,7 +15,7 @@ pub trait QAbstractListModel : QObject {
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
-     fn construct_cpp_object(self_ : *mut QAbstractListModel) -> *mut c_void where Self:Sized {
+     fn construct_cpp_object(self_ : *const QAbstractListModel) -> *mut c_void where Self:Sized {
         unsafe {
             cpp!{[self_ as "TraitObject"] -> *mut c_void as "void*"  {
                 auto q = new Rust_QAbstractListModel();
@@ -33,40 +34,54 @@ pub trait QAbstractListModel : QObject {
 impl QAbstractListModel {
     pub fn begin_insert_rows(&mut self, first : i32, last: i32) {
         let p = QModelIndex::default();
-        let obj = self.get_cpp_object().ptr;
+        let obj = self.get_cpp_object().get();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
             obj->beginInsertRows(p, first, last);
         })}
     }
     pub fn end_insert_rows(&mut self) {
-        let obj = self.get_cpp_object().ptr;
+        let obj = self.get_cpp_object().get();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
             obj->endInsertRows();
         })}
     }
     pub fn begin_remove_rows(&mut self, first : i32, last: i32) {
         let p = QModelIndex::default();
-        let obj = self.get_cpp_object().ptr;
+        let obj = self.get_cpp_object().get();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
             obj->beginRemoveRows(p, first, last);
         })}
     }
     pub fn end_remove_rows(&mut self) {
-        let obj = self.get_cpp_object().ptr;
+        let obj = self.get_cpp_object().get();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
             obj->endRemoveRows();
         })}
     }
     pub fn begin_reset_model(&mut self) {
-        let obj = self.get_cpp_object().ptr;
+        let obj = self.get_cpp_object().get();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
             obj->beginResetModel();
         })}
     }
     pub fn end_reset_model(&mut self) {
-        let obj = self.get_cpp_object().ptr;
+        let obj = self.get_cpp_object().get();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
             obj->endResetModel();
+        })}
+    }
+
+    pub fn data_changed(&mut self, top_left : QModelIndex, bottom_right : QModelIndex) {
+        let obj = self.get_cpp_object().get();
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
+            obj->dataChanged(top_left, bottom_right);
+        })}
+    }
+
+    pub fn row_index(&self, i : i32) -> QModelIndex {
+        let obj = self.get_cpp_object().get();
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*", i as "int"] -> QModelIndex as "QModelIndex" {
+            return obj->index(i);
         })}
     }
 }
@@ -194,6 +209,16 @@ impl<T : SimpleListItem> SimpleListModel<T> {
         self.values.remove(index);
         (self as &mut QAbstractListModel).end_insert_rows();
     }
+    pub fn change_line(&mut self, index: usize, value : T) {
+        self.values[index] = value;
+        let idx = (self as &mut QAbstractListModel).row_index(index as i32);
+        (self as &mut QAbstractListModel).data_changed(idx.clone(), idx);
+    }
+    pub fn reset_data(&mut self, data : Vec<T>) {
+        (self as &mut QAbstractListModel).begin_reset_model();
+        self.values = data;
+        (self as &mut QAbstractListModel).end_reset_model();
+    }
 }
 
 impl<T> FromIterator<T> for SimpleListModel<T> where T: SimpleListItem + Default  {
@@ -210,3 +235,11 @@ impl<T> FromIterator<T> for SimpleListModel<T> where T: SimpleListItem + Default
         m
     }
 }*/
+
+impl<T> Index<usize> for SimpleListModel<T> where T: SimpleListItem {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &T {
+        &self.values[index]
+    }
+}
