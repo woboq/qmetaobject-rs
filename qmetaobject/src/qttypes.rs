@@ -4,11 +4,6 @@ use std::convert::From;
 use std::fmt::Display;
 
 cpp_class!(pub struct QByteArray, "QByteArray");
-impl Default for QByteArray {
-    fn default() -> QByteArray {
-        unsafe {cpp!([] -> QByteArray as "QByteArray" { return QByteArray(); })}
-    }
-}
 impl<'a> From<&'a str> for QByteArray {
     fn from(s : &'a str) -> QByteArray {
         let len = s.len();
@@ -38,11 +33,6 @@ impl Display for QByteArray {
 
 
 cpp_class!(pub struct QString, "QString");
-impl Default for QString {
-    fn default() -> QString {
-        unsafe {cpp!([] -> QString as "QString" { return QString(); })}
-    }
-}
 impl<'a> From<&'a str> for QString {
     fn from(s : &'a str) -> QString {
         let len = s.len();
@@ -58,7 +48,6 @@ impl Display for QString {
 }
 
 
-
 cpp_class!(pub struct QVariant, "QVariant");
 impl QVariant {
     pub fn to_qbytearray(&self) -> QByteArray {
@@ -70,11 +59,6 @@ impl QVariant {
 
     pub fn from_qbytearray(a : QByteArray) -> QVariant {
         unsafe {cpp!([a as "QByteArray"] -> QVariant as "QVariant" { return QVariant(a); })}
-    }
-}
-impl Default for QVariant {
-    fn default() -> QVariant {
-        unsafe {cpp!([] -> QVariant as "QVariant" { return QVariant(); })}
     }
 }
 impl From<QString> for QVariant {
@@ -93,18 +77,12 @@ impl From<u32> for QVariant {
     }
 }
 
-
 cpp_class!(pub struct QModelIndex, "QModelIndex");
 impl QModelIndex {
     pub fn row(&self) -> i32 {
         unsafe {
             cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->row(); })
         }
-    }
-}
-impl Default for QModelIndex {
-    fn default() -> QModelIndex {
-        unsafe {cpp!([] -> QModelIndex as "QModelIndex" { return QModelIndex(); })}
     }
 }
 
