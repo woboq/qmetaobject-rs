@@ -12,17 +12,6 @@ cpp!{{
     #include <qmetaobject_rust.hpp>
 }}
 
-/*
-cpp_class!(struct QString)
-impl QString {
-    fn from_str()
-}
-impl Default for QString {
-    fn default() -> QString {
-        cpp!([] -> QString as "QString" { return QString(); })
-    }
-}*/
-
 use qmetaobject::QByteArray;
 
 #[derive(QObject,Default)]
@@ -51,7 +40,7 @@ struct MyStruct {
     another_signa: qt_signal!(foo: u32),
 
     toString_: qt_method!(fn toString_(&self) -> QByteArray {
-        QByteArray::from_str("I'm the object")
+        "I'm the object".into()
     } ),
 
 
@@ -79,13 +68,13 @@ impl QAbstractListModel for MyModel {
     fn data(&self, index: QModelIndex, role:i32) -> QVariant {
         let idx = index.row();
         if role == 0xff0012 && idx >= 0 && (idx as usize) < self.values.len() {
-            QVariant::from_qbytearray(QByteArray::from_str(&self.values[idx as usize]))
+            QVariant::from(QByteArray::from(&*(self.values[idx as usize])))
         } else {
             QVariant::default()
         }
     }
     fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
-        [(0xff0012, QByteArray::from_str("the_text"))].iter().cloned().collect()
+        [(0xff0012, QByteArray::from("the_text"))].iter().cloned().collect()
     }
 }
 
@@ -96,11 +85,11 @@ fn main() {
     let mut xx = MyStruct::default();
     xx.yy = 85;
     xx.qq = "Hello".to_owned();
-    let ptr = xx.get_cpp_object().ptr;
+    let ptr = xx.get_cpp_object().get();
 
     let mut mm = MyModel::default();
     mm.values = vec!["hello, ".to_owned(), "world".to_owned()];
-    let ptr2 = mm.get_cpp_object().ptr;
+    let ptr2 = mm.get_cpp_object().get();
 
     unsafe { cpp!{[ptr as "QObject*", ptr2 as "QObject*"] {
 

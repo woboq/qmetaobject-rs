@@ -56,14 +56,15 @@ impl QVariant {
             cpp!([self as "const QVariant*"] -> QByteArray as "QByteArray" { return self->toByteArray(); })
         }
     }
-
-    pub fn from_qbytearray(a : QByteArray) -> QVariant {
-        unsafe {cpp!([a as "QByteArray"] -> QVariant as "QVariant" { return QVariant(a); })}
-    }
 }
 impl From<QString> for QVariant {
     fn from(a : QString) -> QVariant {
         unsafe {cpp!([a as "QString"] -> QVariant as "QVariant" { return QVariant(a); })}
+    }
+}
+impl From<QByteArray> for QVariant {
+    fn from(a : QByteArray) -> QVariant {
+        unsafe {cpp!([a as "QByteArray"] -> QVariant as "QVariant" { return QVariant(a); })}
     }
 }
 impl From<i32> for QVariant {
