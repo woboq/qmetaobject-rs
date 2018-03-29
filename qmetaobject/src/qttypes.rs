@@ -3,6 +3,7 @@ use std::os::raw::c_char;
 use std::convert::From;
 use std::fmt::Display;
 use std::ops::{Index,IndexMut};
+use std::iter::FromIterator;
 
 cpp_class!(pub struct QByteArray, "QByteArray");
 impl<'a> From<&'a str> for QByteArray {
@@ -31,7 +32,13 @@ impl Display for QByteArray {
         }
     }
 }
-
+impl PartialEq for QByteArray {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe { cpp!([self as "QByteArray*", other as "QByteArray*"] -> bool as "bool" {
+            return *self == *other;
+        })}
+    }
+}
 
 cpp_class!(pub struct QString, "QString");
 impl<'a> From<&'a str> for QString {
@@ -47,7 +54,13 @@ impl Display for QString {
         QByteArray::from(self.clone()).fmt(f)
     }
 }
-
+impl PartialEq for QString {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe { cpp!([self as "QString*", other as "QString*"] -> bool as "bool" {
+            return *self == *other;
+        })}
+    }
+}
 
 cpp_class!(pub struct QVariant, "QVariant");
 impl QVariant {
@@ -86,6 +99,11 @@ impl From<u32> for QVariant {
 impl From<bool> for QVariant {
     fn from(a : bool) -> QVariant {
         unsafe {cpp!([a as "bool"] -> QVariant as "QVariant" { return QVariant(a); })}
+    }
+}
+impl<'a, T> From<&'a T> for QVariant where T : Into<QVariant> + Clone {
+    fn from(a : &'a T) -> QVariant {
+        return (*a).clone().into();
     }
 }
 
@@ -159,6 +177,16 @@ impl<'a> IntoIterator for &'a QVariantList {
     }
 }
 
+impl<T> FromIterator<T> for QVariantList where T : Into<QVariant>  {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> QVariantList {
+        let mut l = QVariantList::default();
+        for i in iter {
+            l.push(i.into());
+        }
+        return l;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,6 +203,14 @@ mod tests {
         assert_eq!(x[0].to_string(), "42");
         assert_eq!(x[1].to_string(), "Hello");
         assert_eq!(x[2].to_string(), "Hello");
+
+    }
+
+    fn test_qvariantlist_from_iter() {
+        let v = vec![1u32,2u32,3u32];
+        let qvl : QVariantList = v.iter().collect();
+        assert_eq!(qvl.len(), 3);
+        assert_eq!(qvl[1].to_qbytearray().to_string(), "2");
 
     }
 }
