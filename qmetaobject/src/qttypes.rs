@@ -17,6 +17,10 @@ impl QByteArray {
             std::slice::from_raw_parts(c_ptr, size)
         }
     }
+    pub fn to_str(&self) -> &str {
+        std::str::from_utf8(self.to_slice()).unwrap()
+    }
+
 }
 impl<'a> From<&'a str> for QByteArray {
     fn from(s : &'a str) -> QByteArray {
@@ -26,6 +30,8 @@ impl<'a> From<&'a str> for QByteArray {
         { return QByteArray(ptr, len); })}
     }
 }
+
+
 impl From<String> for QByteArray {
     fn from(s : String) -> QByteArray { QByteArray::from(&*s) }
 }
@@ -56,6 +62,18 @@ impl PartialEq for QByteArray {
 }
 
 cpp_class!(pub struct QString, "QString");
+impl QString {
+    pub fn to_slice(&self) -> &[u16] {
+        unsafe {
+            let mut size : usize = 0;
+            let c_ptr = cpp!([self as "const QString*", mut size as "size_t"] -> *const u16 as "const QChar*" {
+                size = self->size();
+                return self->constData();
+            });
+            std::slice::from_raw_parts(c_ptr, size)
+        }
+    }
+}
 impl<'a> From<&'a str> for QString {
     fn from(s : &'a str) -> QString {
         let len = s.len();
@@ -66,6 +84,11 @@ impl<'a> From<&'a str> for QString {
 }
 impl From<String> for QString {
     fn from(s : String) -> QString { QString::from(&*s) }
+}
+impl Into<String> for QString {
+    fn into(self) -> String {
+        String::from_utf16_lossy(self.to_slice())
+    }
 }
 impl Display for QString {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
