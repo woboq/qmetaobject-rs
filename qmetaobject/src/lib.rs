@@ -77,6 +77,16 @@ pub trait QObject {
         }
     }
 }
+impl QObject {
+    pub fn as_qvariant(&self) -> QVariant {
+        unsafe {
+            let self_ = self.get_cpp_object().get();
+            cpp!{[self_ as "QObject*"] -> QVariant as "QVariant"  {
+                return QVariant::fromValue(self_);
+            }}
+        }
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {

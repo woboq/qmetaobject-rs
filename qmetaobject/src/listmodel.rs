@@ -228,13 +228,14 @@ impl<T> FromIterator<T> for SimpleListModel<T> where T: SimpleListItem + Default
         m
     }
 }
-/*impl<'a, T> FromIterator<&'a T> for SimpleListModel<T> where T: SimpleListItem + Default  {
+impl<'a, T> FromIterator<&'a T> for SimpleListModel<T>
+        where T: SimpleListItem + Default + Clone  {
     fn from_iter<I: IntoIterator<Item = &'a T>>(iter: I) -> SimpleListModel<T> {
         let mut m = SimpleListModel::<T>::default();
-        m.values = Vec::from_iter(iter.into_iter());
+        m.values = Vec::from_iter(iter.into_iter().cloned());
         m
     }
-}*/
+}
 
 impl<T> Index<usize> for SimpleListModel<T> where T: SimpleListItem {
     type Output = T;

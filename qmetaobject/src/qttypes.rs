@@ -6,6 +6,18 @@ use std::ops::{Index,IndexMut};
 use std::iter::FromIterator;
 
 cpp_class!(pub struct QByteArray, "QByteArray");
+impl QByteArray {
+    pub fn to_slice(&self) -> &[u8] {
+        unsafe {
+            let mut size : usize = 0;
+            let c_ptr = cpp!([self as "const QByteArray*", mut size as "size_t"] -> *const u8 as "const char*" {
+                size = self->size();
+                return self->constData();
+            });
+            std::slice::from_raw_parts(c_ptr, size)
+        }
+    }
+}
 impl<'a> From<&'a str> for QByteArray {
     fn from(s : &'a str) -> QByteArray {
         let len = s.len();
@@ -13,6 +25,9 @@ impl<'a> From<&'a str> for QByteArray {
         unsafe { cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
         { return QByteArray(ptr, len); })}
     }
+}
+impl From<String> for QByteArray {
+    fn from(s : String) -> QByteArray { QByteArray::from(&*s) }
 }
 impl From<QString> for QByteArray {
     fn from(s : QString) -> QByteArray {
@@ -48,6 +63,9 @@ impl<'a> From<&'a str> for QString {
         unsafe { cpp!([len as "size_t", ptr as "char*"] -> QString as "QString"
         { return QString::fromUtf8(ptr, len); })}
     }
+}
+impl From<String> for QString {
+    fn from(s : String) -> QString { QString::from(&*s) }
 }
 impl Display for QString {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
