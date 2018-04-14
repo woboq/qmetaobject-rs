@@ -1,0 +1,10 @@
+[package]
+name = "qml-rust_bench"
+version = "0.1.0"
+authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+
+[dependencies]
+qml = { path = "/home/rust/qml-rust"}
+
+[profile.release]
+debug = true

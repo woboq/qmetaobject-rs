@@ -1,0 +1,10 @@
+[package]
+name = "qmetaobject_bench"
+version = "0.1.0"
+authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+
+[dependencies]
+qmetaobject = { path = "../../qmetaobject"}
+
+[profile.release]
+debug = true
