@@ -4,25 +4,16 @@ use std::iter::FromIterator;
 use std::ops::Index;
 
 pub trait QAbstractListModel : QObject {
-    fn base_meta_object()->*const QMetaObject where Self:Sized {
-        unsafe { cpp!{[] -> *const QMetaObject as "const QMetaObject*" {
-            return &QAbstractListModel::staticMetaObject;
-        }}}
+    fn get_object_description() -> &'static QObjectDescription where Self:Sized {
+        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+            return rustObjectDescription<Rust_QAbstractListModel>();
+        } ) }
     }
     unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
         let ptr = cpp!{[p as "RustObject<QAbstractListModel>*"] -> *mut c_void as "void*" {
             return p->rust_object.a;
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
-    }
-     fn construct_cpp_object(self_ : *const QAbstractListModel) -> *mut c_void where Self:Sized {
-        unsafe {
-            cpp!{[self_ as "TraitObject"] -> *mut c_void as "void*"  {
-                auto q = new Rust_QAbstractListModel();
-                q->rust_object = self_;
-                return q;
-            }}
-        }
     }
 
     fn row_count(&self) -> i32;

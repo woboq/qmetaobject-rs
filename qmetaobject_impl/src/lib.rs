@@ -454,7 +454,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
     let mo = if ast.generics.params.is_empty() {
         quote! {
             lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                superdata:  <#name  as #base>::base_meta_object(),
+                superdata:  <#name  as #base>::get_object_description().meta_object,
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: static_metacall,
@@ -478,7 +478,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             let mut h = HASHMAP.lock().unwrap();
             let mo = h.entry(TypeId::of::<#name #ty_generics>()).or_insert_with(
                 || Box::new(#crate_::QMetaObject {
-                    superdata:  <#name #ty_generics as #base>::base_meta_object(),
+                    superdata: <#name #ty_generics as #base>::get_object_description().meta_object,
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: static_metacall #turbo_generics,
@@ -524,7 +524,10 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
             fn get_cpp_object<'a>(&'a self)->&'a #crate_::QObjectCppWrapper {
                 if self.#base_prop.get().is_null() {
-                    let n =  <#name #ty_generics as #base>::construct_cpp_object(self);
+                    let trait_object : *const #base = self;
+                    let trait_object_ptr : *const *const #base = &trait_object;
+                    let n = unsafe { (<#name #ty_generics as #base>::get_object_description().create)
+                        (trait_object_ptr as *const std::os::raw::c_void) };
                     self.#base_prop.set(n);
                 }
                 &self.#base_prop

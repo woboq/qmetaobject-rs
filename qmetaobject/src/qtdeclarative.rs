@@ -1,4 +1,5 @@
 use super::*;
+use std::ffi::CString;
 
 cpp!{{
     #include <QtQuick/QtQuick>
@@ -80,4 +81,59 @@ impl QmlEngine {
             return ret;
         })}
     }
+}
+
+pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_major : u32,
+                                                        version_minor : u32, qml_name : &str)
+{
+    let c_uri = CString::new(uri).unwrap();
+    let uri_ptr = c_uri.as_ptr();
+    let c_qml_name = CString::new(qml_name).unwrap();
+    let qml_name_ptr = c_qml_name.as_ptr();
+    let meta_object = T::static_meta_object();
+
+    unsafe { cpp!([qml_name_ptr as "char*", meta_object as "const QMetaObject *"]{
+
+       /* const char *className = qml_name_ptr;
+        // BEGIN: From QML_GETTYPENAMES
+        const int nameLen = int(strlen(className));
+        QVarLengthArray<char,48> pointerName(nameLen+2);
+        memcpy(pointerName.data(), className, size_t(nameLen));
+        pointerName[nameLen] = '*';
+        pointerName[nameLen+1] = '\0';
+        /*const int listLen = int(strlen("QQmlListProperty<"));
+        QVarLengthArray<char,64> listName(listLen + nameLen + 2);
+        memcpy(listName.data(), "QQmlListProperty<", size_t(listLen));
+        memcpy(listName.data()+listLen, className, size_t(nameLen));
+        listName[listLen+nameLen] = '>';
+        listName[listLen+nameLen+1] = '\0';*/
+        //END
+
+        auto ptrType = QMetaType::registerType(pointerName,
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
+            int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
+            meta_object);
+
+        QQmlPrivate::RegisterType type = {
+            0 /*version*/, ptrType, 0, /* FIXME?*/
+
+        sizeof(T), QQmlPrivate::createInto<T>,
+        QString(),
+
+        uri, versionMajor, versionMinor, qmlName, &T::staticMetaObject,
+
+        QQmlPrivate::attachedPropertiesFunc<T>(),
+        QQmlPrivate::attachedPropertiesMetaObject<T>(),
+
+        QQmlPrivate::StaticCastSelector<T,QQmlParserStatus>::cast(),
+        QQmlPrivate::StaticCastSelector<T,QQmlPropertyValueSource>::cast(),
+        QQmlPrivate::StaticCastSelector<T,QQmlPropertyValueInterceptor>::cast(),
+
+        nullptr, nullptr,
+
+        nullptr,
+        0
+    };*/
+    })}
 }

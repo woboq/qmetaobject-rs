@@ -51,7 +51,37 @@ struct RustObject : Base {
         if (rust_object.a || rust_object.b)
             RustObject_destruct(rust_object);
     }
+    //statis constexpr const QMetaObject *baseMetaObject() { return &Base::staticMetaObject; }
 };
+
+struct RustObjectDescription {
+    size_t size;
+    const QMetaObject *baseMetaObject;
+    QObject *(*create)(const TraitObject*);
+    void (*construct)(const TraitObject*, void*);
+    void (*destruct)(void*);
+};
+
+template<typename T>
+const RustObjectDescription *rustObjectDescription() {
+    static RustObjectDescription desc {
+        sizeof(T),
+        &T::staticMetaObject,
+        [](const TraitObject *self) -> QObject* {
+            auto q = new T();
+            q->rust_object = *self;
+            return q;
+        },
+        [](const TraitObject *self, void *data) {
+            auto *q = new (data) T();
+            q->rust_object = *self;
+        },
+        [](void *data) {
+            reinterpret_cast<T*>(data)->~T();
+        }
+    };
+    return &desc;
+}
 
 
 // Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor

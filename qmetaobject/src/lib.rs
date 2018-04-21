@@ -46,8 +46,16 @@ impl QObjectCppWrapper {
     pub fn set(&self, val : *mut c_void) { self.ptr.set(val); }
 }
 
-pub trait QObject {
+#[repr(C)]
+pub struct QObjectDescription {
+    pub size : usize,
+    pub meta_object: *const QMetaObject,
+    pub create : unsafe extern fn(trait_object_ptr : *const c_void) -> *mut c_void,
+    pub construct: unsafe extern fn(trait_object_ptr : *const c_void, mem : *mut c_void),
+    pub destruct: unsafe extern fn(mem : *mut c_void),
+}
 
+pub trait QObject {
     // these are reimplemented by the QObject procedural macro
     fn meta_object(&self)->*const QMetaObject;
     fn static_meta_object()->*const QMetaObject where Self:Sized;
@@ -56,25 +64,19 @@ pub trait QObject {
 
     // These are not, they are part of the trait structure that sub trait must have
     // Copy/paste this code replacing QObject with the type
-    fn base_meta_object()->*const QMetaObject where Self:Sized {
-        unsafe {
-            cpp!{[] -> *const QMetaObject as "const void*" { return &QObject::staticMetaObject; } }
-        }
+    fn get_object_description() -> &'static QObjectDescription where Self:Sized {
+        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+            return rustObjectDescription<RustObject<QObject>>();
+        } ) }
     }
     unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
+        // This function is not using get_object_description because we want t be extra fast.
+        // Actually, this could be done without indireciton to C++ if we could extract the offset
+        // of rust_object.a at (rust) compile time.
         let ptr = cpp!{[p as "RustObject<QObject>*"] -> *mut c_void as "void*" {
             return p->rust_object.a;
         }};
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
-    }
-    fn construct_cpp_object(self_ : *const QObject) -> *mut c_void where Self:Sized {
-        unsafe {
-            cpp!{[self_ as "TraitObject"] -> *mut c_void as "void*"  {
-                auto q = new RustObject<QObject>();
-                q->rust_object = self_;
-                return q;
-            }}
-        }
     }
 }
 impl QObject {
