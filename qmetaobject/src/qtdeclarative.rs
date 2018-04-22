@@ -9,15 +9,16 @@ cpp!{{
     static char name[] = "rust";
     static char *argv[] = { name };
 
-    struct QmlEngine {
+    struct QmlEngineHolder {
         std::unique_ptr<QGuiApplication> app;
         std::unique_ptr<QQmlApplicationEngine> engine;
+        std::unique_ptr<QQuickView> view;
 
-        QmlEngine() : app(new QGuiApplication(argc, argv)), engine(new QQmlApplicationEngine) { }
+        QmlEngineHolder() : app(new QGuiApplication(argc, argv)), engine(new QQmlApplicationEngine) { }
     };
 }}
 
-cpp_class!(pub struct QmlEngine, "QmlEngine");
+cpp_class!(pub struct QmlEngine, "QmlEngineHolder");
 impl QmlEngine {
     pub fn new() -> QmlEngine {
         Default::default()
@@ -25,7 +26,7 @@ impl QmlEngine {
 
     /// Loads a file as a qml file (See QQmlApplicationEngine::load(const QString & filePath))
     pub fn load_file(&mut self, path: QString) {
-        unsafe {cpp!([self as "QmlEngine*", path as "QString"] {
+        unsafe {cpp!([self as "QmlEngineHolder*", path as "QString"] {
             self->engine->load(path);
         })}
     }
@@ -35,23 +36,23 @@ impl QmlEngine {
 
     /// Loads qml data (See QQmlApplicationEngine::loadData)
     pub fn load_data(&mut self, data: QByteArray) {
-        unsafe { cpp!([self as "QmlEngine*", data as "QByteArray"] {
+        unsafe { cpp!([self as "QmlEngineHolder*", data as "QByteArray"] {
             self->engine->loadData(data);
         })}
     }
 
     /// Launches the application
     pub fn exec(&mut self) {
-        unsafe { cpp!([self as "QmlEngine*"] { self->app->exec(); })}
+        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->exec(); })}
     }
     /// Closes the application
     pub fn quit(&mut self) {
-        unsafe { cpp!([self as "QmlEngine*"] { self->app->quit(); })}
+        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->quit(); })}
     }
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     pub fn set_property(&mut self, name: QString, value: QVariant) {
-        unsafe { cpp!([self as "QmlEngine*", name as "QString", value as "QVariant"] {
+        unsafe { cpp!([self as "QmlEngineHolder*", name as "QString", value as "QVariant"] {
             self->engine->rootContext()->setContextProperty(name, value);
         })}
     }
@@ -59,7 +60,7 @@ impl QmlEngine {
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     pub fn set_object_property<T : QObject + Sized>(&mut self, name: QString, obj: &mut T) {
         let obj_ptr = obj.get_cpp_object().get();
-        unsafe { cpp!([self as "QmlEngine*", name as "QString", obj_ptr as "QObject*"] {
+        unsafe { cpp!([self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);
         })}
     }
@@ -67,7 +68,7 @@ impl QmlEngine {
     pub fn invoke_method(&mut self, name: QByteArray, args : &[QVariant]) -> QVariant {
         let args_size = args.len();
         let args_ptr = args.as_ptr();
-        unsafe{ cpp!([self as "QmlEngine*", name as "QByteArray", args_size as "size_t", args_ptr as "QVariant*"]
+        unsafe{ cpp!([self as "QmlEngineHolder*", name as "QByteArray", args_size as "size_t", args_ptr as "QVariant*"]
                 -> QVariant as "QVariant" {
             auto robjs = self->engine->rootObjects();
             if (robjs.isEmpty())
@@ -82,6 +83,37 @@ impl QmlEngine {
         })}
     }
 }
+
+pub struct QQuickView {
+    engine : QmlEngine
+}
+impl QQuickView {
+    pub fn new() -> QQuickView {
+        let mut engine = QmlEngine::new();
+        unsafe{ cpp!([mut engine as "QmlEngineHolder"] {
+            engine.view = std::unique_ptr<QQuickView>(new QQuickView(engine.engine.get(), nullptr));
+            engine.view->setResizeMode(QQuickView::SizeRootObjectToView);
+        } ) };
+        QQuickView { engine: engine }
+    }
+
+    pub fn engine(&mut self) -> &mut QmlEngine { &mut self.engine }
+
+    pub fn show(&mut self) {
+        let engine = self.engine();
+        unsafe{ cpp!([engine as "QmlEngineHolder*"] {
+            engine->view->show();
+        } ) };
+    }
+
+    pub fn set_source(&mut self, url: QString) {
+        let engine = self.engine();
+        unsafe{ cpp!([engine as "QmlEngineHolder*", url as "QString"] {
+            engine->view->setSource(url);
+        } ) };
+    }
+}
+
 
 pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_major : u32,
                                                         version_minor : u32, qml_name : &str)
@@ -100,6 +132,7 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_majo
         let b : Box<T> = Box::new(T::default());
         let ed : extern fn(c : *mut c_void) = extra_destruct;
         unsafe { b.qml_construct(c, ed); }
+        std::boxed::Box::into_raw(b);
     };
     let creator_fn : extern fn(c : *mut c_void) = creator_fn::<T>;
 
@@ -144,3 +177,97 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_majo
         QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &type);
     })}
 }
+
+
+pub trait QQuickItem : QObject {
+    fn get_object_description() -> &'static QObjectDescription where Self:Sized {
+        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+            return rustObjectDescription<Rust_QQuickItem>();
+        } ) }
+    }
+    unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
+        let ptr = cpp!{[p as "Rust_QQuickItem*"] -> *mut c_void as "void*" {
+            return p->rust_object.a;
+        }};
+        std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
+    }
+
+    //virtual QRectF boundingRect() const;
+    //virtual QRectF clipRect() const;
+}
+
+impl QQuickItem {
+    // here goes the API
+    /*pub fn begin_insert_rows(&mut self, first : i32, last: i32) {
+        let p = QModelIndex::default();
+        let obj = self.get_cpp_object().get();
+        unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
+            obj->beginInsertRows(p, first, last);
+        })}
+    }*/
+}
+
+
+cpp!{{
+#include <qmetaobject_rust.hpp>
+#include <QtQuick/QQuickItem>
+struct Rust_QQuickItem : RustObject<QQuickItem> {
+/*
+    virtual QRectF boundingRect() const;
+    virtual QRectF clipRect() const;
+    virtual bool contains(const QPointF &point) const;
+    virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
+    virtual bool isTextureProvider() const;
+    virtual QSGTextureProvider *textureProvider() const;
+    virtual void itemChange(ItemChange, const ItemChangeData &);
+    void classBegin() override;
+    void componentComplete() override;
+    virtual void keyPressEvent(QKeyEvent *event);
+    virtual void keyReleaseEvent(QKeyEvent *event);
+    virtual void inputMethodEvent(QInputMethodEvent *);
+    virtual void focusInEvent(QFocusEvent *);
+    virtual void focusOutEvent(QFocusEvent *);
+    virtual void mousePressEvent(QMouseEvent *event);
+    virtual void mouseMoveEvent(QMouseEvent *event);
+    virtual void mouseReleaseEvent(QMouseEvent *event);
+    virtual void mouseDoubleClickEvent(QMouseEvent *event);
+    virtual void mouseUngrabEvent(); // XXX todo - params?
+    virtual void touchUngrabEvent();
+    virtual void wheelEvent(QWheelEvent *event);
+    virtual void touchEvent(QTouchEvent *event);
+    virtual void hoverEnterEvent(QHoverEvent *event);
+    virtual void hoverMoveEvent(QHoverEvent *event);
+    virtual void hoverLeaveEvent(QHoverEvent *event);
+    virtual void dragEnterEvent(QDragEnterEvent *);
+    virtual void dragMoveEvent(QDragMoveEvent *);
+    virtual void dragLeaveEvent(QDragLeaveEvent *);
+    virtual void dropEvent(QDropEvent *);
+    virtual bool childMouseEventFilter(QQuickItem *, QEvent *);
+    virtual void windowDeactivateEvent();
+    virtual void geometryChanged(const QRectF &newGeometry,
+                                 const QRectF &oldGeometry);
+
+    virtual QSGNode *updatePaintNode(QSGNode *, UpdatePaintNodeData *);
+    virtual void releaseResources();
+    virtual void updatePolish();
+*/
+
+    const QMetaObject *metaObject() const override {
+        return rust!(Rust_QQuickItem_metaobject[rust_object : &QQuickItem as "TraitObject"]
+                -> *const QMetaObject as "const QMetaObject*" {
+            rust_object.meta_object()
+        });
+    }
+/*
+    int rowCount(const QModelIndex & = QModelIndex()) const override {
+        return rust!(Rust_QAbstractListModel_rowCount[rust_object : &QAbstractListModel as "TraitObject"]
+                -> i32 as "int" {
+            rust_object.row_count()
+        });
+    }
+*/
+
+
+};
+
+}}

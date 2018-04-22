@@ -247,6 +247,7 @@ mod tests {
 
     }
 
+    #[test]
     fn test_qvariantlist_from_iter() {
         let v = vec![1u32,2u32,3u32];
         let qvl : QVariantList = v.iter().collect();
