@@ -92,9 +92,24 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_majo
     let qml_name_ptr = c_qml_name.as_ptr();
     let meta_object = T::static_meta_object();
 
-    unsafe { cpp!([qml_name_ptr as "char*", meta_object as "const QMetaObject *"]{
+    extern fn extra_destruct(c : *mut c_void) {
+        unsafe { cpp!([c as "QObject*"]{ QQmlPrivate::qdeclarativeelement_destructor(c); })}
+    }
 
-       /* const char *className = qml_name_ptr;
+    extern fn creator_fn<T : QObject + Default + Sized>(c : *mut c_void)  {
+        let b : Box<T> = Box::new(T::default());
+        let ed : extern fn(c : *mut c_void) = extra_destruct;
+        unsafe { b.qml_construct(c, ed); }
+    };
+    let creator_fn : extern fn(c : *mut c_void) = creator_fn::<T>;
+
+    let size = T::cpp_size();
+
+    unsafe { cpp!([qml_name_ptr as "char*", uri_ptr as "char*", version_major as "int",
+                    version_minor as "int", meta_object as "const QMetaObject *",
+                    creator_fn as "CreatorFunction", size as "size_t"]{
+
+        const char *className = qml_name_ptr;
         // BEGIN: From QML_GETTYPENAMES
         const int nameLen = int(strlen(className));
         QVarLengthArray<char,48> pointerName(nameLen+2);
@@ -109,7 +124,7 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_majo
         listName[listLen+nameLen+1] = '\0';*/
         //END
 
-        auto ptrType = QMetaType::registerType(pointerName,
+        auto ptrType = QMetaType::registerNormalizedType(pointerName.constData(),
             QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
             QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
             int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
@@ -117,23 +132,15 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_majo
 
         QQmlPrivate::RegisterType type = {
             0 /*version*/, ptrType, 0, /* FIXME?*/
-
-        sizeof(T), QQmlPrivate::createInto<T>,
-        QString(),
-
-        uri, versionMajor, versionMinor, qmlName, &T::staticMetaObject,
-
-        QQmlPrivate::attachedPropertiesFunc<T>(),
-        QQmlPrivate::attachedPropertiesMetaObject<T>(),
-
-        QQmlPrivate::StaticCastSelector<T,QQmlParserStatus>::cast(),
-        QQmlPrivate::StaticCastSelector<T,QQmlPropertyValueSource>::cast(),
-        QQmlPrivate::StaticCastSelector<T,QQmlPropertyValueInterceptor>::cast(),
-
-        nullptr, nullptr,
-
-        nullptr,
-        0
-    };*/
+            int(size), creator_fn,
+            QString(),
+            uri_ptr, version_major, version_minor, qml_name_ptr, meta_object,
+            nullptr, nullptr, // attached properties
+            -1, -1, -1,
+            nullptr, nullptr,
+            nullptr,
+            0
+        };
+        QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &type);
     })}
 }

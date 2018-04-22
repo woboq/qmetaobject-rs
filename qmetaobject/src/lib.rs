@@ -51,8 +51,8 @@ pub struct QObjectDescription {
     pub size : usize,
     pub meta_object: *const QMetaObject,
     pub create : unsafe extern fn(trait_object_ptr : *const c_void) -> *mut c_void,
-    pub construct: unsafe extern fn(trait_object_ptr : *const c_void, mem : *mut c_void),
-    pub destruct: unsafe extern fn(mem : *mut c_void),
+    pub qml_construct: unsafe extern fn(mem : *mut c_void, trait_object_ptr : *const c_void,
+                                        extra_destruct : extern fn(*mut c_void)),
 }
 
 pub trait QObject {
@@ -60,6 +60,8 @@ pub trait QObject {
     fn meta_object(&self)->*const QMetaObject;
     fn static_meta_object()->*const QMetaObject where Self:Sized;
     fn get_cpp_object<'a>(&'a self)->&'a QObjectCppWrapper;
+    unsafe fn qml_construct(&self, mem : *mut c_void, extra_destruct : extern fn(*mut c_void));
+    fn cpp_size() -> usize where Self:Sized;
 
 
     // These are not, they are part of the trait structure that sub trait must have

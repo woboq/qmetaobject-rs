@@ -122,3 +122,28 @@ fn simple_model() {
                 return rep.count === 1 && rep.itemAt(0).text === 'hello1';
             }}"));
 }
+
+#[derive(Default, QObject)]
+struct RegisteredObj {
+    base: qt_base_class!(trait QObject),
+    value: qt_property!(u32),
+    square: qt_method!(fn square(&self, v : u32) -> u32 { self.value * v } ),
+
+}
+
+#[test]
+fn register_type() {
+    qml_register_type::<RegisteredObj>("TestRegister", 1, 0, "RegisteredObj");
+
+    let obj = MyObject::default(); // not used but needed for do_test
+    assert!(do_test(obj, "import TestRegister 1.0;
+        Item {
+            RegisteredObj {
+                id: test;
+                value: 55;
+            }
+            function doTest() {
+                return test.square(66) === 55*66;
+            }
+        }"));
+}

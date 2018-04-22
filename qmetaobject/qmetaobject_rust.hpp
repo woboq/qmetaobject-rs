@@ -15,6 +15,7 @@ extern "C" void RustObject_destruct(TraitObject);
 template <typename Base>
 struct RustObject : Base {
     TraitObject rust_object;
+    void (*extra_destruct)(QObject *);
     const QMetaObject *metaObject() const override {
         return RustObject_metaObject(rust_object);
     }
@@ -48,18 +49,18 @@ struct RustObject : Base {
         return Base::event(event);
     }
     ~RustObject() {
+        if (extra_destruct)
+            extra_destruct(this);
         if (rust_object.a || rust_object.b)
             RustObject_destruct(rust_object);
     }
-    //statis constexpr const QMetaObject *baseMetaObject() { return &Base::staticMetaObject; }
 };
 
 struct RustObjectDescription {
     size_t size;
     const QMetaObject *baseMetaObject;
     QObject *(*create)(const TraitObject*);
-    void (*construct)(const TraitObject*, void*);
-    void (*destruct)(void*);
+    void (*qmlConstruct)(void*, const TraitObject*, void (*extra_destruct)(QObject *));
 };
 
 template<typename T>
@@ -72,16 +73,17 @@ const RustObjectDescription *rustObjectDescription() {
             q->rust_object = *self;
             return q;
         },
-        [](const TraitObject *self, void *data) {
+        [](void *data, const TraitObject *self, void (*extra_destruct)(QObject *)) {
             auto *q = new (data) T();
             q->rust_object = *self;
+            q->extra_destruct = extra_destruct;
         },
-        [](void *data) {
-            reinterpret_cast<T*>(data)->~T();
-        }
+
     };
     return &desc;
 }
+
+using CreatorFunction = void (*)(void *);
 
 
 // Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor

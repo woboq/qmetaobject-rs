@@ -532,6 +532,18 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
                 }
                 &self.#base_prop
             }
+
+            unsafe fn qml_construct(&self, mem : *mut std::os::raw::c_void,
+                                    extra_destruct : extern fn(*mut std::os::raw::c_void)) {
+                let trait_object : *const #base = self;
+                let trait_object_ptr : *const *const #base = &trait_object;
+                (<#name #ty_generics as #base>::get_object_description().qml_construct)(
+                    mem, trait_object_ptr as *const std::os::raw::c_void, extra_destruct);
+            }
+
+            fn cpp_size() -> usize {
+                <#name #ty_generics as #base>::get_object_description().size
+            }
         }
 
     };
