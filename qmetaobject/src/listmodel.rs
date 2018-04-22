@@ -86,6 +86,7 @@ fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
 
 cpp!{{
 #include <qmetaobject_rust.hpp>
+#include <QtCore/QAbstractListModel>
 struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 
     using QAbstractListModel::beginInsertRows;

@@ -143,9 +143,6 @@ macro_rules! qt_signal {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
 
-//#[cfg(test)]
-pub mod test;
-
 pub mod listmodel;
 pub use listmodel::*;
 pub mod qtdeclarative;

@@ -1,6 +1,26 @@
 extern crate qmetaobject;
 use qmetaobject::*;
-use qmetaobject::test::do_test;
+
+#[macro_use]
+extern crate lazy_static;
+use std::sync::Mutex;
+
+lazy_static! {
+    static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
+}
+
+pub fn do_test<T: QObject + Sized>(mut obj: T, qml: &str) -> bool {
+
+    let _lock = TEST_MUTEX.lock().unwrap();
+
+    let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
+
+    let mut engine = QmlEngine::new();
+    engine.set_object_property("_obj".into(), &mut obj);
+    engine.load_data(qml_text.into());
+    engine.invoke_method("doTest".into(), &[]).to_bool()
+}
+
 
 #[test]
 fn self_test() {

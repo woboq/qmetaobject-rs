@@ -111,6 +111,10 @@ impl QVariant {
             cpp!([self as "const QVariant*"] -> QByteArray as "QByteArray" { return self->toByteArray(); })
         }
     }
+
+    pub fn to_bool(&self) -> bool {
+        unsafe { cpp!([self as "const QVariant*"] -> bool as "bool" { return self->toBool(); }) }
+    }
 }
 impl From<QString> for QVariant {
     fn from(a : QString) -> QVariant {
