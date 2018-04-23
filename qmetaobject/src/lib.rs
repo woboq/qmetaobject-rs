@@ -92,6 +92,11 @@ impl QObject {
     }
 }
 
+pub trait QGadget {
+    fn meta_object(&self)->*const QMetaObject;
+    fn static_meta_object()->*const QMetaObject where Self:Sized;
+}
+
 #[no_mangle]
 pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {
     return unsafe { (*p).meta_object() };

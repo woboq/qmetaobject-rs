@@ -207,6 +207,16 @@ fn map_method_parameters(args : &syn::punctuated::Punctuated<syn::FnArg, Token![
 
 #[proc_macro_derive(QObject, attributes(QMetaObjectCrate,qt_base_class))]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
+    generate(input, true)
+}
+
+#[proc_macro_derive(QGadget)]
+pub fn qadget_impl(input: TokenStream) -> TokenStream {
+    generate(input, false)
+}
+
+
+fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
     let ast : syn::DeriveInput = syn::parse(input).expect("could not parse struct");
 
@@ -219,7 +229,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     let mut crate_ = quote! { ::qmetaobject };
     //let mut crate_ = quote! { super };
-    let mut base : syn::Ident = "QObject".to_owned().into();
+    let mut base : syn::Ident = "QGadget".to_owned().into();
     let mut base_prop : syn::Ident = "missing_base_class_property".to_owned().into();
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
@@ -352,7 +362,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         }
     } else {
         //Nope. This is an Enum. We cannot handle these!
-       panic!("#[derive(HelloWorld)] is only defined for structs, not for enums!");
+       panic!("#[derive(QObject)] is only defined for structs, not for enums!");
     }
 
     // prepend the methods in the signal
@@ -369,6 +379,12 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
     use MetaObjectCall::*;
 
+    let get_object = if is_qobject {
+        quote!{ <#name #ty_generics as #base>::get_rust_object(&mut *o) }
+    } else {
+        quote!{ std::mem::transmute::<*mut std::os::raw::c_void, &mut #name #ty_generics>(o) }
+    };
+
 
     let property_meta_call : Vec<_> = properties.iter().enumerate().map(|(i, prop)| {
         let i = i as u32;
@@ -382,12 +398,12 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 
         quote! { #i => match c {
             #ReadProperty => unsafe {
-                let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
+                let obj : &mut #name = #get_object;
                 let r = *a as *mut #typ;
                 *r = obj.#property_name.clone();
             },
             #WriteProperty => unsafe {
-                let obj : &mut #name = <#name as #base>::get_rust_object(&mut *o);
+                let obj : &mut #name = #get_object;
                 let r = *a as *mut #typ;
                 obj.#property_name = (*r).clone();
                 #notify
@@ -450,11 +466,16 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         }
     }));
 
+    let base_meta_object = if is_qobject {
+        quote!{ <#name #ty_generics as #base>::get_object_description().meta_object }
+    } else {
+        quote!{ std::ptr::null() }
+    };
 
     let mo = if ast.generics.params.is_empty() {
         quote! {
             lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                superdata:  <#name  as #base>::get_object_description().meta_object,
+                superdata: #base_meta_object,
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: static_metacall,
@@ -478,7 +499,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             let mut h = HASHMAP.lock().unwrap();
             let mo = h.entry(TypeId::of::<#name #ty_generics>()).or_insert_with(
                 || Box::new(#crate_::QMetaObject {
-                    superdata: <#name #ty_generics as #base>::get_object_description().meta_object,
+                    superdata: #base_meta_object,
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: static_metacall #turbo_generics,
@@ -489,39 +510,8 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
         }
     };
 
-    let body =   quote!{
-        impl #impl_generics #name #ty_generics #where_clause {
-            #(#func_bodies)*
-        }
-        impl #impl_generics #crate_::QObject for #name #ty_generics #where_clause {
-            fn meta_object(&self)->*const #crate_::QMetaObject {
-                Self::static_meta_object()
-            }
-
-            fn static_meta_object()->*const #crate_::QMetaObject {
-
-                static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
-                static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
-
-                #[allow(unused_variables)]
-                extern "C" fn static_metacall #impl_generics (o: *mut std::os::raw::c_void, c: u32, idx: u32,
-                                              a: *const *mut std::os::raw::c_void) {
-                    if c == #InvokeMetaMethod { unsafe {
-                        let obj : &mut #name #ty_generics = <#name #ty_generics as #base>::get_rust_object(&mut *o);
-                        match idx {
-                            #(#method_meta_call)*
-                            _ => { let _ = obj; }
-                        }
-                    }} else {
-                        match idx {
-                            #(#property_meta_call)*
-                            _ => {}
-                        }
-                    }
-                }
-                #mo
-            }
-
+    let qobject_spec_func = if is_qobject {
+        quote!{
             fn get_cpp_object<'a>(&'a self)->&'a #crate_::QObjectCppWrapper {
                 if self.#base_prop.get().is_null() {
                     let trait_object : *const #base = self;
@@ -544,6 +534,48 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
             fn cpp_size() -> usize {
                 <#name #ty_generics as #base>::get_object_description().size
             }
+        }
+    } else {
+        quote!{ }
+    };
+
+    let trait_name = if is_qobject { quote!{ QObject } } else { quote!{ QGadget } };
+
+    let body =   quote!{
+        impl #impl_generics #name #ty_generics #where_clause {
+            #(#func_bodies)*
+        }
+        impl #impl_generics #crate_::#trait_name for #name #ty_generics #where_clause {
+            fn meta_object(&self)->*const #crate_::QMetaObject {
+                Self::static_meta_object()
+            }
+
+            fn static_meta_object()->*const #crate_::QMetaObject {
+
+                static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
+                static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
+
+                #[allow(unused_variables)]
+                extern "C" fn static_metacall #impl_generics (o: *mut std::os::raw::c_void, c: u32, idx: u32,
+                                              a: *const *mut std::os::raw::c_void) {
+                    if c == #InvokeMetaMethod { unsafe {
+                        let obj : &mut #name #ty_generics = #get_object;
+                        match idx {
+                            #(#method_meta_call)*
+                            _ => { let _ = obj; }
+                        }
+                    }} else {
+                        match idx {
+                            #(#property_meta_call)*
+                            _ => {}
+                        }
+                    }
+                }
+                #mo
+            }
+
+            #qobject_spec_func
+
         }
 
     };

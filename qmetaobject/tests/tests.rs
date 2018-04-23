@@ -167,3 +167,13 @@ fn register_type() {
             }
         }"));
 }
+
+
+#[derive(Default, QGadget)]
+struct MySimpleGadget {
+    num_value: qt_property!(u32),
+    str_value: qt_property!(String),
+    concat: qt_method!(fn concat(&self, separator : String) -> String {
+        return format!("{}{}{}", self.str_value, separator, self.num_value)
+    } ),
+}

@@ -8,7 +8,8 @@ pub trait QMetaType {
 };
 */
 
-pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> i32 {
+fn register_metatype_common<T : 'static + Sized + Clone + Default>(
+    name : *const std::os::raw::c_char, metaobject : *const QMetaObject) -> i32 {
     let size = std::mem::size_of::<T>() as u32;
 
     extern fn deleter_fn<T>(_v: Box<T>) { };
@@ -33,18 +34,24 @@ pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> 
     };
     let constructor_fn : extern fn(ptr : *mut T, c : *const T) -> *mut T = constructor_fn;
 
-    let name = std::ffi::CString::new(name).unwrap();
-    let type_id = unsafe {
-        let name = name.as_ptr();
+    unsafe {
         cpp!([name as "const char*", size as "int", deleter_fn as "QMetaType::Deleter",
-                   creator_fn as "QMetaType::Creator", destructor_fn as "QMetaType::Destructor",
-                   constructor_fn as "QMetaType::Constructor"] -> i32 as "int" {
-            return QMetaType::registerType(name, deleter_fn, creator_fn, destructor_fn,
+              creator_fn as "QMetaType::Creator", destructor_fn as "QMetaType::Destructor",
+              constructor_fn as "QMetaType::Constructor", metaobject as "const QMetaObject*"] -> i32 as "int" {
+            QMetaType::TypeFlags extraFlag(metaobject ? QMetaType::IsGadget : 0);
+            return QMetaType::registerType(name ? name : metaobject->className(), deleter_fn, creator_fn, destructor_fn,
                 constructor_fn, size,
-                QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType,
-                nullptr);
+                QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType | extraFlag,
+                metaobject);
         })
-    };
+    }
+}
+
+
+pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> i32 {
+
+    let name = std::ffi::CString::new(name).unwrap();
+    let type_id = register_metatype_common::<T>(name.as_ptr(), std::ptr::null());
 
     use std::any::TypeId;
     if TypeId::of::<String>() == TypeId::of::<T>() {
@@ -90,3 +97,9 @@ pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> 
 
     type_id
 }
+
+
+pub fn register_gadget_metatype<T : 'static + Sized + Clone + Default + QGadget>() -> i32 {
+    register_metatype_common::<T>(std::ptr::null(), T::static_meta_object())
+}
+
