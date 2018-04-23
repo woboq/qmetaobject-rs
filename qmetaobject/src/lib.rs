@@ -92,9 +92,17 @@ impl QObject {
     }
 }
 
-pub trait QGadget {
+pub trait QGadget  {
     fn meta_object(&self)->*const QMetaObject;
     fn static_meta_object()->*const QMetaObject where Self:Sized;
+
+    fn to_qvariant(&self) -> QVariant where Self: Clone + Default {
+        let id : i32 = register_gadget_metatype::<Self>(); // FIXME: we should not register it always
+        //let id = self.metatype();
+        unsafe { cpp!([self as "const void*", id as "int"] -> QVariant as "QVariant"  {
+            return QVariant(id, self);
+        } ) }
+    }
 }
 
 #[no_mangle]

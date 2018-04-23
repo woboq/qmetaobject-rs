@@ -8,7 +8,7 @@ pub trait QMetaType {
 };
 */
 
-fn register_metatype_common<T : 'static + Sized + Clone + Default>(
+fn register_metatype_common<T : Sized + Clone + Default>(
     name : *const std::os::raw::c_char, metaobject : *const QMetaObject) -> i32 {
     let size = std::mem::size_of::<T>() as u32;
 
@@ -99,7 +99,7 @@ pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> 
 }
 
 
-pub fn register_gadget_metatype<T : 'static + Sized + Clone + Default + QGadget>() -> i32 {
+pub fn register_gadget_metatype<T : Clone + Default + QGadget>() -> i32 {
     register_metatype_common::<T>(std::ptr::null(), T::static_meta_object())
 }
 

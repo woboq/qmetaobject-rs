@@ -22,6 +22,18 @@ pub fn do_test<T: QObject + Sized>(mut obj: T, qml: &str) -> bool {
 }
 
 
+pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
+
+    let _lock = TEST_MUTEX.lock().unwrap();
+
+    let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
+
+    let mut engine = QmlEngine::new();
+    engine.set_property("_obj".into(), obj);
+    engine.load_data(qml_text.into());
+    engine.invoke_method("doTest".into(), &[]).to_bool()
+}
+
 #[test]
 fn self_test() {
 
@@ -38,6 +50,18 @@ fn self_test() {
     let mut obj = Basic::default();
     obj.value = false;
     assert!(!do_test(obj, "Item { function doTest() { return _obj.value  } }"));
+
+}
+
+
+#[test]
+fn self_test_variant() {
+
+    let obj = QVariant::from(true);
+    assert!(do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
+
+    let obj = QVariant::from(false);
+    assert!(!do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
 
 }
 
@@ -169,11 +193,23 @@ fn register_type() {
 }
 
 
-#[derive(Default, QGadget)]
-struct MySimpleGadget {
-    num_value: qt_property!(u32),
-    str_value: qt_property!(String),
-    concat: qt_method!(fn concat(&self, separator : String) -> String {
-        return format!("{}{}{}", self.str_value, separator, self.num_value)
-    } ),
+#[test]
+fn simple_gadget() {
+    #[derive(Default, Clone, QGadget)]
+    struct MySimpleGadget {
+        num_value: qt_property!(u32),
+        str_value: qt_property!(String),
+        concat: qt_method!(fn concat(&self, separator : String) -> String {
+            return format!("{}{}{}", self.str_value, separator, self.num_value)
+        } ),
+    }
+
+    let mut my_gadget = MySimpleGadget::default();
+    my_gadget.num_value = 33;
+    my_gadget.str_value = "plop".into();
+
+    assert!(do_test_variant(my_gadget.to_qvariant(), "Item { function doTest() {
+        return _obj.str_value == 'plop' && _obj.num_value == 33
+            && _obj.concat(':') == 'plop:33';
+    }}"));
 }
