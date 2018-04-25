@@ -7,6 +7,7 @@
 struct TraitObject {
     void *a;
     void *b;
+    explicit operator bool() const { return a && b; }
 };
 
 extern "C" QMetaObject *RustObject_metaObject(TraitObject);
@@ -39,7 +40,7 @@ struct RustObject : Base {
         return _id;
     }
     bool event(QEvent *event) override {
-        if (event->type() == 513) {
+        if (rust_object && event->type() == 513) {
             // "513 reserved for Qt Jambi's DeleteOnMainThread event"
             // This event is sent by rust when we are deleted.
             rust_object = { nullptr, nullptr }; // so the destructor don't recurse
@@ -51,8 +52,11 @@ struct RustObject : Base {
     ~RustObject() {
         if (extra_destruct)
             extra_destruct(this);
-        if (rust_object.a || rust_object.b)
-            RustObject_destruct(rust_object);
+        if (rust_object) {
+            auto r = rust_object;
+            rust_object = { nullptr, nullptr };
+            RustObject_destruct(r);
+        }
     }
 };
 

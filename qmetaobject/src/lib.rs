@@ -112,8 +112,9 @@ pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {
 
 #[no_mangle]
 pub extern "C" fn RustObject_destruct(p: *mut QObject) {
-    let b = unsafe { Box::from_raw(p) };
-    b.get_cpp_object().set(std::ptr::null_mut());
+    // We are destroyed from the C++ code, which means that the object was owned by C++ and we
+    // can destroy the rust object as well
+    let _b = unsafe { Box::from_raw(p) };
 }
 
 pub fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
