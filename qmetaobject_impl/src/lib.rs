@@ -461,7 +461,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             #[allow(non_snake_case)]
             fn #sig_name(&mut self #(, #args_decl)*) {
                 let a : [*mut std::os::raw::c_void; #array_size] = [ std::ptr::null_mut() #(, #args_ptr)* ];
-                #crate_::invoke_signal(self.get_cpp_object().get(), #name::static_meta_object(), #i, &a)
+                unsafe { #crate_::invoke_signal(self.get_cpp_object(), #name::static_meta_object(), #i, &a) }
             }
         }
     }));
@@ -512,18 +512,21 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
     let qobject_spec_func = if is_qobject {
         quote!{
-            fn get_cpp_object<'a>(&'a self)->&'a #crate_::QObjectCppWrapper {
-                if self.#base_prop.get().is_null() {
-                    let trait_object : *const #base = self;
-                    let trait_object_ptr : *const *const #base = &trait_object;
-                    let n = unsafe { (<#name #ty_generics as #base>::get_object_description().create)
-                        (trait_object_ptr as *const std::os::raw::c_void) };
-                    self.#base_prop.set(n);
-                }
-                &self.#base_prop
+            fn get_cpp_object(&self)-> *mut std::os::raw::c_void {
+                self.#base_prop.get()
             }
 
-            unsafe fn qml_construct(&self, mem : *mut std::os::raw::c_void,
+            unsafe fn cpp_construct(&mut self) -> *mut std::os::raw::c_void {
+                assert!(self.#base_prop.get().is_null());
+                let trait_object : *const #base = self;
+                let trait_object_ptr : *const *const #base = &trait_object;
+                let n = (<#name #ty_generics as #base>::get_object_description().create)
+                    (trait_object_ptr as *const std::os::raw::c_void);
+                self.#base_prop.set(n);
+                n
+            }
+
+            unsafe fn qml_construct(&mut self, mem : *mut std::os::raw::c_void,
                                     extra_destruct : extern fn(*mut std::os::raw::c_void)) {
                 let trait_object : *const #base = self;
                 let trait_object_ptr : *const *const #base = &trait_object;

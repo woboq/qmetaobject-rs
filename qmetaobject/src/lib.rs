@@ -15,7 +15,6 @@ extern crate lazy_static;
 pub use lazy_static::*;
 
 use std::os::raw::c_void;
-use std::cell::Cell;
 
 pub mod qttypes;
 pub use qttypes::*;
@@ -25,11 +24,11 @@ cpp!{{
 }}
 
 pub struct QObjectCppWrapper {
-    ptr: Cell<*mut c_void>
+    ptr: *mut c_void
 }
 impl Drop for QObjectCppWrapper {
     fn drop(&mut self) {
-        let ptr = self.ptr.get();
+        let ptr = self.ptr;
         unsafe { cpp!([ptr as "QObject*"] {
             // The event 513 is catched by RustObject and deletes the object.
             QEvent e(QEvent::Type(513));
@@ -39,11 +38,11 @@ impl Drop for QObjectCppWrapper {
     }
 }
 impl Default for QObjectCppWrapper {
-    fn default() -> QObjectCppWrapper { QObjectCppWrapper{ ptr: Cell::new(std::ptr::null_mut()) } }
+    fn default() -> QObjectCppWrapper { QObjectCppWrapper{ ptr: std::ptr::null_mut() } }
 }
 impl QObjectCppWrapper {
-    pub fn get(&self) -> *mut c_void { self.ptr.get() }
-    pub fn set(&self, val : *mut c_void) { self.ptr.set(val); }
+    pub fn get(&self) -> *mut c_void { self.ptr }
+    pub fn set(&mut self, val : *mut c_void) { self.ptr = val; }
 }
 
 #[repr(C)]
@@ -59,9 +58,14 @@ pub trait QObject {
     // these are reimplemented by the QObject procedural macro
     fn meta_object(&self)->*const QMetaObject;
     fn static_meta_object()->*const QMetaObject where Self:Sized;
-    fn get_cpp_object<'a>(&'a self)->&'a QObjectCppWrapper;
-    unsafe fn qml_construct(&self, mem : *mut c_void, extra_destruct : extern fn(*mut c_void));
+    // return a pointer to the QObject*  (can be null if not yet initialized)
+    // Ideally this should be covariant
+    fn get_cpp_object(&self)-> *mut c_void;
+    unsafe fn cpp_construct(&mut self) -> *mut c_void;
+    unsafe fn qml_construct(&mut self, mem : *mut c_void, extra_destruct : extern fn(*mut c_void));
     fn cpp_size() -> usize where Self:Sized;
+
+
 
 
     // These are not, they are part of the trait structure that sub trait must have
@@ -84,7 +88,7 @@ pub trait QObject {
 impl QObject {
     pub fn as_qvariant(&self) -> QVariant {
         unsafe {
-            let self_ = self.get_cpp_object().get();
+            let self_ = self.get_cpp_object();
             cpp!{[self_ as "QObject*"] -> QVariant as "QVariant"  {
                 return QVariant::fromValue(self_);
             }}
@@ -117,11 +121,11 @@ pub extern "C" fn RustObject_destruct(p: *mut QObject) {
     let _b = unsafe { Box::from_raw(p) };
 }
 
-pub fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
+pub unsafe fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
     let a = a.as_ptr();
-    unsafe { cpp!([object as "QObject*", meta as "const QMetaObject*", id as "int", a as "void**"] {
+    cpp!([object as "QObject*", meta as "const QMetaObject*", id as "int", a as "void**"] {
         QMetaObject::activate(object, meta, id, a);
-    })}
+    })
 }
 
 #[repr(C)]

@@ -59,7 +59,7 @@ impl QmlEngine {
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     pub fn set_object_property<T : QObject + Sized>(&mut self, name: QString, obj: &mut T) {
-        let obj_ptr = obj.get_cpp_object().get();
+        let obj_ptr = unsafe { obj.cpp_construct() }; // FIXME! unsafe
         unsafe { cpp!([self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);
         })}
@@ -129,7 +129,7 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_majo
     }
 
     extern fn creator_fn<T : QObject + Default + Sized>(c : *mut c_void)  {
-        let b : Box<T> = Box::new(T::default());
+        let mut b : Box<T> = Box::new(T::default());
         let ed : extern fn(c : *mut c_void) = extra_destruct;
         unsafe { b.qml_construct(c, ed); }
         std::boxed::Box::into_raw(b);
@@ -200,9 +200,9 @@ impl QQuickItem {
     // here goes the API
     /*pub fn begin_insert_rows(&mut self, first : i32, last: i32) {
         let p = QModelIndex::default();
-        let obj = self.get_cpp_object().get();
+        let obj = self.get_cpp_object();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
-            obj->beginInsertRows(p, first, last);
+            if (obj) obj->beginInsertRows(p, first, last);
         })}
     }*/
 }
