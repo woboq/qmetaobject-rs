@@ -515,6 +515,9 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             fn get_cpp_object(&self)-> *mut std::os::raw::c_void {
                 self.#base_prop.get()
             }
+            unsafe fn get_from_cpp<'a>(ptr: &'a mut std::os::raw::c_void) -> &'a mut Self {
+                <#name #ty_generics as #base>::get_rust_object(ptr)
+            }
 
             unsafe fn cpp_construct(&mut self) -> *mut std::os::raw::c_void {
                 assert!(self.#base_prop.get().is_null());

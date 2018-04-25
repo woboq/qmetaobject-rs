@@ -85,11 +85,11 @@ fn main() {
     let mut xx = MyStruct::default();
     xx.yy = 85;
     xx.qq = "Hello".to_owned();
-    let ptr = xx.get_cpp_object().get();
+    let ptr = unsafe { xx.cpp_construct() };
 
     let mut mm = MyModel::default();
     mm.values = vec!["hello, ".to_owned(), "world".to_owned()];
-    let ptr2 = mm.get_cpp_object().get();
+    let ptr2 = unsafe { mm.cpp_construct() };
 
     unsafe { cpp!{[ptr as "QObject*", ptr2 as "QObject*"] {
 

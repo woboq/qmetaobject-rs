@@ -82,6 +82,15 @@ impl QmlEngine {
             return ret;
         })}
     }
+
+    pub fn new_qobject<T : QObject>(&mut self, obj : T) -> QJSValue {
+        let mut b : Box<T> = Box::new(obj);
+        let obj_ptr = unsafe { b.cpp_construct() };
+        std::boxed::Box::into_raw(b); // we took ownership
+        unsafe { cpp!([self as "QmlEngineHolder*", obj_ptr as "QObject*"] -> QJSValue as "QJSValue" {
+            return self->engine->newQObject(obj_ptr);
+        })}
+    }
 }
 
 pub struct QQuickView {
@@ -271,3 +280,58 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 };
 
 }}
+
+cpp_class!(pub struct QJSValue, "QJSValue");
+impl QJSValue {
+    pub fn to_string(&self) -> QString {
+        unsafe {
+            cpp!([self as "const QJSValue*"] -> QString as "QString" { return self->toString(); })
+        }
+    }
+
+    pub fn to_bool(&self) -> bool {
+        unsafe { cpp!([self as "const QJSValue*"] -> bool as "bool" { return self->toBool(); }) }
+    }
+
+    pub fn to_number(&self) -> f64 {
+        unsafe { cpp!([self as "const QJSValue*"] -> f64 as "double" { return self->toNumber(); }) }
+    }
+
+    pub fn to_variant(&self) -> QVariant {
+        unsafe { cpp!([self as "const QJSValue*"] -> QVariant as "QVariant" { return self->toVariant(); }) }
+    }
+
+    // FIXME: &mut could be usefull, but then there can be several access to this object as mutable
+    pub fn to_qobject<'a, T : QObject + 'a>(&'a self) -> Option<&'a QObject> {
+        let mo = T::static_meta_object();
+        let obj = unsafe { cpp!([self as "const QJSValue*", mo as "const QMetaObject*"] -> *mut c_void as "QObject*" {
+            QObject *obj = self->toQObject();
+            // FIXME! inheritence?
+            return obj && obj->metaObject()->inherits(mo) ? obj : nullptr;
+        }) };
+        if obj.is_null() { return None; }
+        let obj : &'a mut c_void = unsafe { &mut *obj  };
+        Some(unsafe { T::get_from_cpp(obj) })
+    }
+}
+impl From<QString> for QJSValue {
+    fn from(a : QString) -> QJSValue {
+        unsafe {cpp!([a as "QString"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    }
+}
+impl From<i32> for QJSValue {
+    fn from(a : i32) -> QJSValue {
+        unsafe {cpp!([a as "int"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    }
+}
+impl From<u32> for QJSValue {
+    fn from(a : u32) -> QJSValue {
+        unsafe {cpp!([a as "uint"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    }
+}
+impl From<bool> for QJSValue {
+    fn from(a : bool) -> QJSValue {
+        unsafe {cpp!([a as "bool"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    }
+}
+

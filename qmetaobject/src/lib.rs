@@ -64,9 +64,7 @@ pub trait QObject {
     unsafe fn cpp_construct(&mut self) -> *mut c_void;
     unsafe fn qml_construct(&mut self, mem : *mut c_void, extra_destruct : extern fn(*mut c_void));
     fn cpp_size() -> usize where Self:Sized;
-
-
-
+    unsafe fn get_from_cpp<'a>(p: &'a mut c_void) -> &'a mut Self where Self:Sized;
 
     // These are not, they are part of the trait structure that sub trait must have
     // Copy/paste this code replacing QObject with the type
