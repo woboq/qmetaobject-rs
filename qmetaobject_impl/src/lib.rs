@@ -396,6 +396,13 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             notify = quote!{ obj.#signal() };
         }
 
+        let register_type = if builtin_type(&prop.typ) == 0 { quote! {
+            #RegisterPropertyMetaType => unsafe {
+                let r = *a as *mut i32;
+                *r = <#typ as #crate_::QMetaType>::register(stringify!(#typ));
+            }
+        }} else { quote!{} };
+
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = #get_object;
@@ -409,10 +416,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                 #notify
             },
             #ResetProperty => { /* TODO */},
-            #RegisterPropertyMetaType => unsafe {
-                let r = *a as *mut i32;
-                *r = #crate_::register_metatype::<#typ>(stringify!(#typ));
-            },
+            #register_type
             _ => {}
         }}
     }).collect();
@@ -440,6 +444,28 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                 }
             }
         }
+    }).collect();
+
+    let register_arguments : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
+        let i = i as u32;
+        let args : Vec<_> = method.args.iter().enumerate().map(|(i, arg)| {
+            let i = i as u32;
+            if builtin_type(&arg.typ) == 0 {
+                let typ : syn::Ident = arg.typ.clone().into();
+                quote! {
+                    #i => { unsafe { *(*a as *mut i32) = <#typ as #crate_::QMetaType>::register(stringify!(#typ)) }; }
+                }
+            } else {
+                quote! {}
+            }
+        }).collect();
+
+        quote! { #i => {
+            match unsafe {*(*(a.offset(1)) as *const u32)} {
+                #(#args)*
+                _ => {}
+            }
+        }}
     }).collect();
 
     func_bodies.extend(signals.iter().enumerate().map(|(i, signal)| {
@@ -570,7 +596,12 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             #(#method_meta_call)*
                             _ => { let _ = obj; }
                         }
-                    }} else {
+                    }} else if c == #RegisterMethodArgumentMetaType {
+                        match idx {
+                            #(#register_arguments)*
+                            _ => {}
+                        }
+                    } else {
                         match idx {
                             #(#property_meta_call)*
                             _ => {}

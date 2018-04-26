@@ -1,15 +1,7 @@
 use super::*;
-/*
-pub trait QMetaType {
-    fn register();
-    const NAME : &'static str;
-
-    fn register_string_converter() {}
-};
-*/
 
 fn register_metatype_common<T : Sized + Clone + Default>(
-    name : *const std::os::raw::c_char, metaobject : *const QMetaObject) -> i32 {
+    name : *const std::os::raw::c_char, gadget_metaobject : *const QMetaObject) -> i32 {
     let size = std::mem::size_of::<T>() as u32;
 
     extern fn deleter_fn<T>(_v: Box<T>) { };
@@ -37,24 +29,37 @@ fn register_metatype_common<T : Sized + Clone + Default>(
     unsafe {
         cpp!([name as "const char*", size as "int", deleter_fn as "QMetaType::Deleter",
               creator_fn as "QMetaType::Creator", destructor_fn as "QMetaType::Destructor",
-              constructor_fn as "QMetaType::Constructor", metaobject as "const QMetaObject*"] -> i32 as "int" {
-            QMetaType::TypeFlags extraFlag(metaobject ? QMetaType::IsGadget : 0);
-            return QMetaType::registerType(name ? name : metaobject->className(), deleter_fn, creator_fn, destructor_fn,
+              constructor_fn as "QMetaType::Constructor", gadget_metaobject as "const QMetaObject*"] -> i32 as "int" {
+            QMetaType::TypeFlags extraFlag(gadget_metaobject ? QMetaType::IsGadget : 0);
+            return QMetaType::registerType(name ? name : gadget_metaobject->className(), deleter_fn, creator_fn, destructor_fn,
                 constructor_fn, size,
                 QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType | extraFlag,
-                metaobject);
+                gadget_metaobject);
         })
     }
 }
 
+pub trait QMetaType : Clone + Default {
+    //const NAME : &'static str;
+    fn register(name : &str) -> i32 {
+        //if name.is_empty() { Self::NAME } else { name }
+        let name = std::ffi::CString::new(name).unwrap();
+        register_metatype_common::<Self>(name.as_ptr(), std::ptr::null())
+    }
+}
 
-pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> i32 {
+impl<T : QGadget> QMetaType for T where T: Clone + Default {
+    fn register(_name : &str) -> i32 {
+        //assert!(_name == T::static_meta_object().className());
+        register_metatype_common::<T>(std::ptr::null(), T::static_meta_object())
+    }
+}
 
-    let name = std::ffi::CString::new(name).unwrap();
-    let type_id = register_metatype_common::<T>(name.as_ptr(), std::ptr::null());
-
-    use std::any::TypeId;
-    if TypeId::of::<String>() == TypeId::of::<T>() {
+impl QMetaType for String {
+    fn register(name : &str) -> i32 {
+        assert!(name == "String");
+        let c_name = b"String\0".as_ptr() as *const std::os::raw::c_char;
+        let type_id = register_metatype_common::<String>(c_name, std::ptr::null());
         extern fn converter_fn1(_ : *const c_void, s: &String, ptr : *mut QByteArray) {
             unsafe { std::ptr::write(ptr, QByteArray::from(&*s as &str)); }
         };
@@ -93,13 +98,7 @@ pub fn register_metatype<T : 'static + Sized + Clone + Default>(name : &str) -> 
             if (!c->registerConverter(QMetaType::QString, type_id))
                 delete c;
         }) };
+        type_id
     }
-
-    type_id
-}
-
-
-pub fn register_gadget_metatype<T : Clone + Default + QGadget>() -> i32 {
-    register_metatype_common::<T>(std::ptr::null(), T::static_meta_object())
 }
 
