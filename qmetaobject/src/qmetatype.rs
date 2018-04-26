@@ -46,6 +46,16 @@ pub trait QMetaType : Clone + Default {
         let name = std::ffi::CString::new(name).unwrap();
         register_metatype_common::<Self>(name.as_ptr(), std::ptr::null())
     }
+
+    unsafe fn pass_to_qt(self, a: *mut c_void) {
+        let r = a as *mut Self;
+        if !r.is_null() { *r = self; }
+    }
+
+    unsafe fn pass_from_qt(a: *mut c_void) -> Self {
+        let r = a as *mut Self;
+        (*r).clone()
+    }
 }
 
 impl<T : QGadget> QMetaType for T where T: Clone + Default {
@@ -54,6 +64,26 @@ impl<T : QGadget> QMetaType for T where T: Clone + Default {
         register_metatype_common::<T>(std::ptr::null(), T::static_meta_object())
     }
 }
+
+/*
+impl<T : QObject> QMetaType for &T {
+    fn register(_name : &str) -> i32 {
+        let metaobject = T::static_meta_object()
+        unsafe {
+            cpp!([metaobject as "const QMetaObject*"] -> i32 as "int" {
+                return QMetaType::registerType(metaobject->className(),
+                    [](void*p) { delete static_cast<void**>(p) },
+                    []() -> void* { using T = void*; return new T{nullptr}; },
+                    QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
+                    QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
+                    sizeof(void*),
+                    QMetaType::MovableType | QMetaType::PointerToQObject,
+                    metaobject);
+            })
+        }
+    }
+}
+*/
 
 impl QMetaType for String {
     fn register(name : &str) -> i32 {
@@ -101,4 +131,33 @@ impl QMetaType for String {
         type_id
     }
 }
+
+macro_rules! qdeclare_builtin_metatype {
+    ($name:ty => $value:expr) => {
+        impl QMetaType for $name {
+            fn register(name : &str) -> i32 {
+                assert!(name == stringify!($name));
+                $value
+            }
+        }
+    }
+}
+
+qdeclare_builtin_metatype!{()   => 43}
+qdeclare_builtin_metatype!{bool => 1}
+qdeclare_builtin_metatype!{i32  => 2}
+qdeclare_builtin_metatype!{u32  => 3}
+qdeclare_builtin_metatype!{i64  => 4}
+qdeclare_builtin_metatype!{u64  => 5}
+qdeclare_builtin_metatype!{f64  => 6}
+qdeclare_builtin_metatype!{i16  => 33}
+qdeclare_builtin_metatype!{i8   => 34}
+qdeclare_builtin_metatype!{u16  => 36}
+qdeclare_builtin_metatype!{u8   => 37}
+qdeclare_builtin_metatype!{f32  => 38}
+//qdeclare_builtin_metatype!{"*c_void" => 31,
+qdeclare_builtin_metatype!{QString => 10}
+qdeclare_builtin_metatype!{QByteArray => 12}
+qdeclare_builtin_metatype!{QVariant => 41}
+
 

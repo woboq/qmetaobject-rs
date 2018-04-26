@@ -406,13 +406,11 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = #get_object;
-                let r = *a as *mut #typ;
-                *r = obj.#property_name.clone();
+                <#typ as QMetaType>::pass_to_qt(obj.#property_name.clone(), *a);
             },
             #WriteProperty => unsafe {
                 let obj : &mut #name = #get_object;
-                let r = *a as *mut #typ;
-                obj.#property_name = (*r).clone();
+                obj.#property_name = <#typ as QMetaType>::pass_from_qt(*a);
                 #notify
             },
             #ResetProperty => { /* TODO */},
@@ -428,7 +426,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             let i = i as isize;
             let ty : syn::Ident = arg.typ.clone().into();
             quote! {
-                (*(*(a.offset(#i + 1)) as *const #ty)).clone()
+                <#ty as QMetaType>::pass_from_qt(*(a.offset(#i + 1)));
             }
         }).collect();
 
@@ -436,11 +434,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             quote! { #i => obj.#method_name(#(#args_call),*), }
         } else {
             let ret_type : syn::Ident = method.ret_type.clone().into();
-            let args_call2 = args_call.clone();
             quote! { #i => {
-                    let r = *a as *mut #ret_type;
-                    if r.is_null() { obj.#method_name(#(#args_call),*); }
-                    else { *r = obj.#method_name(#(#args_call2),*); }
+                    <#ret_type as QMetaType>::pass_to_qt( obj.#method_name(#(#args_call),*), *a);
                 }
             }
         }
