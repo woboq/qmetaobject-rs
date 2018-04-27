@@ -84,9 +84,7 @@ impl QmlEngine {
     }
 
     pub fn new_qobject<T : QObject>(&mut self, obj : T) -> QJSValue {
-        let mut b : Box<T> = Box::new(obj);
-        let obj_ptr = unsafe { b.cpp_construct() };
-        std::boxed::Box::into_raw(b); // we took ownership
+        let obj_ptr = into_leaked_cpp_ptr(obj);
         unsafe { cpp!([self as "QmlEngineHolder*", obj_ptr as "QObject*"] -> QJSValue as "QJSValue" {
             return self->engine->newQObject(obj_ptr);
         })}

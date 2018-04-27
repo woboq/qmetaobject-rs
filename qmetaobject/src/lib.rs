@@ -84,14 +84,20 @@ pub trait QObject {
     }
 }
 impl QObject {
-    pub fn as_qvariant(&self) -> QVariant {
-        unsafe {
-            let self_ = self.get_cpp_object();
-            cpp!{[self_ as "QObject*"] -> QVariant as "QVariant"  {
-                return QVariant::fromValue(self_);
-            }}
-        }
+    pub unsafe fn as_qvariant(&self) -> QVariant {
+        let self_ = self.get_cpp_object();
+        cpp!{[self_ as "QObject*"] -> QVariant as "QVariant"  {
+            return QVariant::fromValue(self_);
+        }}
     }
+}
+// The ownership is given to CPP, the resulting QObject* ptr need to be used somewhere
+// that takes ownership
+pub fn into_leaked_cpp_ptr<T: QObject>(obj : T) -> *mut c_void {
+    let mut b : Box<T> = Box::new(obj);
+    let obj_ptr = unsafe { b.cpp_construct() };
+    std::boxed::Box::into_raw(b);
+    obj_ptr
 }
 
 pub trait QGadget  {
@@ -158,6 +164,13 @@ macro_rules! qt_method {
 macro_rules! qt_signal {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
+
+#[macro_export]
+macro_rules! qt_plugin {
+    ($($t:tt)*) => { std::marker::PhantomData<()> };
+}
+
+
 
 pub mod listmodel;
 pub use listmodel::*;

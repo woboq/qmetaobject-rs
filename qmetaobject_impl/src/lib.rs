@@ -13,6 +13,8 @@ use proc_macro::TokenStream;
 
 use std::iter::Iterator;
 
+mod qbjs;
+
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
 #[allow(dead_code)]
@@ -54,7 +56,6 @@ fn builtin_type(name : &str) -> u32 {
         _ => 0
     }
 }
-
 
 fn write_u32(val : i32) -> [u8;4] {
     [(val & 0xff) as u8 , ((val >> 8) & 0xff) as u8, ((val >> 16) & 0xff) as u8, ((val >> 24) & 0xff) as u8]
@@ -226,6 +227,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     let mut methods = vec![];
     let mut signals = vec![];
     let mut func_bodies = vec![];
+    let mut is_plugin = false;
+    let mut plugin_iid : Option<syn::LitStr> = None;
 
     let mut crate_ = quote! { ::qmetaobject };
     //let mut crate_ = quote! { super };
@@ -347,6 +350,11 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                 (t)));
                             base = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse base trait");
                             base_prop = f.ident.expect("base prop needs a name");
+                        }
+                        "qt_plugin" => {
+                            is_plugin = true;
+                            let iid : syn::LitStr = syn::parse(mac.mac.tts.clone().into()).expect("Could not parse q_plugin iid");
+                            plugin_iid = Some(iid);
                         }
                         _ => {}
                     }
@@ -641,6 +649,41 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                     panic!("Writing into a read only property");
                 }
             }
+        }
+    }
+
+    if is_plugin {
+        use qbjs::Value;
+        let object_data : Vec<(&'static str, Value)> = vec![
+            ("IID", Value::String(plugin_iid.unwrap().value())),
+            ("className", Value::String(name.as_ref().into())),
+            ("version", Value::Double(0x050100 as f64)),
+//            ("MetaData"] = CDef->Plugin.MetaData;
+            ("debug", Value::Double(0.0))
+        ];
+
+
+        let plugin_data = qbjs::serialize(&object_data);
+        let plugin_data_size = plugin_data.len();
+        body = quote! { #body
+            #[link_section = ".qtmetadata"]
+            #[no_mangle]
+            pub static qt_pluginMetaData: [u8 ; 20 + #plugin_data_size] = &[
+                b'Q', b'T', b'M', b'E', b'T', b'A', b'D', b'A', b'T', b'A', b' ', b' ',
+                b'q', b'b', b'j', b's', 1, 0, 0, 0,
+                #(#plugin_data),*
+            ];
+
+            #[no_mangle]
+            pub extern fn qt_plugin_query_metadata() -> *const u8
+            {  qt_pluginMetaData.as_ptr() }
+
+            #[no_mangle]
+            pub extern fn qt_plugin_instance() -> *mut std::os::raw::c_void
+            {
+                into_leaked_cpp_ptr(#name::default())
+            }
+
         }
     }
 
