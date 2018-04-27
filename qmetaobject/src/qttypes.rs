@@ -31,7 +31,6 @@ impl<'a> From<&'a str> for QByteArray {
     }
 }
 
-
 impl From<String> for QByteArray {
     fn from(s : String) -> QByteArray { QByteArray::from(&*s) }
 }
@@ -51,6 +50,11 @@ impl Display for QByteArray {
             });
             f.write_str(std::ffi::CStr::from_ptr(c_ptr).to_str().map_err(|_| Default::default())?)
         }
+    }
+}
+impl std::fmt::Debug for QByteArray {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 impl PartialEq for QByteArray {
@@ -93,6 +97,11 @@ impl Into<String> for QString {
 impl Display for QString {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         QByteArray::from(self.clone()).fmt(f)
+    }
+}
+impl std::fmt::Debug for QString {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 impl PartialEq for QString {

@@ -399,18 +399,18 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         let register_type = if builtin_type(&prop.typ) == 0 { quote! {
             #RegisterPropertyMetaType => unsafe {
                 let r = *a as *mut i32;
-                *r = <#typ as #crate_::QMetaType>::register(stringify!(#typ));
+                *r = <#typ as #crate_::PropertyType>::register_type(stringify!(#typ));
             }
         }} else { quote!{} };
 
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = #get_object;
-                <#typ as QMetaType>::pass_to_qt(obj.#property_name.clone(), *a);
+                <#typ as #crate_::PropertyType>::pass_to_qt(&obj.#property_name, *a);
             },
             #WriteProperty => unsafe {
                 let obj : &mut #name = #get_object;
-                obj.#property_name = <#typ as QMetaType>::pass_from_qt(*a);
+                <#typ as #crate_::PropertyType>::read_from_qt(&mut obj.#property_name, *a);
                 #notify
             },
             #ResetProperty => { /* TODO */},
@@ -426,7 +426,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             let i = i as isize;
             let ty : syn::Ident = arg.typ.clone().into();
             quote! {
-                <#ty as QMetaType>::pass_from_qt(*(a.offset(#i + 1)));
+                (*(*(a.offset(#i + 1)) as *const #ty)).clone()
             }
         }).collect();
 
@@ -434,8 +434,11 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             quote! { #i => obj.#method_name(#(#args_call),*), }
         } else {
             let ret_type : syn::Ident = method.ret_type.clone().into();
+            let args_call2 = args_call.clone();
             quote! { #i => {
-                    <#ret_type as QMetaType>::pass_to_qt( obj.#method_name(#(#args_call),*), *a);
+                    let r = *a as *mut #ret_type;
+                    if r.is_null() { obj.#method_name(#(#args_call),*); }
+                    else { *r = obj.#method_name(#(#args_call2),*); }
                 }
             }
         }

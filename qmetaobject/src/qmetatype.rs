@@ -46,16 +46,6 @@ pub trait QMetaType : Clone + Default {
         let name = std::ffi::CString::new(name).unwrap();
         register_metatype_common::<Self>(name.as_ptr(), std::ptr::null())
     }
-
-    unsafe fn pass_to_qt(self, a: *mut c_void) {
-        let r = a as *mut Self;
-        if !r.is_null() { *r = self; }
-    }
-
-    unsafe fn pass_from_qt(a: *mut c_void) -> Self {
-        let r = a as *mut Self;
-        (*r).clone()
-    }
 }
 
 impl<T : QGadget> QMetaType for T where T: Clone + Default {
@@ -64,26 +54,6 @@ impl<T : QGadget> QMetaType for T where T: Clone + Default {
         register_metatype_common::<T>(std::ptr::null(), T::static_meta_object())
     }
 }
-
-/*
-impl<T : QObject> QMetaType for &T {
-    fn register(_name : &str) -> i32 {
-        let metaobject = T::static_meta_object()
-        unsafe {
-            cpp!([metaobject as "const QMetaObject*"] -> i32 as "int" {
-                return QMetaType::registerType(metaobject->className(),
-                    [](void*p) { delete static_cast<void**>(p) },
-                    []() -> void* { using T = void*; return new T{nullptr}; },
-                    QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
-                    QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
-                    sizeof(void*),
-                    QMetaType::MovableType | QMetaType::PointerToQObject,
-                    metaobject);
-            })
-        }
-    }
-}
-*/
 
 impl QMetaType for String {
     fn register(name : &str) -> i32 {
@@ -160,4 +130,58 @@ qdeclare_builtin_metatype!{QString => 10}
 qdeclare_builtin_metatype!{QByteArray => 12}
 qdeclare_builtin_metatype!{QVariant => 41}
 
+pub trait PropertyType {
+    const READ_ONLY : bool;
+    fn register_type(name : &str) -> i32;
+    unsafe fn pass_to_qt(&self, a: *mut c_void);
+    unsafe fn read_from_qt(&mut self, a: *const c_void);
+}
 
+
+impl<T : QMetaType> PropertyType for T {
+    const READ_ONLY : bool = false;
+    unsafe fn pass_to_qt(&self, a: *mut c_void) {
+        let r = a as *mut Self;
+        if !r.is_null() { *r = self.clone(); }
+    }
+
+    unsafe fn read_from_qt(&mut self, a: *const c_void) {
+        let r = a as *const Self;
+        *self = (*r).clone()
+    }
+
+    fn register_type(name : &str) -> i32 {
+        <T as QMetaType>::register(name)
+    }
+}
+
+
+/*
+
+impl<T : QObject> ReadOnlyPropertyType for T {
+    fn register(_name : &str) -> i32 {
+        let metaobject = T::static_meta_object()
+        unsafe {
+            cpp!([metaobject as "const QMetaObject*"] -> i32 as "int" {
+                return QMetaType::registerType(metaobject->className(),
+                    [](void*p) { delete static_cast<void**>(p) },
+                    []() -> void* { using T = void*; return new T{nullptr}; },
+                    QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
+                    QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
+                    sizeof(void*),
+                    QMetaType::MovableType | QMetaType::PointerToQObject,
+                    metaobject);
+            })
+        }
+    }
+    unsafe fn pass_to_qt(&self, a: *mut c_void) {
+        self.get_cpp_object
+        std::boxed::Box::into_raw(b); // we took ownership
+        unsafe { cpp!([self as "QmlEngineHolder*", obj_ptr as "QObject*"] -> QJSValue as "QJSValue" {
+            return self->engine->newQObject(obj_ptr);
+        })}
+
+        <Self as QMetaType>::pass_to_qt(self, a);
+    }
+}
+*/

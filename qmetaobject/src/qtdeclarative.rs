@@ -329,9 +329,35 @@ impl From<u32> for QJSValue {
         unsafe {cpp!([a as "uint"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
     }
 }
+impl From<f64> for QJSValue {
+    fn from(a : f64) -> QJSValue {
+        unsafe {cpp!([a as "double"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    }
+}
 impl From<bool> for QJSValue {
     fn from(a : bool) -> QJSValue {
         unsafe {cpp!([a as "bool"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
     }
 }
 
+
+#[cfg(test)]
+mod qjsvalue_tests {
+    use super::*;
+    #[test]
+    fn test_qjsvalue() {
+        let foo = QJSValue::from(45);
+        assert_eq!(foo.to_number(), 45 as f64);
+        assert_eq!(foo.to_string(), "45".into());
+        assert_eq!(foo.to_variant().to_qbytearray(), "45".into());
+    }
+
+    #[test]
+    fn test_qvariantlist_from_iter() {
+        let v = vec![1u32,2u32,3u32];
+        let qvl : QVariantList = v.iter().collect();
+        assert_eq!(qvl.len(), 3);
+        assert_eq!(qvl[1].to_qbytearray().to_string(), "2");
+
+    }
+}
