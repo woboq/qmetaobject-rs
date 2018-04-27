@@ -213,36 +213,34 @@ fn simple_gadget() {
             && _obj.concat(':') == 'plop:33';
     }}"));
 }
-/*
+
+
 #[derive(QObject,Default)]
 struct ObjectWithObject {
     base: qt_base_class!(trait QObject),
-    prop_x: qt_property!(MyObject; CONST),
-    prop_x_changed: qt_signal!(),
-    prop_y: qt_property!(String; NOTIFY prop_y_changed),
-    prop_y_changed: qt_signal!(),
-    prop_z: qt_property!(QString; NOTIFY prop_z_changed),
-    prop_z_changed: qt_signal!(),
+    prop_object: qt_property!(MyObject; CONST),
 
-    multiply_and_add1: qt_method!(fn multiply_and_add1(&self, a: u32, b:u32) -> u32 { a*b + 1 }),
-
-    concatenate_strings: qt_method!(fn concatenate_strings(
-            &self, a: QString, b:QString, c: QByteArray) -> QString {
-        let res = a.to_string() + &(b.to_string()) + &(c.to_string());
-        QString::from(&res as &str)
-    })
+    subx: qt_method!(fn subx(&self) -> u32 { self.prop_object.prop_x }),
 }
 
 
 #[test]
 fn qobject_properties() {
 
-    let mut my_gadget = MySimpleGadget::default();
-    my_gadget.num_value = 33;
-    my_gadget.str_value = "plop".into();
-
-    assert!(do_test_variant(my_gadget.to_qvariant(), "Item { function doTest() {
-        return _obj.str_value == 'plop' && _obj.num_value == 33
-            && _obj.concat(':') == 'plop:33';
-    }}"));
-} */
+    let mut my_obj = ObjectWithObject::default();
+    my_obj.prop_object.prop_x = 56;
+    assert!(do_test(my_obj, "Item {
+        property int yo: _obj.prop_object.prop_x;
+        function doTest() {
+            if (yo !== 56) {
+                console.log('ERROR #1: 56 != ' +  yo)
+                return false;
+            }
+            _obj.prop_object.prop_x = 4545;
+            if (yo !== 4545) {
+                console.log('ERROR #2: 4545 != ' +  yo)
+                return false;
+            }
+            return _obj.subx() === 4545;
+        }}"));
+}

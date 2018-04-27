@@ -267,11 +267,14 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             #[derive(Debug)]
                             enum Flag {
                                 Notify(syn::Ident),
+                                Const,
                             }
                             named!(property_flag -> Flag, do_parse!(
                                 k: syn!(syn::Ident) >>
-                                i: cond_reduce!(&k == "NOTIFY", syn!(syn::Ident)) >>
-                                (Flag::Notify(i))));
+                                flag: alt!(
+                                    cond_reduce!(&k == "NOTIFY", syn!(syn::Ident)) => { |i| Flag::Notify(i) } |
+                                    cond_reduce!(&k == "CONST", epsilon!()) => { |_| Flag::Const }
+                                ) >> (flag)));
                             named!(property_parser -> (syn::Type, Vec<Flag>), do_parse!(
                                 ty: syn!(syn::Type) >>
                                 //trail: call!(syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated_with, property_flags) >>
@@ -293,6 +296,11 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                         notify_signal = Some(signal.as_ref().to_string());
                                         flags |= 0x00400000;
                                     }
+                                    Flag::Const => {
+                                        flags |= 0x00000400; // Constant
+                                        flags &= !2; // Writable
+                                    }
+
                                 }
                             }
                             properties.push(MetaProperty {
@@ -406,7 +414,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = #get_object;
-                <#typ as #crate_::PropertyType>::pass_to_qt(&obj.#property_name, *a);
+                <#typ as #crate_::PropertyType>::pass_to_qt(&mut obj.#property_name, *a);
             },
             #WriteProperty => unsafe {
                 let obj : &mut #name = #get_object;
@@ -571,7 +579,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
     let trait_name = if is_qobject { quote!{ QObject } } else { quote!{ QGadget } };
 
-    let body =   quote!{
+    let mut body =   quote!{
         impl #impl_generics #name #ty_generics #where_clause {
             #(#func_bodies)*
         }
@@ -614,6 +622,27 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         }
 
     };
+
+    if is_qobject {
+        body = quote! { #body
+            impl #impl_generics #crate_::PropertyType for #name #ty_generics #where_clause {
+                const READ_ONLY : bool = true;
+                fn register_type(_name : &str) -> i32 {
+                    register_metatype_qobject::<Self>()
+                }
+                unsafe fn pass_to_qt(&mut self, a: *mut std::os::raw::c_void) {
+                    let r = a as *mut *const std::os::raw::c_void;
+                    let obj = self.get_cpp_object();
+                    *r = if !obj.is_null() { obj }
+                        else { self.cpp_construct() };
+                }
+
+                unsafe fn read_from_qt(&mut self, _a: *const std::os::raw::c_void) {
+                    panic!("Writing into a read only property");
+                }
+            }
+        }
+    }
 
     body.into()
 }
