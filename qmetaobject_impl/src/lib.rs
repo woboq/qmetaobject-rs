@@ -654,13 +654,14 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
     if is_plugin {
         use qbjs::Value;
-        let object_data : Vec<(&'static str, Value)> = vec![
+        let mut object_data : Vec<(&'static str, Value)> = vec![
             ("IID", Value::String(plugin_iid.unwrap().value())),
             ("className", Value::String(name.as_ref().into())),
             ("version", Value::Double(0x050100 as f64)),
+            ("debug", Value::Double(0.0 as f64)),
 //            ("MetaData"] = CDef->Plugin.MetaData;
-            ("debug", Value::Double(0.0))
         ];
+        object_data.sort_by(|a, b| a.0.cmp(b.0));
 
 
         let plugin_data = qbjs::serialize(&object_data);
@@ -668,7 +669,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         body = quote! { #body
             #[link_section = ".qtmetadata"]
             #[no_mangle]
-            pub static qt_pluginMetaData: [u8 ; 20 + #plugin_data_size] = &[
+            #[allow(non_upper_case_globals)]
+            pub static qt_pluginMetaData: [u8 ; 20 + #plugin_data_size] = [
                 b'Q', b'T', b'M', b'E', b'T', b'A', b'D', b'A', b'T', b'A', b' ', b' ',
                 b'q', b'b', b'j', b's', 1, 0, 0, 0,
                 #(#plugin_data),*

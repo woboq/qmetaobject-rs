@@ -1,5 +1,4 @@
 use super::*;
-use std::ffi::CString;
 
 cpp!{{
     #include <QtQuick/QtQuick>
@@ -122,13 +121,11 @@ impl QQuickView {
 }
 
 
-pub fn qml_register_type<T : QObject + Default + Sized>(uri : &str, version_major : u32,
-                                                        version_minor : u32, qml_name : &str)
+pub fn qml_register_type<T : QObject + Default + Sized>(uri : &std::ffi::CStr, version_major : u32,
+                                                        version_minor : u32, qml_name : &std::ffi::CStr)
 {
-    let c_uri = CString::new(uri).unwrap();
-    let uri_ptr = c_uri.as_ptr();
-    let c_qml_name = CString::new(qml_name).unwrap();
-    let qml_name_ptr = c_qml_name.as_ptr();
+    let uri_ptr = uri.as_ptr();
+    let qml_name_ptr = qml_name.as_ptr();
     let meta_object = T::static_meta_object();
 
     extern fn extra_destruct(c : *mut c_void) {
@@ -359,3 +356,43 @@ mod qjsvalue_tests {
 
     }
 }
+
+
+
+pub trait QQmlExtensionPlugin : QObject {
+    fn get_object_description() -> &'static QObjectDescription where Self:Sized {
+        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+            return rustObjectDescription<Rust_QQmlExtensionPlugin>();
+        } ) }
+    }
+    unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
+        let ptr = cpp!{[p as "Rust_QQmlExtensionPlugin*"] -> *mut c_void as "void*" {
+            return p->rust_object.a;
+        }};
+        std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
+    }
+
+    fn register_types(&mut self, uri : &std::ffi::CStr);
+}
+
+
+cpp!{{
+#include <qmetaobject_rust.hpp>
+#include <QtQml/QQmlExtensionPlugin>
+struct Rust_QQmlExtensionPlugin : RustObject<QQmlExtensionPlugin> {
+    const QMetaObject *metaObject() const override {
+        return rust!(Rust_QQmlExtensionPlugin_metaobject[rust_object : &QQmlExtensionPlugin as "TraitObject"]
+                -> *const QMetaObject as "const QMetaObject*" {
+            rust_object.meta_object()
+        });
+    }
+
+    void registerTypes(const char *uri) override  {
+        rust!(Rust_QQmlExtensionPlugin_registerTypes[rust_object : &mut QQmlExtensionPlugin as "TraitObject",
+                                                            uri : *const std::os::raw::c_char as "const char*"] {
+            rust_object.register_types(unsafe { std::ffi::CStr::from_ptr(uri) });
+        });
+    }
+};
+
+}}

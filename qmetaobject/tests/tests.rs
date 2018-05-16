@@ -177,7 +177,8 @@ struct RegisteredObj {
 
 #[test]
 fn register_type() {
-    qml_register_type::<RegisteredObj>("TestRegister", 1, 0, "RegisteredObj");
+    qml_register_type::<RegisteredObj>(CStr::from_bytes_with_nul(b"TestRegister\0"), 1, 0,
+        CStr::from_bytes_with_nul(b"RegisteredObj\0");
 
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(obj, "import TestRegister 1.0;

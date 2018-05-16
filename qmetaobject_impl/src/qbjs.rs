@@ -49,10 +49,10 @@ fn write_value(result : &mut Vec<u8>, v : &Value) {
 
 
 fn compute_header(v : &Value, off : u32) -> u32 {
-    match v {
+    (match v {
         &Value::String(_) => 3 | (1<<3), // FIXME: Assume ascii (as does all the code)
-        &Value::Double(_) => 2 | (off << 5),
-    }
+        &Value::Double(_) => 2,
+    }) | (off << 5)
 }
 
 fn compute_size(v : &Value) -> u32 {
@@ -70,8 +70,8 @@ pub fn serialize(obj : &[(&'static str, Value)]) -> Vec<u8> {
     }
 
     result.extend_from_slice(&write_u32(size as u32));
-    result.extend_from_slice(&write_u32(1 + obj.len() as u32 * 2));
-    result.extend_from_slice(&write_u32(size - obj.len() as u32 * 4));
+    result.extend_from_slice(&write_u32(1 | (obj.len() as u32) << 1));
+    result.extend_from_slice(&write_u32(size - (obj.len() as u32) * 4));
 
     let mut table : Vec<u32> = Vec::new();
     let mut off = 12;
