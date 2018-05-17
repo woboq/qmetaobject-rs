@@ -4,6 +4,7 @@ use qmetaobject::*;
 #[macro_use]
 extern crate lazy_static;
 use std::sync::Mutex;
+use std::ffi::CStr;
 
 lazy_static! {
     static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
@@ -177,8 +178,8 @@ struct RegisteredObj {
 
 #[test]
 fn register_type() {
-    qml_register_type::<RegisteredObj>(CStr::from_bytes_with_nul(b"TestRegister\0"), 1, 0,
-        CStr::from_bytes_with_nul(b"RegisteredObj\0");
+    qml_register_type::<RegisteredObj>(CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(), 1, 0,
+        CStr::from_bytes_with_nul(b"RegisteredObj\0").unwrap());
 
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(obj, "import TestRegister 1.0;
