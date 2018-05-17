@@ -17,7 +17,7 @@ cpp!{{
     };
 }}
 
-cpp_class!(pub struct QmlEngine, "QmlEngineHolder");
+cpp_class!(pub struct QmlEngine as "QmlEngineHolder");
 impl QmlEngine {
     pub fn new() -> QmlEngine {
         Default::default()
@@ -276,7 +276,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 
 }}
 
-cpp_class!(pub struct QJSValue, "QJSValue");
+cpp_class!(pub struct QJSValue as "QJSValue");
 impl QJSValue {
     pub fn to_string(&self) -> QString {
         unsafe {
