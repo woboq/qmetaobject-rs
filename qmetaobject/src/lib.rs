@@ -170,6 +170,36 @@ macro_rules! qt_plugin {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
 
+cpp!{{
+    struct FnBoxWrapper {
+        TraitObject fnbox;
+        ~FnBoxWrapper() {
+            if (fnbox) {
+                rust!(FnBoxWrapper_destructor [fnbox : *mut Fn() as "TraitObject"] {
+                    unsafe { let _ = Box::from_raw(fnbox); }
+                });
+            }
+        }
+        FnBoxWrapper(const FnBoxWrapper&) = delete;
+        FnBoxWrapper &operator=(const FnBoxWrapper&) = delete;
+        FnBoxWrapper(FnBoxWrapper &&o) : fnbox(o.fnbox) {  o.fnbox = {}; }
+        FnBoxWrapper &operator=(FnBoxWrapper &&o) { std::swap(o.fnbox, fnbox); return *this; }
+        void operator()() {
+            rust!(FnBoxWrapper_operator [fnbox : *mut Fn() as "TraitObject"] {
+                unsafe { (*fnbox)(); }
+            });
+        }
+    };
+}}
+
+pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: Fn() {
+    let func : Box<Fn()> = Box::new(func);
+    let mut func_raw = Box::into_raw(func);
+    let interval_ms : u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
+    unsafe{ cpp!([interval_ms as "int", mut func_raw as "FnBoxWrapper"] {
+        QTimer::singleShot(std::chrono::milliseconds(interval_ms), std::move(func_raw));
+    })};
+}
 
 
 pub mod listmodel;

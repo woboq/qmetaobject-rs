@@ -246,3 +246,15 @@ fn qobject_properties() {
             return _obj.subx() === 4545;
         }}"));
 }
+
+
+#[test]
+fn singleshot() {
+
+    let _lock = TEST_MUTEX.lock().unwrap();
+
+    let mut engine = std::cell::RefCell::new(QmlEngine::new());
+    single_shot(std::time::Duration::from_millis(0), ||{ engine.borrow_mut().quit(); });
+    engine.get_mut().exec();
+
+}
