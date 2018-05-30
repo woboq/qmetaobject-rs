@@ -9,4 +9,5 @@ crate-type = ["dylib"]
 
 [dependencies]
 qmetaobject = { path = "../../qmetaobject"}
+chrono = "^0.4"
 

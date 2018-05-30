@@ -192,8 +192,8 @@ cpp!{{
     };
 }}
 
-pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: Fn() {
-    let func : Box<Fn()> = Box::new(func);
+pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut() {
+    let func : Box<FnMut()> = Box::new(func);
     let mut func_raw = Box::into_raw(func);
     let interval_ms : u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
     unsafe{ cpp!([interval_ms as "int", mut func_raw as "FnBoxWrapper"] {

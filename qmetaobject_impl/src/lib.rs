@@ -593,7 +593,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             fn get_cpp_object(&self)-> *mut std::os::raw::c_void {
                 self.#base_prop.get()
             }
-            unsafe fn get_from_cpp<'a>(ptr: &'a mut std::os::raw::c_void) -> &'a mut Self {
+            unsafe fn get_from_cpp(ptr: &mut std::os::raw::c_void) -> &mut Self {
                 <#name #ty_generics as #base>::get_rust_object(ptr)
             }
 
@@ -611,6 +611,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                     extra_destruct : extern fn(*mut std::os::raw::c_void)) {
                 let trait_object : *const #base = self;
                 let trait_object_ptr : *const *const #base = &trait_object;
+                self.#base_prop.set(mem);
                 (<#name #ty_generics as #base>::get_object_description().qml_construct)(
                     mem, trait_object_ptr as *const std::os::raw::c_void, extra_destruct);
             }
