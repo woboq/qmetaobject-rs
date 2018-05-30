@@ -287,12 +287,12 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             named!(property_parser -> (syn::Type, Vec<Flag>), do_parse!(
                                 ty: syn!(syn::Type) >>
                                 //trail: call!(syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated_with, property_flags) >>
-                                trail: many0!(do_parse!(
+                                trail: option!(do_parse!(
                                     punct!(;) >>
-                                    flag: call!(property_flag) >>
-                                    (flag)
+                                    flags: many0!(call!(property_flag)) >>
+                                    (flags)
                                 )) >>
-                                ((ty, trail))));
+                                ((ty, trail.unwrap_or_default()))));
                             let parsed = property_parser.parse(mac.mac.tts.clone().into())
                                 .expect("Could not parse property");
 
@@ -446,6 +446,18 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             quote!{ <#typ as #crate_::PropertyType>::pass_to_qt(&mut obj.#property_name, *a); }
         };
 
+        let setter = if let Some(ref setter) = prop.setter {
+            let setter_ident : syn::Ident = setter.clone().into();
+            quote!{
+                obj.#setter_ident(<#typ as #crate_::PropertyType>::read_from_qt(*a));
+            }
+        } else {
+            quote! {
+                obj.#property_name = <#typ as #crate_::PropertyType>::read_from_qt(*a);
+                #notify
+            }
+        };
+
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = #get_object;
@@ -453,8 +465,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             },
             #WriteProperty => unsafe {
                 let obj : &mut #name = #get_object;
-                <#typ as #crate_::PropertyType>::read_from_qt(&mut obj.#property_name, *a);
-                #notify
+                #setter
             },
             #ResetProperty => { /* TODO */},
             #register_type
@@ -672,8 +683,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                         else { self.cpp_construct() };
                 }
 
-                unsafe fn read_from_qt(&mut self, _a: *const std::os::raw::c_void) {
-                    panic!("Writing into a read only property");
+                unsafe fn read_from_qt(_a: *const std::os::raw::c_void) -> Self {
+                    panic!("Cannot write into an Object property");
                 }
             }
         }

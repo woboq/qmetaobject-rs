@@ -151,7 +151,7 @@ pub trait PropertyType {
     fn register_type(name : &str) -> i32;
     // Note: this is &mut self becauser of the lazy initialization of the QObject* for the QObject impl
     unsafe fn pass_to_qt(&mut self, a: *mut c_void);
-    unsafe fn read_from_qt(&mut self, a: *const c_void);
+    unsafe fn read_from_qt(a: *const c_void) -> Self;
 }
 
 
@@ -162,9 +162,9 @@ impl<T : QMetaType> PropertyType for T where T : QMetaType {
         if !r.is_null() { *r = self.clone(); }
     }
 
-    unsafe fn read_from_qt(&mut self, a: *const c_void) {
+    unsafe fn read_from_qt(a: *const c_void) -> Self {
         let r = a as *const Self;
-        *self = (*r).clone()
+        (*r).clone()
     }
 
     fn register_type(name : &str) -> i32 {

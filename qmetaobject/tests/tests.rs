@@ -260,13 +260,13 @@ fn singleshot() {
 }
 
 #[test]
-fn setter_getter() {
+fn getter() {
 
     #[derive(QObject,Default)]
     struct ObjectWithGetter {
         base: qt_base_class!(trait QObject),
-        prop_x: qt_property!(u32; READ prop_x_getter),
-        prop_y: qt_property!(String; READ prop_y_getter),
+        prop_x: qt_property!(u32; READ prop_x_getter CONST),
+        prop_y: qt_property!(String; READ prop_y_getter CONST),
     }
     impl ObjectWithGetter {
         fn prop_x_getter(&self) -> u32 {
@@ -279,10 +279,55 @@ fn setter_getter() {
     }
 
     let my_obj = ObjectWithGetter::default();
-
     assert!(do_test(my_obj, "Item {
         function doTest() {
             return _obj.prop_x === 85 && _obj.prop_y == 'foo'
+        }
+    }"));
+}
+
+#[test]
+fn setter() {
+
+    #[derive(QObject,Default)]
+    struct ObjectWithGetter {
+        base: qt_base_class!(trait QObject),
+        prop_x: qt_property!(u32; WRITE prop_x_setter NOTIFY prop_x_notify),
+        prop_x_notify: qt_signal!(),
+        prop_y: qt_property!(String; NOTIFY prop_y_notify WRITE prop_y_setter),
+        prop_y_notify: qt_signal!(),
+    }
+    impl ObjectWithGetter {
+        fn prop_x_setter(&mut self, v: u32) {
+            self.prop_x = v;
+            self.prop_x_notify();
+        }
+
+        fn prop_y_setter(&mut self, v : String) {
+            self.prop_y = v;
+            self.prop_y_notify();
+        }
+    }
+
+    let my_obj = ObjectWithGetter::default();
+    assert!(do_test(my_obj, "Item {
+        property var test: '' + _obj.prop_x + _obj.prop_y;
+        function doTest() {
+            if (test != '0') {
+                console.log('FAILURE #1', test);
+                return false;
+            }
+            _obj.prop_x = 96;
+            if (test != '96') {
+                console.log('FAILURE #2', test);
+                return false;
+            }
+            _obj.prop_y = 'hello';
+            if (test != '96hello') {
+                console.log('FAILURE #3', test);
+                return false;
+            }
+            return true;
         }
     }"));
 }
