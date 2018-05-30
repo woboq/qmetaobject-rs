@@ -258,3 +258,31 @@ fn singleshot() {
     engine.get_mut().exec();
 
 }
+
+#[test]
+fn setter_getter() {
+
+    #[derive(QObject,Default)]
+    struct ObjectWithGetter {
+        base: qt_base_class!(trait QObject),
+        prop_x: qt_property!(u32; READ prop_x_getter),
+        prop_y: qt_property!(String; READ prop_y_getter),
+    }
+    impl ObjectWithGetter {
+        fn prop_x_getter(&self) -> u32 {
+            return 85;
+        }
+
+        fn prop_y_getter(&self) -> String {
+            return "foo".into();
+        }
+    }
+
+    let my_obj = ObjectWithGetter::default();
+
+    assert!(do_test(my_obj, "Item {
+        function doTest() {
+            return _obj.prop_x === 85 && _obj.prop_y == 'foo'
+        }
+    }"));
+}

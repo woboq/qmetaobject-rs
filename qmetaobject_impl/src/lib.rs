@@ -81,6 +81,8 @@ struct MetaProperty {
     typ : String,
     flags : u32,
     notify_signal : Option<String>,
+    getter : Option<String>,
+    setter : Option<String>,
 }
 
 #[derive(Default)]
@@ -270,13 +272,17 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             #[derive(Debug)]
                             enum Flag {
                                 Notify(syn::Ident),
+                                Read(syn::Ident),
+                                Write(syn::Ident),
                                 Const,
                             }
                             named!(property_flag -> Flag, do_parse!(
                                 k: syn!(syn::Ident) >>
                                 flag: alt!(
                                     cond_reduce!(&k == "NOTIFY", syn!(syn::Ident)) => { |i| Flag::Notify(i) } |
-                                    cond_reduce!(&k == "CONST", epsilon!()) => { |_| Flag::Const }
+                                    cond_reduce!(&k == "CONST", epsilon!()) => { |_| Flag::Const } |
+                                    cond_reduce!(&k == "READ", syn!(syn::Ident)) => { |i| Flag::Read(i) } |
+                                    cond_reduce!(&k == "WRITE", syn!(syn::Ident)) => { |i| Flag::Write(i) }
                                 ) >> (flag)));
                             named!(property_parser -> (syn::Type, Vec<Flag>), do_parse!(
                                 ty: syn!(syn::Type) >>
@@ -291,6 +297,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                 .expect("Could not parse property");
 
                             let mut notify_signal = None;
+                            let mut getter = None;
+                            let mut setter = None;
                             let mut flags = 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000;
                             for it in parsed.1 {
                                 match it {
@@ -303,14 +311,23 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                         flags |= 0x00000400; // Constant
                                         flags &= !2; // Writable
                                     }
-
+                                    Flag::Read(i) => {
+                                        assert!(getter.is_none(), "Two READ for a property");
+                                        getter = Some(i.as_ref().to_string());
+                                    }
+                                    Flag::Write(i) => {
+                                        assert!(setter.is_none(), "Two READ for a property");
+                                        setter = Some(i.as_ref().to_string());
+                                    }
                                 }
                             }
                             properties.push(MetaProperty {
                                 name: f.ident.expect("Property does not have a name").as_ref().to_string(),
                                 typ: format!("{}", parsed.0.into_tokens()),
                                 flags: flags,
-                                notify_signal: notify_signal
+                                notify_signal: notify_signal,
+                                getter: getter,
+                                setter: setter,
                             });
                         }
                         "qt_method" => {
@@ -419,10 +436,20 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             }
         }} else { quote!{} };
 
+        let getter = if let Some(ref getter) = prop.getter {
+            let getter_ident : syn::Ident = getter.clone().into();
+            quote!{
+                let mut tmp : #typ = obj.#getter_ident();
+                <#typ as #crate_::PropertyType>::pass_to_qt(&mut tmp, *a);
+            }
+        } else {
+            quote!{ <#typ as #crate_::PropertyType>::pass_to_qt(&mut obj.#property_name, *a); }
+        };
+
         quote! { #i => match c {
             #ReadProperty => unsafe {
                 let obj : &mut #name = #get_object;
-                <#typ as #crate_::PropertyType>::pass_to_qt(&mut obj.#property_name, *a);
+                #getter
             },
             #WriteProperty => unsafe {
                 let obj : &mut #name = #get_object;
