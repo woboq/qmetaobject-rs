@@ -627,6 +627,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     let trait_name = if is_qobject { quote!{ QObject } } else { quote!{ QGadget } };
 
     let mut body =   quote!{
+        #[allow(non_snake_case)]
         impl #impl_generics #name #ty_generics #where_clause {
             #(#func_bodies)*
         }

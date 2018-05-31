@@ -146,6 +146,11 @@ qdeclare_builtin_metatype!{QString => 10}
 qdeclare_builtin_metatype!{QByteArray => 12}
 qdeclare_builtin_metatype!{QVariant => 41}
 
+// FIXME!  32 bit!
+qdeclare_builtin_metatype!{isize  => 32}
+qdeclare_builtin_metatype!{usize  => 35}
+
+
 pub trait PropertyType {
     const READ_ONLY : bool;
     fn register_type(name : &str) -> i32;

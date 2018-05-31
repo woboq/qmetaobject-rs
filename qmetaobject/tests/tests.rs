@@ -83,7 +83,9 @@ struct MyObject {
             &self, a: QString, b:QString, c: QByteArray) -> QString {
         let res = a.to_string() + &(b.to_string()) + &(c.to_string());
         QString::from(&res as &str)
-    })
+    }),
+
+//    method_out_of_line: qt_method!(fn (&self, a: QString) -> QString),
 }
 
 

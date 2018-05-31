@@ -22,12 +22,17 @@ impl QByteArray {
     }
 
 }
-impl<'a> From<&'a str> for QByteArray {
-    fn from(s : &'a str) -> QByteArray {
+impl<'a> From<&'a [u8]> for QByteArray {
+    fn from(s : &'a [u8]) -> QByteArray {
         let len = s.len();
         let ptr = s.as_ptr();
         unsafe { cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
         { return QByteArray(ptr, len); })}
+    }
+}
+impl<'a> From<&'a str> for QByteArray {
+    fn from(s : &'a str) -> QByteArray {
+        return s.as_bytes().into();
     }
 }
 
@@ -257,7 +262,6 @@ mod tests {
         assert_eq!(x[0].to_string(), "42");
         assert_eq!(x[1].to_string(), "Hello");
         assert_eq!(x[2].to_string(), "Hello");
-
     }
 
     #[test]
@@ -266,6 +270,27 @@ mod tests {
         let qvl : QVariantList = v.iter().collect();
         assert_eq!(qvl.len(), 3);
         assert_eq!(qvl[1].to_qbytearray().to_string(), "2");
+
+    }
+
+    #[test]
+    fn test_qstring_and_qbytearrazy() {
+        let qba1 : QByteArray = (b"hello" as &[u8]).into();
+        let qba2 : QByteArray = "hello".into();
+        let s : String = "hello".into();
+        let qba3 : QByteArray = s.clone().into();
+
+        assert_eq!(qba1.to_string(), "hello");
+        assert_eq!(qba2.to_string(), "hello");
+        assert_eq!(qba3.to_string(), "hello");
+
+        let qs1 : QString = "hello".into();
+        let qs2 : QString = s.into();
+        let qba4 : QByteArray = qs1.clone().into();
+
+        assert_eq!(qs1.to_string(), "hello");
+        assert_eq!(qs2.to_string(), "hello");
+        assert_eq!(qba4.to_string(), "hello");
 
     }
 }
