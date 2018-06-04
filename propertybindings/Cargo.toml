@@ -1,6 +1,0 @@
-[package]
-name = "propertybindings"
-version = "0.1.0"
-authors = ["Olivier Goffart <ogoffart@woboq.com>"]
-
-[dependencies]
