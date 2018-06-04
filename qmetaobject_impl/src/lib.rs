@@ -208,6 +208,14 @@ fn map_method_parameters(args : &syn::punctuated::Punctuated<syn::FnArg, Token![
     }).filter(|x| x.typ != "()" ).collect()
 }
 
+fn map_method_parameters2(args : &syn::punctuated::Punctuated<syn::BareFnArg, Token![,]>) -> Vec<MetaMethodParameter> {
+    args.iter().map(|x| MetaMethodParameter{
+        name: x.name.clone().map(|y| format!("{}", y.0.into_tokens())).unwrap_or_default(),
+        typ: format!("{}",x.ty.clone().into_tokens())
+    }).filter(|x| x.typ != "()" && x.typ != "& self" && x.typ != "& mut self" && x.typ != "self").collect()
+}
+
+
 #[proc_macro_derive(QObject, attributes(QMetaObjectCrate,qt_base_class))]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
     generate(input, true)
@@ -332,22 +340,32 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                         }
                         "qt_method" => {
 
-                            let method_ast : syn::ItemFn = syn::parse(mac.mac.tts.clone().into())
-                                .expect("Could not parse method");
-                            // TODO: compare f.ident and method_ast.ident
-                            let ret_type = match method_ast.decl.output {
+                            let name = f.ident.expect("Method does not have a name").as_ref().to_string();
+
+                            let (output, args) =
+                                if let Ok(method_ast) = syn::parse::<syn::ItemFn>(mac.mac.tts.clone().into()) {
+                                    let tts = &mac.mac.tts;
+                                    func_bodies.push(quote! { #tts } );
+                                    // TODO: compare f.ident and name
+                                    let args = map_method_parameters(&method_ast.decl.inputs);
+                                    (method_ast.decl.output, args)
+                                } else { if let Ok(method_decl) = syn::parse::<syn::TypeBareFn>(mac.mac.tts.clone().into()) {
+                                    let args = map_method_parameters2(&method_decl.inputs);
+                                    (method_decl.output, args)
+                                } else {
+                                    panic!("Cannot parse qt_method {}", name);
+                                }};
+
+                            let ret_type = match output {
                                 syn::ReturnType::Default => "()".to_owned(),
                                 syn::ReturnType::Type(_, ref typ) =>  format!("{}",typ.clone().into_tokens())
                             };
-                            let args = map_method_parameters(&method_ast.decl.inputs);
                             methods.push(MetaMethod {
-                                name: f.ident.expect("Method does not have a name").as_ref().to_string(),
+                                name: name,
                                 args: args,
                                 flags: 0x2,
                                 ret_type: ret_type,
                             });
-                            let tts = &mac.mac.tts;
-                            func_bodies.push(quote! { #tts } );
                         }
                         "qt_signal" => {
                             let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated;

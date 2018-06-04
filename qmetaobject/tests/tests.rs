@@ -85,7 +85,13 @@ struct MyObject {
         QString::from(&res as &str)
     }),
 
-//    method_out_of_line: qt_method!(fn (&self, a: QString) -> QString),
+    method_out_of_line: qt_method!(fn (&self, a: QString) -> QString),
+}
+
+impl MyObject {
+    fn method_out_of_line(&self, a: QString) -> QString {
+        (self.prop_y.clone() + &a.to_string()).into()
+    }
 }
 
 
@@ -129,6 +135,13 @@ fn call_method() {
     assert!(do_test(obj, "Item {
         function doTest() {
             return _obj.concatenate_strings(123, 456, 789) == '123456789';
+        }}"));
+
+    let obj = MyObject::default();
+    assert!(do_test(obj, "Item {
+        function doTest() {
+            _obj.prop_y = '8887'
+            return _obj.method_out_of_line('hello') == '8887hello';
         }}"));
 }
 
