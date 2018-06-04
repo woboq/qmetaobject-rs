@@ -1,0 +1,301 @@
+From f3dcc89972991f85dbbb255e6d25d0a5ed42a13e Mon Sep 17 00:00:00 2001
+From: Olivier Goffart <ogoffart@woboq.com>
+Date: Mon, 4 Jun 2018 18:00:30 +0200
+Subject: [PATCH 2/2] Port to qmetaobject-rs
+
+---
+ Cargo.toml  |   2 +-
+ src/main.rs |   3 +-
+ src/view.rs | 178 ++++++++++++++++++++++++++--------------------------
+ 3 files changed, 93 insertions(+), 90 deletions(-)
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 63740d2..7a03132 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -15,4 +15,4 @@ license = "MIT"
+ [dependencies]
+ regex = "0.2.1"
+ lazysort = "0.1.1"
+-qml = "0.0.9"
++qmetaobject = { path = "../qmetaobject-rs/qmetaobject/"}
+diff --git a/src/main.rs b/src/main.rs
+index d540594..c58c7e1 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,7 +1,8 @@
+ extern crate regex;
+ #[macro_use]
+-extern crate qml;
+ extern crate lazysort;
++#[macro_use]
++extern crate qmetaobject;
+ 
+ use lazysort::*;
+ 
+diff --git a/src/view.rs b/src/view.rs
+index 162d6ab..5237e43 100644
+--- a/src/view.rs
++++ b/src/view.rs
+@@ -1,14 +1,15 @@
+-use qml::*;
++use qmetaobject;
++use qmetaobject::*;
+ use lazysort::*;
++use std;
+ 
+ use super::Package;
+ 
+ pub fn show(gathered: Vec<Package>) {
+     let mut engine = QmlEngine::new();
+     let list = form_list(&gathered);
+-    let qvar: QVariant = list.get_qvar();
+ 
+-    let mut repos = gathered.iter().map(|p| p.group.clone()).collect::<Vec<_>>();
++    let mut repos = gathered.iter().map(|p| p.group.clone().into()).collect::<Vec<String>>();
+     repos.dedup();
+     let mut groups = gathered.iter()
+         .flat_map(|p| p.meta.iter())
+@@ -16,18 +17,18 @@ pub fn show(gathered: Vec<Package>) {
+         .cloned()
+         .collect::<Vec<_>>();
+     groups.dedup();
+-    let qrepos = repos.iter().map(|s| s.clone().into()).collect::<Vec<QVariant>>();
++    let qrepos = repos.iter().map(|s| QString::from(&**s)).collect::<QVariantList>();
+     let qgroups = groups.iter()
+         .map(|s| {
+             if s == "" {
+-                "(no group)".into()
++                QString::from("(no group)")
+             } else {
+-                s.as_str().into()
++                QString::from(&**s)
+             }
+         })
+-        .collect::<Vec<QVariant>>();
++        .collect::<QVariantList>();
+ 
+-    let qpckgs = QPackages::new(Packages {
++    let mut qpckgs = Packages {
+         vec: gathered,
+         list: list,
+         repos: repos,
+@@ -35,42 +36,48 @@ pub fn show(gathered: Vec<Package>) {
+         chosen_repo: -1,
+         chosen_group: -1,
+         selected: SelectedPackages::new(),
+-    });
+-    engine.set_property("packages", &qvar);
+-    engine.set_and_store_property("qpkgs", qpckgs.get_qobj());
+-    engine.set_and_store_property("repos", qrepos);
+-    engine.set_and_store_property("groups", qgroups);
+-    engine.load_data(include_str!("view.qml"));
++        ..Default::default()
++    };
++    engine.set_object_property("packages".into(), &mut qpckgs.list);
++    engine.set_object_property("qpkgs".into(), &mut qpckgs);
++    engine.set_property("repos".into(), qrepos.into());
++    engine.set_property("groups".into(), qgroups.into());
++    engine.load_data(include_str!("view.qml").into());
+ 
+     engine.exec();
+ }
+ 
+-Q_LISTMODEL!{
+-    pub QPackageList {
+-        name: String,
+-        version: String,
+-        repo: String,
+-        group: String,
+-        selected: bool
+-    }
++#[derive(Default, Clone)]
++pub struct QPackage {
++    name: QString,
++    version: QString,
++    repo: QString,
++    group: QString,
++    selected: bool
+ }
+ 
+-fn form_list(gathered: &[Package]) -> QPackageList {
+-    let mut qalm = QPackageList::new();
+-    qalm.set_data(filter_for_qml(gathered, &|_| true, None));
+-    qalm
++impl qmetaobject::listmodel::SimpleListItem for QPackage {
++    fn get(&self, idx : i32) -> QVariant {
++        match idx {
++            0 => self.name.clone().into(),
++            1 => self.version.clone().into(),
++            2 => self.repo.clone().into(),
++            3 => self.group.clone().into(),
++            4 => self.selected.into(),
++            _ => QVariant::default()
++        }
++    }
++    fn names() -> Vec<QByteArray> {
++        vec![ "name".into(), "version".into(), "repo".into(), "group".into(), "selected".into() ]
++    }
+ }
+ 
+-pub struct Packages {
+-    vec: Vec<Package>,
+-    list: QPackageList,
+-    repos: Vec<String>,
+-    groups: Vec<String>,
+-    chosen_repo: i32,
+-    chosen_group: i32,
+-    selected: SelectedPackages,
++fn form_list(gathered: &[Package]) -> qmetaobject::listmodel::SimpleListModel<QPackage> {
++    filter_for_qml(gathered, &|_| true, None).iter().collect()
+ }
+ 
++
++#[derive(Default)]
+ pub struct SelectedPackages {
+     vec: Vec<Package>,
+ }
+@@ -78,7 +85,7 @@ pub struct SelectedPackages {
+ fn filter_for_qml(vec: &[Package],
+                   filter: &Fn(&&Package) -> bool,
+                   selecteds: Option<&SelectedPackages>)
+-                  -> Vec<(String, String, String, String, bool)> {
++                  -> Vec<QPackage> {
+     vec.into_iter()
+         .filter(filter)
+         .map(|pkg| {
+@@ -91,36 +98,60 @@ fn filter_for_qml(vec: &[Package],
+             } else {
+                 false
+             };
+-            (pkg.name.clone(), pkg.version.clone(), pkg.group.clone(), meta, selected)
++            QPackage {
++                name: (&*pkg.name).into(),
++                version: (&*pkg.version).into(),
++                repo: (&*pkg.group).into(), // !!sic
++                group: (&*meta).into(), // !! sic
++                selected: selected
++            }
+         })
+         .collect()
+ }
+ 
+-Q_OBJECT!(
+-    pub Packages as QPackages {
+-        signals:
+-            fn notify_packages_changed(text: String);
+-        slots:
+-            fn request_update_repo(r: i32);
+-            fn request_update_group(r: i32);
+-            fn add_package(i: i32);
+-            fn remove_package(i: i32);
+-        properties:
+-    }
+-);
++#[derive(Default, QObject)]
++pub struct Packages {
++    vec: Vec<Package>,
++    list: qmetaobject::listmodel::SimpleListModel<QPackage>,
++    repos: Vec<String>,
++    groups: Vec<String>,
++    chosen_repo: i32,
++    chosen_group: i32,
++    selected: SelectedPackages,
+ 
+-impl QPackages {
+-    fn request_update_repo(&mut self, r: i32) -> Option<&QVariant> {
++
++    base: qt_base_class!(trait QObject),
++    notify_packages_changed: qt_signal!(text: QString),
++    request_update_repo: qt_method!( fn request_update_repo(&mut self, r: i32)  {
+         self.chosen_repo = r;
+         self.decide_and_update();
+-        None
+-    }
+-
+-    fn request_update_group(&mut self, r: i32) -> Option<&QVariant> {
++    }),
++    request_update_group: qt_method!(fn request_update_group(&mut self, r: i32)  {
+         self.chosen_group = r;
+         self.decide_and_update();
+-        None
+-    }
++    }),
++    add_package: qt_method!(fn add_package(&mut self, index: i32) {
++        let mut pkg_in_list = self.list[index as usize].clone();
++        let pkg = self.vec.iter().find(|pkg| pkg_in_list.name.to_string() == pkg.name).unwrap().clone();
++        self.selected.add_package(pkg);
++        pkg_in_list.selected = true;
++        self.list.change_line(index as usize, pkg_in_list);
++        let c = self.selected.get_text();
++        self.notify_packages_changed(c);
++    }),
++    remove_package: qt_method!(fn remove_package(&mut self, index: i32) {
++        let mut pkg_in_list = self.list[index as usize].clone();
++        let pkg = self.vec.iter().find(|pkg| pkg_in_list.name.to_string() == pkg.name).unwrap().clone();
++        self.selected.remove_package(pkg);
++        pkg_in_list.selected = false;
++        self.list.change_line(index as usize, pkg_in_list);
++        let c = self.selected.get_text();
++        self.notify_packages_changed(c);
++    }),
++
++}
++
++impl Packages {
+ 
+     fn decide_and_update(&mut self) {
+         let data = {
+@@ -139,38 +170,9 @@ impl QPackages {
+             let selected = Some(&self.selected);
+             filter_for_qml(&self.vec, closure.as_ref(), selected)
+         };
+-        self.list.set_data(data);
+-    }
+-
+-    fn add_package(&mut self, index: i32) -> Option<&QVariant> {
+-        let pkg_in_list = &self.list.view_data()[index as usize];
+-        self.list.change_line(index as usize,
+-                              pkg_in_list.0.clone(),
+-                              pkg_in_list.1.clone(),
+-                              pkg_in_list.2.clone(),
+-                              pkg_in_list.3.clone(),
+-                              true);
+-        let pkg_name = &pkg_in_list.0;
+-        let pkg = self.vec.iter().find(|pkg| pkg_name == &pkg.name).unwrap().clone();
+-        self.selected.add_package(pkg);
+-        self.notify_packages_changed(self.selected.get_text());
+-        None
++        self.list.reset_data(data);
+     }
+ 
+-    fn remove_package(&mut self, index: i32) -> Option<&QVariant> {
+-        let pkg_in_list = &self.list.view_data()[index as usize];
+-        self.list.change_line(index as usize,
+-                              pkg_in_list.0.clone(),
+-                              pkg_in_list.1.clone(),
+-                              pkg_in_list.2.clone(),
+-                              pkg_in_list.3.clone(),
+-                              false);
+-        let pkg_name = &pkg_in_list.0;
+-        let pkg = self.vec.iter().find(|pkg| pkg_name == &pkg.name).unwrap().clone();
+-        self.selected.remove_package(pkg);
+-        self.notify_packages_changed(self.selected.get_text());
+-        None
+-    }
+ }
+ 
+ impl SelectedPackages {
+@@ -186,7 +188,7 @@ impl SelectedPackages {
+         self.vec.retain(|p| p.name != package.name);
+     }
+ 
+-    fn get_text(&self) -> String {
+-        self.vec.iter().map(|p| &p.name as &str).collect::<Vec<&str>>().join(" ")
++    fn get_text(&self) -> QString {
++        self.vec.iter().map(|p| &p.name as &str).collect::<Vec<&str>>().join(" ").into()
+     }
+ }
+-- 
+2.17.1
+

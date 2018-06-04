@@ -1,0 +1,80 @@
+From 8356d25ae66ebe130a73e9782a9e3134b94a293d Mon Sep 17 00:00:00 2001
+From: Olivier Goffart <ogoffart@woboq.com>
+Date: Wed, 28 Feb 2018 17:57:59 +0100
+Subject: [PATCH 1/2] Fix compile with stable
+
+---
+ Cargo.lock  | 18 +++++++++---------
+ src/main.rs |  1 -
+ src/view.rs | 10 +++++-----
+ 3 files changed, 14 insertions(+), 15 deletions(-)
+
+diff --git a/Cargo.lock b/Cargo.lock
+index 4cbcbc1..49cdf47 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -1,12 +1,3 @@
+-[root]
+-name = "kefia"
+-version = "0.1.0"
+-dependencies = [
+- "lazysort 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+- "qml 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+- "regex 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+-]
+-
+ [[package]]
+ name = "aho-corasick"
+ version = "0.6.1"
+@@ -15,6 +6,15 @@ dependencies = [
+  "memchr 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ ]
+ 
++[[package]]
++name = "kefia"
++version = "0.1.0"
++dependencies = [
++ "lazysort 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
++ "qml 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
++ "regex 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
++]
++
+ [[package]]
+ name = "kernel32-sys"
+ version = "0.2.2"
+diff --git a/src/main.rs b/src/main.rs
+index 68c3013..d540594 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,4 +1,3 @@
+-#![feature(box_syntax)]
+ extern crate regex;
+ #[macro_use]
+ extern crate qml;
+diff --git a/src/view.rs b/src/view.rs
+index 3b80ca6..162d6ab 100644
+--- a/src/view.rs
++++ b/src/view.rs
+@@ -126,14 +126,14 @@ impl QPackages {
+         let data = {
+             let s = &self;
+             let closure: Box<Fn(&&Package) -> bool> = match (self.chosen_repo, self.chosen_group) {
+-                (-1, -1) => box |_| true,
+-                (-1, group) => box move |pkg| pkg.meta.contains(&s.groups[group as usize]),
+-                (repo, -1) => box move |pkg| pkg.group == s.repos[repo as usize],
++                (-1, -1) => Box::new( |_| true ),
++                (-1, group) => Box::new( move |pkg| pkg.meta.contains(&s.groups[group as usize])),
++                (repo, -1) => Box::new( move |pkg| pkg.group == s.repos[repo as usize]),
+                 (repo, group) => {
+-                    box move |pkg| {
++                    Box::new( move |pkg| {
+                         pkg.group == s.repos[repo as usize] &&
+                         pkg.meta.contains(&s.groups[group as usize])
+-                    }
++                    })
+                 }
+             };
+             let selected = Some(&self.selected);
+-- 
+2.17.1
+

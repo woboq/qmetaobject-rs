@@ -1,0 +1,10 @@
+Here is patches to port the kefia examples from  qml-rust to the qmetaobject crate.
+
+To try this example, go to the parent repository of qmetaobject-rs, and run
+
+  git clone https://github.com/White-Oak/kefia
+  cd kefia
+  git am ../qmetaobject-rs/examples/kefia/*.patch
+  cargo run
+
+(The patches apply to commit ec8b9ed82446b79f1eece70860cc1995c2d43558)
