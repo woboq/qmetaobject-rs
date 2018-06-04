@@ -17,11 +17,30 @@ pub struct Todos {
     count: qt_property!(i32; READ row_count NOTIFY count_changed),
     count_changed: qt_signal!(),
     list: Vec<TodosItem>,
-    active_count: qt_property!(usize; NOTIFY active_count_changed),
+    activeCount: qt_property!(usize; NOTIFY active_count_changed),
     active_count_changed: qt_signal!(),
 
+    setCompleted: qt_method!(fn(&mut self, item: usize, v: bool) -> bool),
+    setDescription: qt_method!(fn(&mut self, item: usize, v: String) -> bool ),
+    insert_rows: qt_method!(fn(&mut self, row: usize, count: usize) -> bool),
+    remove_rows: qt_method!(fn(&mut self, row: usize, count: usize) -> bool),
+    clear_completed: qt_method!(fn(&mut self)),
+    add: qt_method!(fn(&mut self, description: String)),
+    remove: qt_method!(fn(&mut self, index: u64) -> bool),
+    set_all: qt_method!(fn(&mut self, completed: bool)),
+}
+
+impl Todos {
+    fn update_active_count(&mut self) {
+        let ac = self.list.iter().filter(|i| !i.completed).count();
+        if self.activeCount != ac {
+            self.activeCount = ac;
+            self.active_count_changed();
+        }
+    }
+
     #[allow(non_snake_case)]
-    setCompleted: qt_method!(fn setCompleted(&mut self, item: usize, v: bool) -> bool {
+    fn setCompleted(&mut self, item: usize, v: bool) -> bool {
         if item >= self.list.len() {
             return false;
         }
@@ -30,9 +49,10 @@ pub struct Todos {
         (self as &mut QAbstractListModel).data_changed(idx.clone(), idx);
         self.update_active_count();
         true
-    }),
+    }
 
-    setDescription: qt_method!(fn setDescription(&mut self, item: usize, v: String) -> bool {
+    #[allow(non_snake_case)]
+    fn setDescription(&mut self, item: usize, v: String) -> bool {
         if item >= self.list.len() {
             return false;
         }
@@ -40,10 +60,9 @@ pub struct Todos {
         let idx = (self as &mut QAbstractListModel).row_index(item as i32);
         (self as &mut QAbstractListModel).data_changed(idx.clone(), idx);
         true
-    }),
+    }
 
-
-    insert_rows: qt_method!(fn insert_rows(&mut self, row: usize, count: usize) -> bool {
+    fn insert_rows(&mut self, row: usize, count: usize) -> bool {
         if count == 0 || row > self.list.len() {
             return false;
         }
@@ -52,13 +71,13 @@ pub struct Todos {
             self.list.insert(row + i, TodosItem::default());
         }
         (self as &mut QAbstractListModel).end_insert_rows();
-        self.active_count += count;
+        self.activeCount += count;
         self.active_count_changed();
         self.count_changed();
         true
-    }),
+    }
 
-    remove_rows: qt_method!(fn remove_rows(&mut self, row: usize, count: usize) -> bool {
+    fn remove_rows(&mut self, row: usize, count: usize) -> bool {
         if count == 0 || row + count > self.list.len() {
             return false;
         }
@@ -68,30 +87,30 @@ pub struct Todos {
         self.count_changed();
         self.update_active_count();
         true
-    }),
+    }
 
-    clear_completed: qt_method!(fn clear_completed(&mut self) {
+    fn clear_completed(&mut self) {
         (self as &mut QAbstractListModel).begin_reset_model();
         self.list.retain(|i| !i.completed);
         (self as &mut QAbstractListModel).end_reset_model();
         self.count_changed();
-    }),
+    }
 
-    add: qt_method!(fn add(&mut self, description: String) {
+    fn add(&mut self, description: String) {
         let end = self.list.len();
         (self as &mut QAbstractListModel).begin_insert_rows(end as i32, end as i32);
         self.list.insert(end, TodosItem { completed: false, description });
         (self as &mut QAbstractListModel).end_insert_rows();
-        self.active_count += 1;
+        self.activeCount += 1;
         self.active_count_changed();
         self.count_changed();
-    }),
+    }
 
-    remove: qt_method!(fn remove(&mut self, index: u64) -> bool {
+    fn remove(&mut self, index: u64) -> bool {
         self.remove_rows(index as usize, 1)
-    }),
+    }
 
-    set_all: qt_method!( fn set_all(&mut self, completed: bool) {
+    fn set_all(&mut self, completed: bool) {
         for i in &mut self.list {
             i.completed = completed;
         }
@@ -101,16 +120,6 @@ pub struct Todos {
         let idx2 = (self as &mut QAbstractListModel).row_index(end - 1);
         (self as &mut QAbstractListModel).data_changed(idx1, idx2);
         self.update_active_count();
-    }),
-}
-
-impl Todos {
-    fn update_active_count(&mut self) {
-        let ac = self.list.iter().filter(|i| !i.completed).count();
-        if self.active_count != ac {
-            self.active_count = ac;
-            self.active_count_changed();
-        }
     }
 }
 
