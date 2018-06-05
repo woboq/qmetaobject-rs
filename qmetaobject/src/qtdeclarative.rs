@@ -17,8 +17,10 @@ cpp!{{
     };
 }}
 
+/// Wrap a Qt Application and a QmlEngine
 cpp_class!(pub struct QmlEngine as "QmlEngineHolder");
 impl QmlEngine {
+    /// create a new QmlEngine
     pub fn new() -> QmlEngine {
         Default::default()
     }
@@ -82,6 +84,10 @@ impl QmlEngine {
         })}
     }
 
+    /// Give a QObject to the engine by wraping it in a QJSValue
+    ///
+    /// This will create the C++ object.
+    /// Panic if the C++ object was already created.
     pub fn new_qobject<T : QObject>(&mut self, obj : T) -> QJSValue {
         let obj_ptr = into_leaked_cpp_ptr(obj);
         unsafe { cpp!([self as "QmlEngineHolder*", obj_ptr as "QObject*"] -> QJSValue as "QJSValue" {
@@ -90,10 +96,12 @@ impl QmlEngine {
     }
 }
 
+/// Wrap a QQuickView
 pub struct QQuickView {
     engine : QmlEngine
 }
 impl QQuickView {
+    /// Creates a new QQuickView, it's engine and an application
     pub fn new() -> QQuickView {
         let mut engine = QmlEngine::new();
         unsafe{ cpp!([mut engine as "QmlEngineHolder"] {
@@ -103,8 +111,10 @@ impl QQuickView {
         QQuickView { engine: engine }
     }
 
+    /// Returns the wrapper to the engine
     pub fn engine(&mut self) -> &mut QmlEngine { &mut self.engine }
 
+    /// Refer to the Qt documentation of QQuickView::show
     pub fn show(&mut self) {
         let engine = self.engine();
         unsafe{ cpp!([engine as "QmlEngineHolder*"] {
@@ -112,6 +122,7 @@ impl QQuickView {
         } ) };
     }
 
+    /// Refer to the Qt documentation of QQuickView::setSource
     pub fn set_source(&mut self, url: QString) {
         let engine = self.engine();
         unsafe{ cpp!([engine as "QmlEngineHolder*", url as "QString"] {
@@ -120,7 +131,9 @@ impl QQuickView {
     }
 }
 
-
+/// Register the given type as a QML type
+///
+/// Refer to the Qt documentation for qmlRegisterType.
 pub fn qml_register_type<T : QObject + Default + Sized>(uri : &std::ffi::CStr, version_major : u32,
                                                         version_minor : u32, qml_name : &std::ffi::CStr)
 {
@@ -182,7 +195,9 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &std::ffi::CStr, v
     })}
 }
 
-
+/// A QObject-like trait to inherit from QQuickItem.
+///
+/// Work in progress
 pub trait QQuickItem : QObject {
     fn get_object_description() -> &'static QObjectDescription where Self:Sized {
         unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
@@ -262,20 +277,11 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
             rust_object.meta_object()
         });
     }
-/*
-    int rowCount(const QModelIndex & = QModelIndex()) const override {
-        return rust!(Rust_QAbstractListModel_rowCount[rust_object : &QAbstractListModel as "TraitObject"]
-                -> i32 as "int" {
-            rust_object.row_count()
-        });
-    }
-*/
-
-
 };
 
 }}
 
+/// Wrapper for QJSValue
 cpp_class!(pub struct QJSValue as "QJSValue");
 impl QJSValue {
     pub fn to_string(&self) -> QString {
@@ -358,13 +364,17 @@ mod qjsvalue_tests {
 }
 
 
-
+/// A QObject-like trait to inherit from QQmlExtensionPlugin.
+///
+/// Refer to the Qt documentation of QQmlExtensionPlugin
 pub trait QQmlExtensionPlugin : QObject {
+    #[doc(hidden)] // implementation detail for the QObject custom derive
     fn get_object_description() -> &'static QObjectDescription where Self:Sized {
         unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<Rust_QQmlExtensionPlugin>();
         } ) }
     }
+    #[doc(hidden)] // implementation detail for the QObject custom derive
     unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
         let ptr = cpp!{[p as "Rust_QQmlExtensionPlugin*"] -> *mut c_void as "void*" {
             return p->rust_object.a;
@@ -372,6 +382,7 @@ pub trait QQmlExtensionPlugin : QObject {
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
 
+    /// Refer to the Qt documentation of QQmlExtensionPlugin::registerTypes
     fn register_types(&mut self, uri : &std::ffi::CStr);
 }
 

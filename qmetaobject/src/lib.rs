@@ -9,10 +9,13 @@ extern crate qmetaobject_impl;
 #[doc(hidden)]
 pub use qmetaobject_impl::*;
 
-#[macro_use]
+/* In order to be able to use the lazy_static macro from the QObject custom derive, we re-export
+   it under a new name qmetaobject_lazy_static */
+#[macro_use] extern crate lazy_static;
 #[allow(unused_imports)]
-extern crate lazy_static;
-pub use lazy_static::*;
+use lazy_static::*;
+#[doc(hidden)]
+#[macro_export] macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 
 use std::os::raw::c_void;
 
@@ -23,6 +26,7 @@ cpp!{{
     #include <qmetaobject_rust.hpp>
 }}
 
+#[doc(hidden)]
 pub struct QObjectCppWrapper {
     ptr: *mut c_void
 }
@@ -45,6 +49,7 @@ impl QObjectCppWrapper {
     pub fn set(&mut self, val : *mut c_void) { self.ptr = val; }
 }
 
+#[doc(hidden)]
 #[repr(C)]
 pub struct QObjectDescription {
     pub size : usize,
@@ -54,25 +59,43 @@ pub struct QObjectDescription {
                                         extra_destruct : extern fn(*mut c_void)),
 }
 
+/// Trait that is implemented by the QObject custom derive macro
+///
+/// Do not implement this trait yourself, use `#[derive(QObject)]`.
+///
+/// The method of this trait fits into two categories: the ones that are re-implemented by
+/// the custom derive, and the ones that are used by this macro and need to be implemented
+/// by other QObject-like trait which you use in the qt_base_class! macro.
 pub trait QObject {
-    // these are reimplemented by the QObject procedural macro
+    // Functions re-implemented by the custom derive:
+
+    /// Returns a pointer to a meta object
     fn meta_object(&self)->*const QMetaObject;
+    /// Returns a pointer to a meta object
     fn static_meta_object()->*const QMetaObject where Self:Sized;
-    // return a pointer to the QObject*  (can be null if not yet initialized)
-    // Ideally this should be covariant
+    /// return a C++ pointer to the QObject*  (can be null if not yet initialized)
     fn get_cpp_object(&self)-> *mut c_void;
+    /// Construct the C++ Object.
+    ///
+    /// Note, once this function is called, the object must not be moved in memory.
     unsafe fn cpp_construct(&mut self) -> *mut c_void;
+    /// Construct the C++ Object, suitable for callbacks to construct QML objects.
     unsafe fn qml_construct(&mut self, mem : *mut c_void, extra_destruct : extern fn(*mut c_void));
+    /// Return the size of the C++ object
     fn cpp_size() -> usize where Self:Sized;
+    /// Return a reference to an object, given a pointer to a C++ object
     unsafe fn get_from_cpp<'a>(p: &'a mut c_void) -> &'a mut Self where Self:Sized;
 
-    // These are not, they are part of the trait structure that sub trait must have
-    // Copy/paste this code replacing QObject with the type
+    // Part of the trait structure that sub trait must have.
+    // Copy/paste this code replacing QObject with the type.
+
+    /// Returns a QObjectDescription for this type
     fn get_object_description() -> &'static QObjectDescription where Self:Sized {
         unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<RustObject<QObject>>();
         } ) }
     }
+    /// Implementation for get_from_cpp
     unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
         // This function is not using get_object_description because we want t be extra fast.
         // Actually, this could be done without indireciton to C++ if we could extract the offset
@@ -84,6 +107,11 @@ pub trait QObject {
     }
 }
 impl QObject {
+    /// Creates a C++ object and construct a QVariant containing a pointer to it.
+    ///
+    /// The cpp_construct function must already have been called.
+    ///
+    /// FIXME: should probably not be used
     pub unsafe fn as_qvariant(&self) -> QVariant {
         let self_ = self.get_cpp_object();
         cpp!{[self_ as "QObject*"] -> QVariant as "QVariant"  {
@@ -91,8 +119,13 @@ impl QObject {
         }}
     }
 }
-// The ownership is given to CPP, the resulting QObject* ptr need to be used somewhere
-// that takes ownership
+
+/// Create the C++ object and return a C++ pointer to a QObject.
+///
+/// The ownership is given to CPP, the resulting QObject* ptr need to be used somewhere
+/// that takes ownership
+///
+/// Panics if the C++ object was already created.
 pub fn into_leaked_cpp_ptr<T: QObject>(obj : T) -> *mut c_void {
     let mut b : Box<T> = Box::new(obj);
     let obj_ptr = unsafe { b.cpp_construct() };
@@ -100,10 +133,16 @@ pub fn into_leaked_cpp_ptr<T: QObject>(obj : T) -> *mut c_void {
     obj_ptr
 }
 
+/// Trait that is implemented by the QGadget custom derive macro
+///
+/// Do not implement this trait yourself, use `#[derive(QGadget)]`.
 pub trait QGadget  {
+    /// Returns a pointer to a meta object
     fn meta_object(&self)->*const QMetaObject;
+    /// Returns a pointer to a meta object
     fn static_meta_object()->*const QMetaObject where Self:Sized;
 
+    /// Returns a QVariant containing a copy of this object
     fn to_qvariant(&self) -> QVariant where Self: Clone + Default {
         let id : i32 = <Self as QMetaType>::register(""); // FIXME: we should not register it always
         //let id = self.metatype();
@@ -113,11 +152,13 @@ pub trait QGadget  {
     }
 }
 
+#[doc(hidden)]
 #[no_mangle]
 pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {
     return unsafe { (*p).meta_object() };
 }
 
+#[doc(hidden)]
 #[no_mangle]
 pub extern "C" fn RustObject_destruct(p: *mut QObject) {
     // We are destroyed from the C++ code, which means that the object was owned by C++ and we
@@ -125,6 +166,8 @@ pub extern "C" fn RustObject_destruct(p: *mut QObject) {
     let _b = unsafe { Box::from_raw(p) };
 }
 
+/// This function is called from the implementation of the signal.
+#[doc(hidden)]
 pub unsafe fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
     let a = a.as_ptr();
     cpp!([object as "QObject*", meta as "const QMetaObject*", id as "int", a as "void**"] {
@@ -132,6 +175,8 @@ pub unsafe fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id 
     })
 }
 
+/// Same as a C++ QMetaObject.
+#[doc(hidden)]
 #[repr(C)]
 pub struct QMetaObject {
     pub superdata : *const QMetaObject,
@@ -144,27 +189,121 @@ pub struct QMetaObject {
 unsafe impl Sync for QMetaObject {}
 unsafe impl Send for QMetaObject {}
 
-#[macro_export]
-macro_rules! qt_property {
-    ($t:ty $(; $($rest:tt)*)*) => { $t };
-}
-
+/// This macro must be used once as a type in a struct that derives from QObject.
+/// It is anotate from which QObject like trait it is supposed to derive.
+/// the field which it annotate will be an internal property holding a pointer
+/// to the actual C++ object
+///
+/// The trait needs to be like the QObject trait, see the documentation of the QObject trait.
+///
+/// ```
+/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// #[derive(QObject)]
+/// struct Foo {
+///    base : qt_base_class!(trait QObject),
+/// }
+/// ```
+///
+/// Note: in the future, the plan is to extent so you could derive from other struct by doing
+/// `base : qt_base_class(struct Foo)`. But this is not yet implemented
 #[macro_export]
 macro_rules! qt_base_class {
     ($($t:tt)*) => { $crate::QObjectCppWrapper };
 }
 
+/// This macro can be used as a type of a field and can then turn this field in a Qt property.
+/// The first parameter is the type of this property. Then we can have the meta keywords similar
+/// to these found in Q_PROPERTY.
+///
+/// Can be used within a struct that derives from QObject or QGadget
+///
+/// `NOTIFY` followed by the name of a signal that need to be declared separately.
+/// `WRITE` followed by the name of a setter. `READ` follow by the name of a getter. Note that
+/// these are not mandatory and if no setter or no getter exist, it will set the field.
+/// `CONST` is also supported
+///
+/// ```
+/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// #[derive(QObject)]
+/// struct Foo {
+///    base : qt_base_class!(trait QObject),
+///    foo : qt_property!(u32; NOTIFY foo_changed WRITE set_foo) ,
+///    foo_changed: qt_signal!()
+/// }
+/// impl Foo {
+///    fn set_foo(&mut self, val : u32) { self.foo = val; }
+/// }
+/// ```
+#[macro_export]
+macro_rules! qt_property {
+    ($t:ty $(; $($rest:tt)*)*) => { $t };
+}
 
+/// This macro can be used to declare a method which will become a meta method.
+///
+/// Inside you can either declare the method signature, or write the full method.
+///
+/// Can be used within a struct that derives from QObject or QGadget
+///
+/// ```
+/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// #[derive(QObject)]
+/// struct Foo {
+///    base : qt_base_class!(trait QObject),
+///    defined_method : qt_method!(fn defined_method(&self, foo : u32) -> u32 {
+///       println!("contents goes here.");
+///       return 42;
+///    }),
+///    outofline_method : qt_method!(fn(&self, foo : u32)-> u32),
+/// }
+/// impl Foo {
+///    fn outofline_method(&mut self, foo : u32) -> u32 {
+///       println!("Or here.");
+///       return 69;
+///    }
+/// }
+/// ```
 #[macro_export]
 macro_rules! qt_method {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
 
+/// Declares a signal
+///
+/// Inside you can either declare the method signature, or write the full method.
+///
+/// To be used within a struct that derives from QObject
+///
+/// ```
+/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// #[derive(QObject)]
+/// struct Foo {
+///    base : qt_base_class!(trait QObject),
+///    my_signal : qt_signal!(xx: u32, yy: String),
+/// }
+/// fn some_code(foo : &mut Foo) {
+///    foo.my_signal(42, "42".into()); // emits the signal
+/// }
+/// ```
 #[macro_export]
 macro_rules! qt_signal {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
 
+/// Equivalent to the Q_PLUGIN_METADATA macro.
+///
+/// To be used within a struct that derives from QObject, and it should contain a string which is
+/// the IID
+///
+/// ```
+/// # #[macro_use] extern crate qmetaobject; use qmetaobject::qtdeclarative::QQmlExtensionPlugin;
+/// #[derive(Default, QObject)]
+/// struct MyPlugin {
+///     base: qt_base_class!(trait QQmlExtensionPlugin),
+///     plugin: qt_plugin!("org.qt-project.Qt.QQmlExtensionInterface/1.0")
+/// }
+/// # impl QQmlExtensionPlugin for MyPlugin { fn register_types(&mut self, uri : &std::ffi::CStr) { } }
+/// ```
 #[macro_export]
 macro_rules! qt_plugin {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
@@ -192,6 +331,9 @@ cpp!{{
     };
 }}
 
+/// Call the callback once, after a given duration.
+///
+/// FIXME! This is actually unsafe currently.
 pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut() {
     let func : Box<FnMut()> = Box::new(func);
     let mut func_raw = Box::into_raw(func);

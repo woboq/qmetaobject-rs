@@ -61,7 +61,7 @@ fn write_u32(val : i32) -> [u8;4] {
     [(val & 0xff) as u8 , ((val >> 8) & 0xff) as u8, ((val >> 16) & 0xff) as u8, ((val >> 24) & 0xff) as u8]
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct MetaMethodParameter {
     typ : String,
     name : String
@@ -222,7 +222,7 @@ pub fn qobject_impl(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_derive(QGadget)]
-pub fn qadget_impl(input: TokenStream) -> TokenStream {
+pub fn qgadget_impl(input: TokenStream) -> TokenStream {
     generate(input, false)
 }
 
@@ -557,7 +557,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             #[allow(non_snake_case)]
             fn #sig_name(&mut self #(, #args_decl)*) {
                 let a : [*mut std::os::raw::c_void; #array_size] = [ std::ptr::null_mut() #(, #args_ptr)* ];
-                unsafe { #crate_::invoke_signal(self.get_cpp_object(), #name::static_meta_object(), #i, &a) }
+                unsafe { #crate_::invoke_signal((self as &mut #crate_::QObject).get_cpp_object(), #name::static_meta_object(), #i, &a) }
             }
         }
     }));
@@ -570,7 +570,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
     let mo = if ast.generics.params.is_empty() {
         quote! {
-            lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
+            qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
                 superdata: #base_meta_object,
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
@@ -588,7 +588,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             use std::any::TypeId;
 
             // FIXME! this could be global
-            lazy_static! {
+            qmetaobject_lazy_static! {
                 static ref HASHMAP: Mutex<HashMap<TypeId, Box<#crate_::QMetaObject>>> =
                     Mutex::new(HashMap::new());
             };
@@ -694,13 +694,13 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             impl #impl_generics #crate_::PropertyType for #name #ty_generics #where_clause {
                 const READ_ONLY : bool = true;
                 fn register_type(_name : &str) -> i32 {
-                    register_metatype_qobject::<Self>()
+                    #crate_::register_metatype_qobject::<Self>()
                 }
                 unsafe fn pass_to_qt(&mut self, a: *mut std::os::raw::c_void) {
                     let r = a as *mut *const std::os::raw::c_void;
-                    let obj = self.get_cpp_object();
+                    let obj = (self as &mut #crate_::QObject).get_cpp_object();
                     *r = if !obj.is_null() { obj }
-                        else { self.cpp_construct() };
+                        else { (self as  &mut #crate_::QObject).cpp_construct() };
                 }
 
                 unsafe fn read_from_qt(_a: *const std::os::raw::c_void) -> Self {
@@ -741,12 +741,11 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             #[no_mangle]
             pub extern fn qt_plugin_instance() -> *mut std::os::raw::c_void
             {
-                into_leaked_cpp_ptr(#name::default())
+                #crate_::into_leaked_cpp_ptr(#name::default())
             }
 
         }
     }
-
     body.into()
 }
 

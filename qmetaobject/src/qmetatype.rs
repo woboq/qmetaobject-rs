@@ -39,6 +39,8 @@ fn register_metatype_common<T : Sized + Clone + Default>(
     }
 }
 
+/// Used by the QObject custom derive to register the type as a pointer to a QObject
+#[doc(hidden)]
 pub fn register_metatype_qobject<T : QObject>() -> i32 {
     let metaobject = T::static_meta_object();
     unsafe {
@@ -55,15 +57,20 @@ pub fn register_metatype_qobject<T : QObject>() -> i32 {
     }
 }
 
+/// Implement this trait for type that should be known to the QMetaObject system
 pub trait QMetaType : Clone + Default {
-    //const NAME : &'static str;
+    /// Registers the type.
+    ///
+    /// See the Qt documentation of qRegisterMetaType()
+    ///
+    /// The default implementation should work for most types
     fn register(name : &str) -> i32 {
-        //if name.is_empty() { Self::NAME } else { name }
         let name = std::ffi::CString::new(name).unwrap();
         register_metatype_common::<Self>(name.as_ptr(), std::ptr::null())
     }
 }
 
+/// QGadget are automatically QMetaType
 impl<T : QGadget> QMetaType for T where T: Clone + Default {
     fn register(_name : &str) -> i32 {
         //assert!(_name == T::static_meta_object().className());
@@ -128,7 +135,6 @@ macro_rules! qdeclare_builtin_metatype {
         }
     }
 }
-
 qdeclare_builtin_metatype!{()   => 43}
 qdeclare_builtin_metatype!{bool => 1}
 qdeclare_builtin_metatype!{i32  => 2}
@@ -150,7 +156,9 @@ qdeclare_builtin_metatype!{QVariant => 41}
 qdeclare_builtin_metatype!{isize  => 32}
 qdeclare_builtin_metatype!{usize  => 35}
 
-
+/// Internal trait used to pass or read the type in a Q_PROPERTY
+///
+/// Don't implement this trait, implement the QMetaType trait.
 pub trait PropertyType {
     const READ_ONLY : bool;
     fn register_type(name : &str) -> i32;
