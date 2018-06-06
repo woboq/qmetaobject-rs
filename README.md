@@ -5,8 +5,9 @@ The qmetaobject crate is a crate which is used to expose rust object to Qt and Q
 ## Objectives
 
  - Rust procedural macro (custom derive) to generate a QMetaObject at compile time.
- - Bindings for the main Qt types using the rust-cpp crate.
+ - Bindings for the main Qt types using the cpp! macro from the cpp crate.
  - Users of this crate should not require to type any line of C++ or use another build system than cargo.
+ - Performance: Avoid any unnecessary conversion or heap allocation.
 
 ## Overview
 
@@ -42,8 +43,14 @@ Window {
 
 ## Features
 
- - Create object inheriting from QObject, QGraphicsItem, QAbstractListModel, QQmlExtensionPlugin, ...
+ - Create object inheriting from QObject, QQuickItem, QAbstractListModel, QQmlExtensionPlugin, ...
  - Export Qt properties, signals, methods, ...
  - Also support `#[derive(QGadget)]` (same as Q_GADGET)
  - Create Qt plugin (see examples/qmlextensionplugins)
+
+## Dependency
+
+Uses the cpp! macro for all the glue code with C++.
+But needs the fork https://github.com/ogoffart/rust-cpp as it uses the cpp_class! and rust!
+added feature
 

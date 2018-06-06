@@ -5,11 +5,12 @@ authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
 
 [dependencies]
-cpp = { path = "/home/rust/rust-cpp/cpp"}
 qmetaobject_impl = { path = "../qmetaobject_impl"}
 lazy_static = "1.0"
+# We can't use the cpp crate from crates.io because we need cpp_class and rust!
+cpp = { git = "https://github.com/ogoffart/rust-cpp" }
 
 
 [build-dependencies]
-cpp_build = { path = "/home/rust/rust-cpp/cpp_build"}
+cpp_build = { git = "https://github.com/ogoffart/rust-cpp" }
 

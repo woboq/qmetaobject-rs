@@ -13,7 +13,8 @@ pub use qmetaobject_impl::*;
    it under a new name qmetaobject_lazy_static */
 #[macro_use] extern crate lazy_static;
 #[allow(unused_imports)]
-use lazy_static::*;
+#[doc(hidden)]
+pub use lazy_static::*;
 #[doc(hidden)]
 #[macro_export] macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 
