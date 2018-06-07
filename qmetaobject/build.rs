@@ -16,12 +16,23 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 extern crate cpp_build;
+use std::process::Command;
+
+fn qmake_query(var : &str) -> String {
+    String::from_utf8(Command::new("qmake").args(&["-query", var])
+        .output().expect("Failed to execute qmake. Make sure 'qmake' is in your path")
+        .stdout).expect("UTF-8 conversion failed")
+}
 
 fn main() {
+    let qt_include_path = qmake_query("QT_INSTALL_HEADERS");
+    let qt_library_path = qmake_query("QT_INSTALL_LIBS");
+
     cpp_build::Config::new()
-        .include("/usr/include/qt")
+        .include(qt_include_path.trim())
         .build("src/lib.rs");
 
+    println!("cargo:rustc-link-search={}", qt_library_path.trim());
     println!("cargo:rustc-link-lib=Qt5Widgets");
     println!("cargo:rustc-link-lib=Qt5Gui");
     println!("cargo:rustc-link-lib=Qt5Core");
