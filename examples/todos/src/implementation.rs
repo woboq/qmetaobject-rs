@@ -47,7 +47,7 @@ pub struct Todos {
     clearCompleted: qt_method!(fn(&mut self)),
     add: qt_method!(fn(&mut self, description: String)),
     remove: qt_method!(fn(&mut self, index: u64) -> bool),
-    set_all: qt_method!(fn(&mut self, completed: bool)),
+    setAll: qt_method!(fn(&mut self, completed: bool)),
 }
 
 impl Todos {
@@ -131,7 +131,8 @@ impl Todos {
         self.remove_rows(index as usize, 1)
     }
 
-    fn set_all(&mut self, completed: bool) {
+    #[allow(non_snake_case)]
+    fn setAll(&mut self, completed: bool) {
         for i in &mut self.list {
             i.completed = completed;
         }
