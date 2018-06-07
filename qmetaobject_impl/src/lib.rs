@@ -361,9 +361,9 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
                             let (output, args) =
                                 if let Ok(method_ast) = syn::parse::<syn::ItemFn>(mac.mac.tts.clone().into()) {
+                                    assert_eq!(name, method_ast.ident.as_ref());
                                     let tts = &mac.mac.tts;
                                     func_bodies.push(quote! { #tts } );
-                                    // TODO: compare f.ident and name
                                     let args = map_method_parameters(&method_ast.decl.inputs);
                                     (method_ast.decl.output, args)
                                 } else { if let Ok(method_decl) = syn::parse::<syn::TypeBareFn>(mac.mac.tts.clone().into()) {
