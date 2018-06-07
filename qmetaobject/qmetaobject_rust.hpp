@@ -35,7 +35,7 @@ struct RustObject : Base {
     TraitObject rust_object;
     void (*extra_destruct)(QObject *);
     const QMetaObject *metaObject() const override {
-        return RustObject_metaObject(rust_object);
+        return rust_object ? RustObject_metaObject(rust_object) : Base::metaObject();
     }
     int qt_metacall(QMetaObject::Call _c, int _id, void **_a) override {
         _id = Base::qt_metacall(_c, _id, _a);
@@ -67,13 +67,12 @@ struct RustObject : Base {
         return Base::event(event);
     }
     ~RustObject() {
+        auto r = rust_object;
+        rust_object = { nullptr, nullptr };
         if (extra_destruct)
             extra_destruct(this);
-        if (rust_object) {
-            auto r = rust_object;
-            rust_object = { nullptr, nullptr };
+        if (r)
             RustObject_destruct(r);
-        }
     }
 };
 
