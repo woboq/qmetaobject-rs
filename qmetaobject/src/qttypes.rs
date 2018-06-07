@@ -21,6 +21,7 @@ use std::convert::From;
 use std::fmt::Display;
 use std::ops::{Index,IndexMut};
 use std::iter::FromIterator;
+use std::str::Utf8Error;
 
 cpp_class!(pub struct QByteArray as "QByteArray");
 impl QByteArray {
@@ -34,10 +35,9 @@ impl QByteArray {
             std::slice::from_raw_parts(c_ptr, size)
         }
     }
-    pub fn to_str(&self) -> &str {
-        std::str::from_utf8(self.to_slice()).unwrap()
+    pub fn to_str(&self) -> Result<&str, Utf8Error> {
+        std::str::from_utf8(self.to_slice())
     }
-
 }
 impl<'a> From<&'a [u8]> for QByteArray {
     fn from(s : &'a [u8]) -> QByteArray {
