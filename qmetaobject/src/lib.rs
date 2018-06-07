@@ -338,8 +338,13 @@ cpp!{{
                 });
             }
         }
-        FnBoxWrapper(const FnBoxWrapper&) = delete;
         FnBoxWrapper &operator=(const FnBoxWrapper&) = delete;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        FnBoxWrapper(const FnBoxWrapper&) = delete;
+#else
+        // Prior to Qt 5.10 we can't have move-only wrapper. Just do the auto_ptr kind of hack.
+        FnBoxWrapper(const FnBoxWrapper &o) : fnbox(o.fnbox) {  const_cast<FnBoxWrapper &>(o).fnbox = {}; }
+#endif
         FnBoxWrapper(FnBoxWrapper &&o) : fnbox(o.fnbox) {  o.fnbox = {}; }
         FnBoxWrapper &operator=(FnBoxWrapper &&o) { std::swap(o.fnbox, fnbox); return *this; }
         void operator()() {
