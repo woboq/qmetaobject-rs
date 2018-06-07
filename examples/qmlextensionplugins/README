@@ -1,7 +1,18 @@
 This example is showing that you can use plugins with qml builder.
+It is base on the `qmlextensionplugins` example found in the qtdeclarative
+source code. It needs the QML files from that example in the Qt source tree.
+
+Build with:
+
+ cargo build
+
 
 Run with:
 
- cargo build
- qmlscene -P ./target/debug/ -I $QTSRCDIR/qtdeclarative/examples/qml/qmlextensionplugins/imports $QTSRCDIR/qtdeclarative/examples/qml/qmlextensionplugins/plugins.qml
+ qmlscene -P ./target/debug/ \
+    -I $QTSRCDIR/qtdeclarative/examples/qml/qmlextensionplugins/imports \
+    $QTSRCDIR/qtdeclarative/examples/qml/qmlextensionplugins/plugins.qml
+
+Where $QTSRCDIR is the path to the Qt source
+
 

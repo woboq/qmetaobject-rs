@@ -15,27 +15,18 @@ struct TimeModel
 }
 
 impl TimeModel {
-
     fn lazy_init(&mut self) {
         // FIXME: initialize a timer that emits timeChanged
-
     }
-
     fn get_hour(&mut self) -> u32 {
         self.lazy_init();
         chrono::offset::Local::now().time().hour()
-
     }
     fn get_minute(&mut self) -> u32 {
         self.lazy_init();
         chrono::offset::Local::now().time().minute()
     }
-
-
-
-
 }
-
 
 #[derive(Default, QObject)]
 struct QExampleQmlPlugin {
