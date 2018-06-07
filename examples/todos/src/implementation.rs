@@ -44,7 +44,7 @@ pub struct Todos {
     setDescription: qt_method!(fn(&mut self, item: usize, v: String) -> bool ),
     insert_rows: qt_method!(fn(&mut self, row: usize, count: usize) -> bool),
     remove_rows: qt_method!(fn(&mut self, row: usize, count: usize) -> bool),
-    clear_completed: qt_method!(fn(&mut self)),
+    clearCompleted: qt_method!(fn(&mut self)),
     add: qt_method!(fn(&mut self, description: String)),
     remove: qt_method!(fn(&mut self, index: u64) -> bool),
     set_all: qt_method!(fn(&mut self, completed: bool)),
@@ -109,7 +109,8 @@ impl Todos {
         true
     }
 
-    fn clear_completed(&mut self) {
+    #[allow(non_snake_case)]
+    fn clearCompleted(&mut self) {
         (self as &mut QAbstractListModel).begin_reset_model();
         self.list.retain(|i| !i.completed);
         (self as &mut QAbstractListModel).end_reset_model();
