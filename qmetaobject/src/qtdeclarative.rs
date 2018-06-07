@@ -18,6 +18,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use super::*;
 
 cpp!{{
+    #include <memory>
     #include <QtQuick/QtQuick>
     #include <QtCore/QDebug>
 
