@@ -43,7 +43,7 @@ pub trait QAbstractListModel : QObject {
     /// Refer to the Qt documentation of QAbstractListModel::data
     fn data(&self, index: QModelIndex, role:i32) -> QVariant;
     /// Refer to the Qt documentation of QAbstractListModel::setData
-    fn set_data(&mut self, _index: QModelIndex, _value: QVariant, _role: i32) -> bool { false }
+    fn set_data(&mut self, _index: QModelIndex, _value: &QVariant, _role: i32) -> bool { false }
     /// Refer to the Qt documentation of QAbstractListModel::roleNames
     fn role_names(&self) -> HashMap<i32, QByteArray> { HashMap::new() }
 }
@@ -158,7 +158,7 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
         return rust!(Rust_QAbstractListModel_setData[rust_object : &mut QAbstractListModel as "TraitObject",
                 index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
                 -> bool as "bool" {
-            rust_object.set_data(index, value, role)
+            rust_object.set_data(index, &value, role)
         });
     }
 

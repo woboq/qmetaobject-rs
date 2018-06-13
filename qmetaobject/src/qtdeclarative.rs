@@ -36,7 +36,7 @@ cpp!{{
 }}
 
 /// Wrap a Qt Application and a QmlEngine
-cpp_class!(pub struct QmlEngine as "QmlEngineHolder");
+cpp_class!(pub unsafe struct QmlEngine as "QmlEngineHolder");
 impl QmlEngine {
     /// create a new QmlEngine
     pub fn new() -> QmlEngine {
@@ -300,7 +300,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 }}
 
 /// Wrapper for QJSValue
-cpp_class!(pub struct QJSValue as "QJSValue");
+cpp_class!(pub unsafe struct QJSValue as "QJSValue");
 impl QJSValue {
     pub fn to_string(&self) -> QString {
         unsafe {

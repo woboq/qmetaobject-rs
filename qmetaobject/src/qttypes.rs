@@ -23,7 +23,7 @@ use std::ops::{Index,IndexMut};
 use std::iter::FromIterator;
 use std::str::Utf8Error;
 
-cpp_class!(pub struct QByteArray as "QByteArray");
+cpp_class!(pub unsafe struct QByteArray as "QByteArray");
 impl QByteArray {
     pub fn to_slice(&self) -> &[u8] {
         unsafe {
@@ -87,7 +87,7 @@ impl PartialEq for QByteArray {
     }
 }
 
-cpp_class!(pub struct QString as "QString");
+cpp_class!(pub unsafe struct QString as "QString");
 impl QString {
     pub fn to_slice(&self) -> &[u16] {
         unsafe {
@@ -134,7 +134,7 @@ impl PartialEq for QString {
     }
 }
 
-cpp_class!(pub struct QVariant as "QVariant");
+cpp_class!(pub unsafe struct QVariant as "QVariant");
 impl QVariant {
     pub fn to_qbytearray(&self) -> QByteArray {
         // FIXME
@@ -183,7 +183,7 @@ impl<'a, T> From<&'a T> for QVariant where T : Into<QVariant> + Clone {
     }
 }
 
-cpp_class!(pub struct QVariantList as "QVariantList");
+cpp_class!(pub unsafe struct QVariantList as "QVariantList");
 impl QVariantList {
     pub fn push(&mut self, value: QVariant) {
         unsafe {cpp!([self as "QVariantList*", value as "QVariant"]
@@ -313,7 +313,7 @@ mod tests {
 }
 
 
-cpp_class!(pub struct QModelIndex as "QModelIndex");
+cpp_class!(pub unsafe struct QModelIndex as "QModelIndex");
 impl QModelIndex {
     pub fn row(&self) -> i32 {
         unsafe {
