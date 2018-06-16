@@ -379,6 +379,8 @@ fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
 /// Refer to the documentation of Qt::UserRole
 pub const USER_ROLE: i32 = 0x0100;
 
+pub mod itemmodel;
+pub use itemmodel::*;
 pub mod listmodel;
 pub use listmodel::*;
 pub mod qtdeclarative;
