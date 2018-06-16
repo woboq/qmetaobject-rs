@@ -367,6 +367,17 @@ pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut()
     })};
 }
 
+/* Small helper function for Rust_QAbstractItemModel::roleNames */
+fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
+    unsafe {
+        cpp!([hash as "QHash<int, QByteArray>*", key as "int", value as "QByteArray"]{
+        (*hash)[key] = std::move(value);
+    })
+    }
+}
+
+/// Refer to the documentation of Qt::UserRole
+pub const USER_ROLE: i32 = 0x0100;
 
 pub mod listmodel;
 pub use listmodel::*;

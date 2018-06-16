@@ -111,13 +111,6 @@ impl QAbstractListModel {
     }
 }
 
-/* Small helper function for Rust_QAbstractListModel::roleNames */
-fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
-    unsafe { cpp!([hash as "QHash<int, QByteArray>*", key as "int", value as "QByteArray"]{
-        (*hash)[key] = std::move(value);
-    })}
-}
-
 cpp!{{
 #include <qmetaobject_rust.hpp>
 #include <QtCore/QAbstractListModel>
@@ -182,9 +175,6 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
     //QModelIndex parent(const QModelIndex &child) const override;
 };
 }}
-
-/// Refer to the documentation of Qt::UserRole
-pub const USER_ROLE : i32 = 0x0100;
 
 /// A trait used in SimpleListModel.
 pub trait SimpleListItem {
