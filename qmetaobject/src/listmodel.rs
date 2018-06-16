@@ -114,6 +114,9 @@ impl QAbstractListModel {
 cpp!{{
 #include <qmetaobject_rust.hpp>
 #include <QtCore/QAbstractListModel>
+}}
+
+cpp!{{
 struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 
     using QAbstractListModel::beginInsertRows;
