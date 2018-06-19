@@ -77,11 +77,14 @@ impl QmlEngine {
     }
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
-    pub fn set_object_property<T : QObject + Sized>(&mut self, name: QString, obj: &mut T) {
-        let obj_ptr = unsafe { obj.cpp_construct() }; // FIXME! unsafe
-        unsafe { cpp!([self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
+    ///
+    /// Unsafe because it will call QObject::cpp_construct which require that T is no longer moved.
+    /// (TODO: Consider using std::mem::Pin)
+    pub unsafe fn set_object_property<T : QObject + Sized>(&mut self, name: QString, obj: &mut T) {
+        let obj_ptr = obj.cpp_construct();
+        cpp!([self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);
-        })}
+        })
     }
 
     pub fn invoke_method(&mut self, name: QByteArray, args : &[QVariant]) -> QVariant {

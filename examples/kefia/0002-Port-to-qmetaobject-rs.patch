@@ -1,4 +1,4 @@
-From f3dcc89972991f85dbbb255e6d25d0a5ed42a13e Mon Sep 17 00:00:00 2001
+From 57c46195bbfdabd2aef759b73d914f7ec1d0e45a Mon Sep 17 00:00:00 2001
 From: Olivier Goffart <ogoffart@woboq.com>
 Date: Mon, 4 Jun 2018 18:00:30 +0200
 Subject: [PATCH 2/2] Port to qmetaobject-rs
@@ -6,8 +6,8 @@ Subject: [PATCH 2/2] Port to qmetaobject-rs
 ---
  Cargo.toml  |   2 +-
  src/main.rs |   3 +-
- src/view.rs | 178 ++++++++++++++++++++++++++--------------------------
- 3 files changed, 93 insertions(+), 90 deletions(-)
+ src/view.rs | 180 +++++++++++++++++++++++++++-------------------------
+ 3 files changed, 95 insertions(+), 90 deletions(-)
 
 diff --git a/Cargo.toml b/Cargo.toml
 index 63740d2..7a03132 100644
@@ -34,7 +34,7 @@ index d540594..c58c7e1 100644
  use lazysort::*;
  
 diff --git a/src/view.rs b/src/view.rs
-index 162d6ab..5237e43 100644
+index 162d6ab..5a53c18 100644
 --- a/src/view.rs
 +++ b/src/view.rs
 @@ -1,14 +1,15 @@
@@ -80,7 +80,7 @@ index 162d6ab..5237e43 100644
          vec: gathered,
          list: list,
          repos: repos,
-@@ -35,42 +36,48 @@ pub fn show(gathered: Vec<Package>) {
+@@ -35,42 +36,50 @@ pub fn show(gathered: Vec<Package>) {
          chosen_repo: -1,
          chosen_group: -1,
          selected: SelectedPackages::new(),
@@ -92,8 +92,10 @@ index 162d6ab..5237e43 100644
 -    engine.load_data(include_str!("view.qml"));
 +        ..Default::default()
 +    };
-+    engine.set_object_property("packages".into(), &mut qpckgs.list);
-+    engine.set_object_property("qpkgs".into(), &mut qpckgs);
++    unsafe {
++        engine.set_object_property("packages".into(), &mut qpckgs.list);
++        engine.set_object_property("qpkgs".into(), &mut qpckgs);
++    }
 +    engine.set_property("repos".into(), qrepos.into());
 +    engine.set_property("groups".into(), qgroups.into());
 +    engine.load_data(include_str!("view.qml").into());
@@ -155,7 +157,7 @@ index 162d6ab..5237e43 100644
  pub struct SelectedPackages {
      vec: Vec<Package>,
  }
-@@ -78,7 +85,7 @@ pub struct SelectedPackages {
+@@ -78,7 +87,7 @@ pub struct SelectedPackages {
  fn filter_for_qml(vec: &[Package],
                    filter: &Fn(&&Package) -> bool,
                    selecteds: Option<&SelectedPackages>)
@@ -164,7 +166,7 @@ index 162d6ab..5237e43 100644
      vec.into_iter()
          .filter(filter)
          .map(|pkg| {
-@@ -91,36 +98,60 @@ fn filter_for_qml(vec: &[Package],
+@@ -91,36 +100,60 @@ fn filter_for_qml(vec: &[Package],
              } else {
                  false
              };
@@ -246,7 +248,7 @@ index 162d6ab..5237e43 100644
  
      fn decide_and_update(&mut self) {
          let data = {
-@@ -139,38 +170,9 @@ impl QPackages {
+@@ -139,38 +172,9 @@ impl QPackages {
              let selected = Some(&self.selected);
              filter_for_qml(&self.vec, closure.as_ref(), selected)
          };
@@ -286,7 +288,7 @@ index 162d6ab..5237e43 100644
  }
  
  impl SelectedPackages {
-@@ -186,7 +188,7 @@ impl SelectedPackages {
+@@ -186,7 +190,7 @@ impl SelectedPackages {
          self.vec.retain(|p| p.name != package.name);
      }
  

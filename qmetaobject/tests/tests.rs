@@ -34,7 +34,7 @@ pub fn do_test<T: QObject + Sized>(mut obj: T, qml: &str) -> bool {
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
     let mut engine = QmlEngine::new();
-    engine.set_object_property("_obj".into(), &mut obj);
+    unsafe { engine.set_object_property("_obj".into(), &mut obj); }
     engine.load_data(qml_text.into());
     engine.invoke_method("doTest".into(), &[]).to_bool()
 }
