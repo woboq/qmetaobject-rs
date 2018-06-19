@@ -32,10 +32,25 @@ fn main() {
         .include(qt_include_path.trim())
         .build("src/lib.rs");
 
-    println!("cargo:rustc-link-search={}", qt_library_path.trim());
-    println!("cargo:rustc-link-lib=Qt5Widgets");
-    println!("cargo:rustc-link-lib=Qt5Gui");
-    println!("cargo:rustc-link-lib=Qt5Core");
-    println!("cargo:rustc-link-lib=Qt5Quick");
-    println!("cargo:rustc-link-lib=Qt5Qml");
+    let macos_lib_search = if cfg!(target_os = "macos") {
+        "=framework"
+    } else {
+        ""
+    };
+    let macos_lib_framework = if cfg!(target_os = "macos") {
+        ""
+    } else {
+        "5"
+    };
+
+    println!(
+        "cargo:rustc-link-search{}={}",
+        macos_lib_search,
+        qt_library_path.trim()
+    );
+    println!("cargo:rustc-link-lib{}=Qt{}Widgets", macos_lib_search, macos_lib_framework);
+    println!("cargo:rustc-link-lib{}=Qt{}Gui", macos_lib_search, macos_lib_framework);
+    println!("cargo:rustc-link-lib{}=Qt{}Core", macos_lib_search, macos_lib_framework);
+    println!("cargo:rustc-link-lib{}=Qt{}Quick", macos_lib_search, macos_lib_framework);
+    println!("cargo:rustc-link-lib{}=Qt{}Qml", macos_lib_search, macos_lib_framework);
 }
