@@ -7,5 +7,5 @@ authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 proc-macro = true
 
 [dependencies]
-syn = { version = "0.12", features = ["full"] }
-quote = "0.4"
+syn = { version = "0.14", features = ["full"] }
+quote = "0.6"
