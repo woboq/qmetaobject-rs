@@ -54,7 +54,7 @@ mod MetaObjectCall {
 
 fn builtin_type(name : &syn::Type) -> u32 {
     match name.clone().into_token_stream().to_string().as_ref() {
-        "()" => 43,
+        "()" | "( )" => 43,
         "bool" => 1,
         "i32" => 2,
         "u32" => 3,

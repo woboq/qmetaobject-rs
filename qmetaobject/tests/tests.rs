@@ -328,6 +328,9 @@ fn setter() {
         prop_x_notify: qt_signal!(),
         prop_y: qt_property!(String; NOTIFY prop_y_notify WRITE prop_y_setter),
         prop_y_notify: qt_signal!(),
+
+        prop_x_setter: qt_method!(fn (&mut self, v: u32)->()),
+        prop_y_setter: qt_method!(fn (&mut self, v: String)),
     }
     impl ObjectWithGetter {
         fn prop_x_setter(&mut self, v: u32) {
@@ -359,7 +362,16 @@ fn setter() {
                 console.log('FAILURE #3', test);
                 return false;
             }
+
+            _obj.prop_x_setter(88);
+            _obj.prop_y_setter('world');
+            if (test != '88world') {
+                console.log('FAILURE #4', test);
+                return false;
+            }
+
             return true;
         }
     }"));
 }
+
