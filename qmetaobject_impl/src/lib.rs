@@ -31,6 +31,7 @@ use proc_macro::TokenStream;
 use std::iter::Iterator;
 
 mod qbjs;
+mod qrc_impl;
 
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
@@ -781,4 +782,10 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     body.into()
 }
 
-
+#[proc_macro_derive(QResource_internal, attributes(qrc))]
+pub fn qresource_impl(input: TokenStream) -> TokenStream {
+    let src = input.to_string();
+    let beg = src.find("stringify!(").expect("Internal error: no strignify in QResource_internal contents") + 11;
+    let end = src.rfind("))").expect("Internal error: no '))' in QResource_internal contents");
+    qrc_impl::process_qrc(&src[beg..end])
+}

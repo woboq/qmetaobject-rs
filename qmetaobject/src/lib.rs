@@ -367,11 +367,10 @@ pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut()
     })};
 }
 
-
 pub mod listmodel;
 pub use listmodel::*;
 pub mod qtdeclarative;
 pub use qtdeclarative::*;
 pub mod qmetatype;
 pub use qmetatype::*;
-
+pub mod qrc;
