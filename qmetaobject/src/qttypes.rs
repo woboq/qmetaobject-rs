@@ -23,7 +23,7 @@ use std::ops::{Index,IndexMut};
 use std::iter::FromIterator;
 use std::str::Utf8Error;
 
-cpp_class!(pub unsafe struct QByteArray as "QByteArray");
+cpp_class!(#[derive(PartialEq, PartialOrd, Eq, Ord)] pub unsafe struct QByteArray as "QByteArray");
 impl QByteArray {
     pub fn to_slice(&self) -> &[u8] {
         unsafe {
@@ -79,15 +79,8 @@ impl std::fmt::Debug for QByteArray {
         write!(f, "{}", self)
     }
 }
-impl PartialEq for QByteArray {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { cpp!([self as "QByteArray*", other as "QByteArray*"] -> bool as "bool" {
-            return *self == *other;
-        })}
-    }
-}
 
-cpp_class!(pub unsafe struct QString as "QString");
+cpp_class!(#[derive(PartialEq, PartialOrd, Eq, Ord)] pub unsafe struct QString as "QString");
 impl QString {
     pub fn to_slice(&self) -> &[u16] {
         unsafe {
@@ -126,15 +119,7 @@ impl std::fmt::Debug for QString {
         write!(f, "{}", self)
     }
 }
-impl PartialEq for QString {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe { cpp!([self as "QString*", other as "QString*"] -> bool as "bool" {
-            return *self == *other;
-        })}
-    }
-}
-
-cpp_class!(pub unsafe struct QVariant as "QVariant");
+cpp_class!(#[derive(PartialEq)] pub unsafe struct QVariant as "QVariant");
 impl QVariant {
     pub fn to_qbytearray(&self) -> QByteArray {
         // FIXME
@@ -312,8 +297,7 @@ mod tests {
     }
 }
 
-
-cpp_class!(pub unsafe struct QModelIndex as "QModelIndex");
+cpp_class!(#[derive(PartialEq, Eq)] pub unsafe struct QModelIndex as "QModelIndex");
 impl QModelIndex {
     pub fn row(&self) -> i32 {
         unsafe {
