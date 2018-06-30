@@ -21,6 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QtCore/QEvent>
 #include <QtCore/QDebug>
 
+union SignalCppRepresentation {
+    void (QObject::*cpp_signal)();
+    qintptr rust_signal;
+
+    SignalCppRepresentation() = default;
+
+    // Construct the object from an arbirary signal.
+    // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
+    template<typename R, typename ...Args>
+    SignalCppRepresentation(R (QObject::*cpp_signal)(Args...))
+        : cpp_signal(*reinterpret_cast<void (QObject::**)()>(&cpp_signal)) { }
+};
+
 struct TraitObject {
     void *a;
     void *b;
@@ -106,9 +119,9 @@ const RustObjectDescription *rustObjectDescription() {
 using CreatorFunction = void (*)(void *);
 
 
+namespace QtPrivate {
 // Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor
 // is a friend
-namespace QtPrivate {
 template<>
 struct ConverterFunctor<TraitObject, TraitObject, TraitObject> : public AbstractConverterFunction
 {

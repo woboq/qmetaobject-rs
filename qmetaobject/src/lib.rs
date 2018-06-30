@@ -137,7 +137,62 @@ impl QObject {
             return QVariant::fromValue(self_);
         }}
     }
+
+
+    pub fn destroyed_signal() -> CppSignal<fn()> {
+        unsafe { CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+            return &QObject::destroyed;
+        }))}
+    }
+
+    /// FIXME. take self by special reference?  panic if cpp_object does not exist?
+    pub fn set_object_name(&self, name: QString) {
+        let self_ = self.get_cpp_object();
+        unsafe {cpp!([self_ as "QObject*", name as "QString"] {
+            if (self_) self_->setObjectName(std::move(name));
+        })}
+    }
+    pub fn object_name_changed_signal() -> CppSignal<fn(QString)> {
+        unsafe {CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+            return &QObject::objectNameChanged;
+        }))}
+    }
 }
+/*
+// Represent a pointer owned by rust
+//
+// (Same as PinBox, but also construct the object)
+pub struct QObjectBox<T : QObject> {
+    inner: Box<T>,
+}
+impl QObjectBox<T> {
+    pub fn new(data :T) -> Self {
+        let mut inner = Box::new(data);
+        unsafe { inner.cpp_construct() }; // Now, data is pinned, we can call cpp_construct
+        QObjectBox{ inner }
+    }
+
+    pub fn into_leaked_cpp_ptr(self) -> *mut c_void {
+        let obj_ptr = self.inner.get_cpp_object();
+        std::boxed::Box::into_raw(b);
+        obj_ptr
+    }
+
+    // add PinBox API
+}
+
+// Do we need this?
+pub struct QObjectRc<T : QObject> {
+    inner: Rc<T>,
+}
+
+// Wrapper around QWeakPointer<QObject>
+pub struct QObjectWatcher {}
+
+pub struct QObjectRef<'a, T : QObject> {
+    inner: &'a T,
+}
+*/
 
 /// Create the C++ object and return a C++ pointer to a QObject.
 ///
@@ -306,7 +361,10 @@ macro_rules! qt_method {
 /// ```
 #[macro_export]
 macro_rules! qt_signal {
-    ($($t:tt)*) => { std::marker::PhantomData<()> };
+    ($($name:ident : $ty:ty),*) => { $crate::RustSignal<fn($($ty),*)> };
+    //() => { $crate::RustSignal0 };
+    //($a0:ident : $t0:ty) => { $crate::RustSignal1<$t0> };
+    //($a0:ident : $t0:ty, $a1:ident : $t1:ty) => { $crate::RustSignal2<$t0,$t1> };
 }
 
 /// Equivalent to the Q_PLUGIN_METADATA macro.
@@ -367,6 +425,7 @@ pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut()
     })};
 }
 
+
 pub mod listmodel;
 pub use listmodel::*;
 pub mod qtdeclarative;
@@ -374,3 +433,6 @@ pub use qtdeclarative::*;
 pub mod qmetatype;
 pub use qmetatype::*;
 pub mod qrc;
+pub mod connections;
+pub use connections::RustSignal;
+use connections::{CppSignal, SignalCppRepresentation};

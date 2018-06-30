@@ -572,7 +572,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     }).collect();
 
     func_bodies.extend(signals.iter().enumerate().map(|(i, signal)| {
-        let sig_name : syn::Ident = signal.name.clone().into();
+        let sig_name  = &signal.name;
         let i = i as u32;
         let args_decl : Vec<_> = signal.args.iter().map(|arg| {
             // FIXME!  we should probably use the signature verbatim
@@ -594,6 +594,21 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             }
         }
     }));
+
+    let index_of_method = signals.iter().enumerate().map(|(i, signal)| {
+        let sig_name = &signal.name;
+        // if *a[1] == offset_of(signal field)  =>  *a[0] = index and return.
+        quote! {
+            unsafe {
+                let null = std::ptr::null() as *const #name #ty_generics;
+                let offset = &(*null).#sig_name as *const _ as usize - (null as usize);
+                if (*(*(a.offset(1)) as *const usize)) == offset  {
+                    *(*a as *mut i32) = #i as i32;
+                    return;
+                }
+            }
+        }
+    });
 
     let base_meta_object = if is_qobject {
         quote!{ <#name #ty_generics as #base>::get_object_description().meta_object }
@@ -701,7 +716,9 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             #(#method_meta_call)*
                             _ => { let _ = obj; }
                         }
-                    }} else if c == #RegisterMethodArgumentMetaType {
+                    }} else if c == #IndexOfMethod {
+                        #(#index_of_method)*
+                    } else if c == #RegisterMethodArgumentMetaType {
                         match idx {
                             #(#register_arguments)*
                             _ => {}

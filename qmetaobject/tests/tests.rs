@@ -375,3 +375,44 @@ fn setter() {
     }"));
 }
 
+#[test]
+fn connect_rust_signal() {
+    #[derive(QObject, Default)]
+    struct Foo {
+        base : qt_base_class!(trait QObject),
+        my_signal : qt_signal!(xx: u32, yy: String),
+    }
+
+    let mut f = Foo::default();
+    let obj_ptr = unsafe { f.cpp_construct() };
+    let mut result = None;
+    let mut con = unsafe { qmetaobject::connections::connect(obj_ptr, f.my_signal.to_cpp_representation(&f), |xx : &u32 , yy : &String| {
+        result = Some(format!("{} -> {}", xx, yy));
+    }) };
+    assert!(con.is_valid());
+    f.my_signal(12, "goo".into());
+    assert_eq!(result, Some("12 -> goo".to_string()));
+    f.my_signal(18, "moo".into());
+    assert_eq!(result, Some("18 -> moo".to_string()));
+    con.disconnect();
+    f.my_signal(25, "foo".into());
+    assert_eq!(result, Some("18 -> moo".to_string())); // still the same as before as we disconnected
+}
+
+#[test]
+fn connect_cpp_signal() {
+    #[derive(QObject, Default)]
+    struct Foo {
+        base : qt_base_class!(trait QObject),
+    }
+
+    let mut f = Foo::default();
+    let obj_ptr = unsafe { f.cpp_construct() };
+    let mut result = None;
+    let con = unsafe { qmetaobject::connections::connect(obj_ptr, QObject::object_name_changed_signal(), |name : &QString| {
+        result = Some(name.clone());
+    }) };
+    assert!(con.is_valid());
+    (&f as &QObject).set_object_name("YOYO".into());
+    assert_eq!(result, Some("YOYO".into()));
+}
