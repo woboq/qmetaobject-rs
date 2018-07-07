@@ -47,10 +47,12 @@ public:
 
 } }
 
+cpp_class!(
 /// Wrapper around Qt's QMetaObject::Connection
 ///
 /// Can be used to detect if a connection is valid, and to disconnect a connection
-cpp_class!(pub unsafe struct ConnectionHandle as "QMetaObject::Connection");
+    pub unsafe struct ConnectionHandle as "QMetaObject::Connection"
+);
 impl ConnectionHandle {
     /// Disconnect this connection.
     ///
@@ -66,11 +68,11 @@ impl ConnectionHandle {
     }
 }
 
+cpp_class!(
 /// Internal class that can be used to construct C++ signal.  Should only be used as an implementation
 /// details when writing bindings to Qt signals to construct a `CppSignal<...>`
 ///
 /// It has the same size as a `void(QObject::*)()` and can be constructed from signals.
-cpp_class!(
     pub unsafe struct SignalCppRepresentation as "SignalCppRepresentation"
 );
 
