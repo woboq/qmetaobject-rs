@@ -1,6 +1,6 @@
 [package]
 name = "qmetaobject"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
 
@@ -8,9 +8,9 @@ build = "build.rs"
 qmetaobject_impl = { path = "../qmetaobject_impl"}
 lazy_static = "1.0"
 # We can't use the cpp crate from crates.io because we need cpp_class and rust!
-cpp = { git = "https://github.com/ogoffart/rust-cpp" }
+cpp = "0.4"
 
 
 [build-dependencies]
-cpp_build = { git = "https://github.com/ogoffart/rust-cpp" }
+cpp_build = "0.4"
 
