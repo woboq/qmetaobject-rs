@@ -3,6 +3,13 @@ name = "qmetaobject_impl"
 version = "0.0.1"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 
+description = "Custom derive for the qmetaobject crate."
+readme = "../README.md"
+license = "MIT"
+keywords = ["Qt", "QML", "QMetaObject",]
+repository = "https://github.com/woboq/qmetaobject-rs"
+
+
 [lib]
 proc-macro = true
 

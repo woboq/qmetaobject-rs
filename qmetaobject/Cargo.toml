@@ -3,13 +3,16 @@ name = "qmetaobject"
 version = "0.0.1"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
+description = "Expose rust object to Qt and QML."
+readme = "../README.md"
+license = "MIT"
+keywords = ["Qt", "QML", "QMetaObject",]
+repository = "https://github.com/woboq/qmetaobject-rs"
 
 [dependencies]
-qmetaobject_impl = { path = "../qmetaobject_impl"}
+qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.0.1"}
 lazy_static = "1.0"
-# We can't use the cpp crate from crates.io because we need cpp_class and rust!
 cpp = "0.4"
-
 
 [build-dependencies]
 cpp_build = "0.4"
