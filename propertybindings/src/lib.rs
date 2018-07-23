@@ -5,7 +5,7 @@ use std::convert::From;
 // use std::ops::Deref;
 use std::default::Default;
 // use std::thread;
-use std::cell::{RefCell};
+use std::cell::{RefCell, Cell};
 use std::rc::{Rc,Weak};
 use std::ops::DerefMut;
 
@@ -15,20 +15,42 @@ trait PropertyBase {
     fn update<'a>(&'a self, dep : Weak<PropertyBase + 'a>);
     fn add_dependency(&self, dep: WeakPropertyRef);
     fn update_dependencies(&self);
+    fn description(&self) -> String { String::default() }
 }
 
-
 thread_local!(static CURRENT_PROPERTY: RefCell<Option<WeakPropertyRef>> = Default::default());
+
+pub trait PropertyBindingFn<T> {
+    fn run(&self) -> Option<T>;
+    fn description(&self) -> String { String::default() }
+}
+impl<F, T> PropertyBindingFn<T> for F where F : Fn()->T {
+    fn run(&self) -> Option<T> { Some((*self)()) }
+}
+impl<F, T> PropertyBindingFn<T> for Option<F> where F : Fn()->Option<T> {
+    fn run(&self) -> Option<T> { self.as_ref().and_then(|x|x()) }
+}
+
+impl<F, T> PropertyBindingFn<T> for (String, F) where F : Fn()->Option<T> {
+    fn run(&self) -> Option<T> { (self.1)() }
+    fn description(&self) -> String { (self.0).clone() }
+}
 
 #[derive(Default)]
 struct PropertyImpl<'a, T> {
     value: RefCell<T>,
-    binding : RefCell<Option<Box<Fn()->T + 'a>>>,
-    dependencies : RefCell<Vec<WeakPropertyRef>>
+    binding : RefCell<Option<Box<PropertyBindingFn<T> + 'a>>>,
+    dependencies : RefCell<Vec<WeakPropertyRef>>,
+    updating: Cell<bool>,
 }
 impl<'a, T> PropertyBase for PropertyImpl<'a, T>  {
     fn update<'b>(&'b self, dep : Weak<PropertyBase + 'b>) {
         if let Some(ref f) = *self.binding.borrow() {
+            if self.updating.get() {
+                panic!("Circular dependency found : {}", self.description());
+            }
+            self.updating.set(true);
+
             let mut old = Some(unsafe {
                 std::mem::transmute::<Weak<PropertyBase + 'b>, Weak<PropertyBase + 'static>>(dep)
             });
@@ -37,16 +59,24 @@ impl<'a, T> PropertyBase for PropertyImpl<'a, T>  {
                 let mut m = cur_dep.borrow_mut();
                 std::mem::swap(m.deref_mut(), &mut old);
             });
-            *self.value.borrow_mut() = f();
+            let mut modified = false;
+            if let Some(val) = f.run() {
+                *self.value.borrow_mut() = val;
+                modified = true;
+            }
             CURRENT_PROPERTY.with(|cur_dep| {
                 let mut m = cur_dep.borrow_mut();
                 std::mem::swap(m.deref_mut(), &mut old);
+                //assert!(Rc::ptr_eq(&dep.upgrade().unwrap(), &old.unwrap().upgrade().unwrap()));
             });
-
-            self.update_dependencies();
+            if modified {
+                self.update_dependencies();
+            }
+            self.updating.set(false);
         }
     }
     fn add_dependency(&self, dep :WeakPropertyRef) {
+        //println!("ADD DEPENDENCY {} -> {}",  self.description(), dep.upgrade().map_or("NONE".into(), |x| x.description()));
         self.dependencies.borrow_mut().push(dep);
     }
 
@@ -61,6 +91,14 @@ impl<'a, T> PropertyBase for PropertyImpl<'a, T>  {
                 let w = Rc::downgrade(&d);
                 d.update(w);
             }
+        }
+    }
+
+    fn description(&self) -> String {
+        if let Some(ref f) = *self.binding.borrow() {
+            f.description()
+        } else {
+            String::default()
         }
     }
 }
@@ -80,7 +118,7 @@ pub struct Property<'a, T> {
     d : Rc<PropertyImpl<'a, T>>
 }
 impl<'a, T  : Default + Clone> Property<'a, T>  {
-    pub fn from_binding<F : Fn()->T + 'a>(f : F) ->Property<'a, T> {
+    pub fn from_binding<F : PropertyBindingFn<T> + 'a>(f : F) ->Property<'a, T> {
         let d = Rc::new(PropertyImpl{ binding: RefCell::new(Some(Box::new(f))), ..Default::default()} );
         let w = Rc::downgrade(&d);
         d.update(w);
@@ -92,7 +130,7 @@ impl<'a, T  : Default + Clone> Property<'a, T>  {
         *self.d.value.borrow_mut() = t;
         self.d.update_dependencies();
     }
-    pub fn set_binding<F : Fn()->T + 'a>(&self, f : F) {
+    pub fn set_binding<F : PropertyBindingFn<T> + 'a>(&self, f : F) {
         *self.d.binding.borrow_mut() = Some(Box::new(f));
         let w = Rc::downgrade(&self.d);
         self.d.update(w);
@@ -369,141 +407,15 @@ impl<'a> Geometry<'a> {
 }
 
 
-//#[allow(non_camel_case_types)]
-pub mod anchors {
-    use super::{Property, Geometry};
-    use std::marker::PhantomData;
-    pub enum BeginTag {}
-    pub enum EndTag {}
-    pub enum CenterTag {}
-    pub enum SizeTag {}
-
-    pub struct AnchorElement<'a, Tag : 'a, F : Fn() -> f64 + 'a> {
-        f : F,
-        _phantom: PhantomData<&'a Tag>
-    }
-    pub trait AnchorCanAdd<'a, Tag, F> { type Output; fn add(self, F) -> Self::Output; }
-    impl<'a, Tag : 'a, F> AnchorCanAdd<'a, Tag, F> for () where F : Fn() -> f64 + 'a {
-        type Output = AnchorElement<'a, Tag, F>;
-        fn add(self, f: F) -> Self::Output {
-            AnchorElement{ f:f , _phantom : PhantomData::default()  }
-        }
-    }
-    macro_rules! declare_AnchorCanAdd {
-        ($From:ident => $To:ident) => {
-            impl<'a, F1, F2> AnchorCanAdd<'a, $To, F2> for AnchorElement<'a, $From, F1>
-                    where F1 : Fn() -> f64 + 'a, F2 : Fn() -> f64 + 'a {
-                type Output = (AnchorElement<'a, $From, F1>, AnchorElement<'a, $To, F2>);
-                fn add(self, f: F2) -> Self::Output {
-                    (self, AnchorElement{ f:f , _phantom : PhantomData::default()  })
-                }
-            }
-        };
-        ($From:ident <= $To:ident) => {
-            impl<'a, F1, F2> AnchorCanAdd<'a, $To, F2> for AnchorElement<'a, $From, F1>
-                    where F1 : Fn() -> f64 + 'a, F2 : Fn() -> f64 + 'a {
-                type Output = (AnchorElement<'a, $To, F2>, AnchorElement<'a, $From, F1>);
-                fn add(self, f: F2) -> Self::Output {
-                    (AnchorElement{ f:f , _phantom : PhantomData::default()}, self)
-                }
-            }
-        };
-        // entry point
-        ([$($before:ident)* @ $cursor:ident $($tail:ident)*]) => {
-            $(declare_AnchorCanAdd!{$cursor => $tail})*
-            $(declare_AnchorCanAdd!{$cursor <= $before})*
-            // continue (move the cursor
-            declare_AnchorCanAdd!{[$($before)* $cursor @ $($tail)*] }
-        };
-        ([$($before:ident)* @ ]) => { };
-    }
-    declare_AnchorCanAdd!{[@ BeginTag EndTag CenterTag SizeTag]}
-
-    pub trait AnchorApplyGeometry<'a> {
-        fn apply_geometry(self, begin: &Property<'a, f64>, size: &Property<'a, f64>);
-    }
-    impl<'a, F : Fn() -> f64 + 'a> AnchorApplyGeometry<'a> for AnchorElement<'a, BeginTag, F> {
-        fn apply_geometry(self, begin: &Property<'a, f64>, _size: &Property<'a, f64>) {
-            begin.set_binding(self.f);
-        }
-    }
-    impl<'a, F : Fn() -> f64 + 'a> AnchorApplyGeometry<'a> for AnchorElement<'a, EndTag, F> {
-        fn apply_geometry(self, begin: &Property<'a, f64>, size: &Property<'a, f64>) {
-            let ws = size.as_weak();
-            begin.set_binding(move || (self.f)() - ws.get().unwrap() );
-        }
-    }
-    impl<'a> AnchorApplyGeometry<'a> for () {
-        fn apply_geometry(self, _begin: &Property<'a, f64>, _size: &Property<'a, f64>) { }
-    }
-
+pub mod anchors;
 
 
 /*
-    struct Anchor_None {}
-    struct Anchor_Begin<F : Fn() -> f64>(F);
-    struct Anchor_End<F : Fn() -> f64>(F);
-    struct Anchor_Center<F : Fn() -> f64>(F);
-    struct Anchor_Size<F : Fn() -> f64>(F);*/
-
-    pub struct Anchor<Horiz, Vert> {
-        h : Horiz,
-        v : Vert,
-    }
-    macro_rules! declare_AnchorFunc {
-        ($hname:ident, $vname:ident , $Tag:ident) => {
-            pub fn $hname<'a, F : Fn()->f64 + 'a >(self, f : F)
-                    -> Anchor<<Horiz as AnchorCanAdd<'a, $Tag, F>>::Output, Vert>
-                    where Horiz : AnchorCanAdd<'a, $Tag, F>
-            { Anchor { h: self.h.add(f), v: self.v } }
-            pub fn $vname<'a, F : Fn()->f64 + 'a>(self, f : F)
-                    -> Anchor<Horiz, <Vert as AnchorCanAdd<'a, $Tag, F>>::Output>
-                    where Vert : AnchorCanAdd<'a, $Tag, F>
-            { Anchor { h: self.h, v: self.v.add(f) } }
-        };
-    }
-    impl<Horiz, Vert> Anchor<Horiz, Vert> {
-        declare_AnchorFunc!{left, top, BeginTag}
-        declare_AnchorFunc!{right, bottom, EndTag}
-        declare_AnchorFunc!{horizontal_center, vertical_center, CenterTag}
-        declare_AnchorFunc!{width, height, SizeTag}
-
-        pub fn apply_geometry<'a>(self, g: &Geometry<'a>)
-                where Horiz : AnchorApplyGeometry<'a>, Vert : AnchorApplyGeometry<'a> {
-            self.h.apply_geometry(& g.x, & g.width);
-            self.v.apply_geometry(& g.y, & g.height);
-        }
-        //pub fn apply_geometry<'a>(self, g: &Geometry<'a>) {}
-
-    }
-    pub fn new_anchor() -> Anchor<(), ()> { Anchor { h: (), v: () } }
-
-    #[test]
-    fn test_anchor() {
-        {
-            let g = Geometry::default();
-            {
-                //let a = new_anchor().right(|| 56.); //.left(|| 78.).top(|| 52.- 11.);
-                let a = new_anchor().left(|| 78.).bottom(|| 52.);
-                a.apply_geometry(& g);
-            }
-            g.width.set(12.);
-            g.height.set(11.);
-            assert_eq!(g.left(), 78.);
-            assert_eq!(g.right(), 78. + 12.);
-            assert_eq!(g.top(), 52. - 11.);
-            assert_eq!(g.bottom(), 52.);
-
-        }
-    }
-
-
-}
-
-/*
-
 
 mod items {
+
+use std::rc::{Rc};
+use super::{Geometry};
 
 /*trait ItemLike {
     fn geometry(&mut self) -> &mut Geometry;
@@ -515,10 +427,10 @@ struct Item {
 }
 */
 
-trait GeometryItem {
-    fn geometry(&mut self) -> &mut Geometry;
+trait GeometryItem<'a> {
+    fn geometry(&self) -> &Geometry<'a>;
 }
-
+/*
 rsml! {
     struct Button {
         #geometry,
@@ -533,27 +445,34 @@ rsml! {
         text: String,
         clicked: @event
     }
-}
+}*/
 
 
-struct ColumnLayout {
-    geometry : Geometry,
-    children: Vec<Rc<GeometryItem>>
+struct ColumnLayout<'a> {
+    geometry : Geometry<'a>,
+    children: Vec<Rc<GeometryItem<'a>>>
 }
-impl GeometryItem for ColumnLayout { fn geometry(&mut self) -> &mut Geometry { &mut self.geometry } }
-impl ColumnLayout {
-    fn add_child(&mut self, child : Rc<GeometryItem>) {
-        children.push(child);
+impl<'a> GeometryItem<'a> for ColumnLayout<'a> { fn geometry(&self) -> &Geometry<'a> { &self.geometry } }
+impl<'a> ColumnLayout<'a> {
+    pub fn add_child(&mut self, child : Rc<GeometryItem<'a>>) {
+        self.children.push(child);
+
+    }
+
+    fn relayout(&self) {
+        let children : Vec<_> = self.children.iter().map(|x| Rc::downgrade(x)).collect();
+        self.geometry.width.set_binding(move|| children.iter().map(
+            |x| x.upgrade().map_or(0., |y| y.geometry().width())).sum());
     }
 }
 
 
 
+*/
 
 
 
-
-
+/*
 
 rsml! {
 // #[derive(Item)]
@@ -576,7 +495,6 @@ rsml! {
 // }
 }
 
-
-} // mod items
-
 */
+
+//} // mod items
