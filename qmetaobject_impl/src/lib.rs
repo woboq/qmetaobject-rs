@@ -630,6 +630,11 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         }
     } else {
         let turbo_generics = ty_generics.as_turbofish();
+        let (ty_generics, turbo_generics) = if ast.generics.type_params().count() != 0 {
+            (quote!(#ty_generics), quote!(#turbo_generics))
+        } else {
+            (quote!(), quote!() )
+        };
         quote! {
             use std::sync::Mutex;
             use std::collections::HashMap;
@@ -709,7 +714,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
                 #[allow(unused_variables)]
                 extern "C" fn static_metacall #impl_generics (o: *mut std::os::raw::c_void, c: u32, idx: u32,
-                                              a: *const *mut std::os::raw::c_void) {
+                                              a: *const *mut std::os::raw::c_void) #where_clause {
                     if c == #InvokeMetaMethod { unsafe {
                         let obj : &mut #name #ty_generics = #get_object;
                         match idx {

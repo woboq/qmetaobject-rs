@@ -416,3 +416,25 @@ fn connect_cpp_signal() {
     (&f as &QObject).set_object_name("YOYO".into());
     assert_eq!(result, Some("YOYO".into()));
 }
+
+#[test]
+fn with_life_time() {
+    #[derive(QObject, Default)]
+    struct WithLT<'a> {
+        base : qt_base_class!(trait QObject),
+        _something : Option<&'a u32>,
+        my_signal : qt_signal!(xx: u32, yy: String),
+        my_method : qt_method!(fn my_method(&self, _x: u32) {}),
+        my_property : qt_property!(u32),
+
+    }
+
+    #[derive(QObject, Default)]
+    struct WithWhereClose<T> where T : Clone + 'static  {
+        #[qt_base_class="QObject"] // FIXME
+        base: QObjectCppWrapper,
+        _something : Option<T>,
+    }
+
+}
+
