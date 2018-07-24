@@ -306,5 +306,133 @@ impl QModelIndex {
     }
 }
 
+#[allow(non_camel_case_types)]
+type qreal = f64;
 
+#[repr(C)]
+#[derive(Default, Clone, Copy, PartialEq, Debug)]
+pub struct QRectF {
+    pub x : qreal,
+    pub y : qreal,
+    pub width : qreal,
+    pub height : qreal
+}
+
+
+cpp_class!(#[derive(Default, Clone, Copy, PartialEq)] pub unsafe struct QColor as "QColor");
+impl QColor {
+    pub fn from_name(name : &str) -> Self {
+        let len = name.len();
+        let ptr = name.as_ptr();
+        cpp!(unsafe [len as "size_t", ptr as "char*"] -> QColor as "QColor" {
+            return QColor(QLatin1String(ptr, len));
+        })
+    }
+    pub fn from_rgb_f(r : qreal, g :qreal, b: qreal) -> Self {
+        cpp!(unsafe [r as "qreal", g as "qreal", b as "qreal"] -> QColor as "QColor" {
+            return QColor::fromRgbF(r, g, b);
+        })
+    }
+    pub fn from_rgba_f(r : qreal, g :qreal, b: qreal, a: qreal) -> Self {
+        cpp!(unsafe [r as "qreal", g as "qreal", b as "qreal", a as "qreal"] -> QColor as "QColor" {
+            return QColor::fromRgbF(r, g, b, a);
+        })
+    }
+
+    pub fn get_rgba(&self) -> (qreal, qreal, qreal, qreal) {
+        let res = (0.,0.,0.,0.);
+        let (ref r, ref g, ref b, ref a) = res;
+        cpp!(unsafe [self as "const QColor*", r as "qreal*", g as "qreal*", b as "qreal*", a as "qreal*"] {
+            return self->getRgbF(r, g, b, a);
+        });
+        res
+    }
+}
+
+
+#[test]
+fn test_qcolor() {
+    let blue1 = QColor::from_name("blue");
+    let blue2 = QColor::from_rgb_f(0.,0.,1.);
+    assert_eq!(blue1.get_rgba().0 , 0.);
+    assert_eq!(blue1.get_rgba().2 , 1.);
+    assert!(blue1 == blue2);
+
+    let red1 = QColor::from_name("red");
+    let red2 = QColor::from_rgb_f(1.,0.,0.);
+    assert_eq!(red1.get_rgba().0 , 1.);
+    assert_eq!(red1.get_rgba().2 , 0.);
+    assert!(red1 == red2);
+    assert!(blue1 != red1);
+}
+
+
+#[repr(C)]
+#[derive(Default, Clone, Copy, PartialEq, Debug)]
+pub struct QSize {
+    pub width : u32,
+    pub height : u32,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[allow(non_camel_case_types)]
+pub enum ImageFormat {
+    Invalid,
+    Mono,
+    MonoLSB,
+    Indexed8,
+    RGB32,
+    ARGB32,
+    ARGB32_Premultiplied,
+    RGB16,
+    ARGB8565_Premultiplied,
+    RGB666,
+    ARGB6666_Premultiplied,
+    RGB555,
+    ARGB8555_Premultiplied,
+    RGB888,
+    RGB444,
+    ARGB4444_Premultiplied,
+    RGBX8888,
+    RGBA8888,
+    RGBA8888_Premultiplied,
+    BGR30,
+    A2BGR30_Premultiplied,
+    RGB30,
+    A2RGB30_Premultiplied,
+    Alpha8,
+    Grayscale8,
+}
+
+cpp_class!(pub unsafe struct QImage as "QImage");
+impl QImage {
+    pub fn load_from_file(filename : QString) -> Self {
+        cpp!(unsafe [filename as "QString"] -> QImage as "QImage" {
+            return QImage(filename);
+        })
+    }
+    pub fn new(size : QSize, format : ImageFormat) -> Self {
+        cpp!(unsafe [size as "QSize", format as "QImage::Format" ] -> QImage as "QImage" {
+            return QImage(size, format);
+        })
+    }
+    pub fn size(&self) -> QSize {
+        cpp!(unsafe [self as "const QImage*"] -> QSize as "QSize" { return self->size(); })
+    }
+    pub fn format(&self) -> ImageFormat {
+        cpp!(unsafe [self as "const QImage*"] -> ImageFormat as "QImage::Format" { return self->format(); })
+    }
+    pub fn fill(&mut self, color: QColor) {
+        cpp!(unsafe [self as "QImage*", color as "QColor"] { self->fill(color); })
+    }
+    pub fn set_pixel_color(&mut self, x:u32, y: u32, color: QColor) {
+        cpp!(unsafe [self as "QImage*", x as "int", y as "int", color as "QColor"]
+            { self->setPixelColor(x, y, color); })
+    }
+    pub fn get_pixel_color(&mut self, x:u32, y: u32) -> QColor {
+        cpp!(unsafe [self as "QImage*", x as "int", y as "int"] -> QColor as "QColor"
+            { return self->pixelColor(x, y); })
+    }
+}
 

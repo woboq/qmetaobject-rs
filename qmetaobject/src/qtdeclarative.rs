@@ -16,6 +16,7 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 use super::*;
+use super::scenegraph::*;
 
 cpp!{{
     #include <memory>
@@ -232,21 +233,11 @@ pub trait QQuickItem : QObject {
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
 
-    //virtual QRectF boundingRect() const;
-    //virtual QRectF clipRect() const;
-}
 
-impl QQuickItem {
-    // here goes the API
-    /*pub fn begin_insert_rows(&mut self, first : i32, last: i32) {
-        let p = QModelIndex::default();
-        let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
-            if (obj) obj->beginInsertRows(p, first, last);
-        })}
-    }*/
-}
+    fn geometry_changed(&mut self, _new_geometry : QRectF, _old_geometry : QRectF) {}
 
+    fn update_paint_node(&mut self, _node : SGNode ) { }
+}
 
 cpp!{{
 #include <qmetaobject_rust.hpp>
@@ -283,11 +274,30 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void dragLeaveEvent(QDragLeaveEvent *);
     virtual void dropEvent(QDropEvent *);
     virtual bool childMouseEventFilter(QQuickItem *, QEvent *);
-    virtual void windowDeactivateEvent();
+    virtual void windowDeactivateEvent();*/
     virtual void geometryChanged(const QRectF &newGeometry,
-                                 const QRectF &oldGeometry);
+                                 const QRectF &oldGeometry) {
+        rust!(Rust_QQuickItem_geometryChanged[rust_object : &mut QQuickItem as "TraitObject",
+                newGeometry : QRectF as "QRectF", oldGeometry : QRectF as "QRectF"] {
+            rust_object.geometry_changed(newGeometry, oldGeometry);
+        });
+        QQuickItem::geometryChanged(newGeometry, oldGeometry);
+    }
+/*
+    QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
+        TraitObject sgnode = node ? static_cast<RustSGNode>(node) : TraitObject();
+        static_cast<RustSGNode>(node);
+        return rust-!(Rust_QQuickItem_metaobject[rust_object : &QQuickItem as "TraitObject"]
+                -> *const QMetaObject as "const QMetaObject*" {
+            rust_object.meta_object())
 
-    virtual QSGNode *updatePaintNode(QSGNode *, UpdatePaintNodeData *);
+    virtual QSGNode *updatePaintNode(QSGNode *, UpdatePaintNodeData *) {
+        rust-!(Rust_QQuickItem_updatePaintNode[rust_object : &mut QQuickItem as "TraitObject",
+                newGeometry : QRectF as "QRectF", oldGeometry : QRectF as "QRectF"] {
+            rust_object.geometry_changed(newGeometry, oldGeometry);
+        });
+    }*/
+    /*
     virtual void releaseResources();
     virtual void updatePolish();
 */
@@ -301,6 +311,20 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 };
 
 }}
+
+impl QQuickItem {
+    pub fn bounding_rect(&self) -> QRectF {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QQuickItem*"] -> QRectF as "QRectF" {
+            return obj ? obj->boundingRect() : QRectF();
+        })
+    }
+    pub fn update(&self) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QQuickItem*"] { if (obj) obj->update(); });
+    }
+}
+
 
 /// Wrapper for QJSValue
 cpp_class!(pub unsafe struct QJSValue as "QJSValue");

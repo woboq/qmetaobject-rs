@@ -1,0 +1,9 @@
+[package]
+name = "graph"
+version = "0.1.0"
+authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+
+[dependencies]
+qmetaobject = { path = "../../qmetaobject"}
+cstr = "0.1.4"
+
