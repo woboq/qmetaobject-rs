@@ -1,11 +1,216 @@
 use super::*;
 use std::os::raw::c_void;
 
+/// A typed node in the scene graph
+///
+/// the SGNode owns a QSGNode* of a given type. The type information is given by T
+/// which is a Tag type  (an empty enum)
 #[repr(C)]
-pub struct SGNode {
-    pub // remove
-    raw: *mut c_void,
+pub struct SGNode<T> {
+    pub raw: *mut c_void,
+    _phantom: std::marker::PhantomData<T>,
 }
+impl<T> SGNode<T> {
+    pub unsafe fn from_raw(raw : *mut c_void) -> Self {
+        /*let t = T::TYPE;
+        debug_assert!(cpp!([raw as "QSGNode*", t as "QSGNode::NodeType"]
+            -> bool as "bool" { return raw->type() == t; }));*/
+        Self { raw, _phantom: Default::default() }
+    }
+
+    /// "leak" the QSGNode* pointer, so the caller must take ownership
+    pub fn into_raw(self) -> *mut c_void {
+        let cpp = self.raw;
+        std::mem::forget(self);
+        cpp
+    }
+
+    // Delete this node
+    pub fn reset(&mut self) {
+        *self = unsafe { Self::from_raw(std::ptr::null_mut()) };
+    }
+}
+impl<T> Drop for SGNode<T> {
+    /// Destroy the SGNode*
+    fn drop(&mut self) {
+        let raw = self.raw;
+        cpp!(unsafe [raw as "QSGNode*"] { delete raw; });
+    }
+}
+
+/// A node that contains other nodes
+pub enum ContainerNode {}
+
+cpp!{{
+struct ContainerNode : QSGNode {
+    quint64 type_id = 0;
+    std::size_t size = 0; // -1 for static
+    quint64 mask = 0; // one bit for every child, if it is set, or not
+    ContainerNode(quint64 type_id, std::size_t size) : type_id(type_id), size(size) {}
+};
+}}
+
+// Don't reimplement
+pub trait UpdateNodeFnTuple<'a> {
+    fn len(&self) -> u64;
+    unsafe fn update_fn(&self, i : u64, *mut c_void) -> *mut c_void;
+}
+
+macro_rules! declare_UpdateNodeFnTuple {
+    (@continue $A:ident : $N:tt $($tail:tt)*) => { declare_UpdateNodeFnTuple![$($tail)*]; };
+    (@continue) => {};
+    ($($A:ident : $N:tt)*) => {
+        impl<'a $(,$A)*> UpdateNodeFnTuple<'a> for ( $(&'a Fn(SGNode<$A>)->SGNode<$A>,)* )
+        {
+            fn len(&self) -> u64 {
+                #[allow(unused_mut)]
+                let mut count = 0;
+                $(count+=($N,1).1;)*
+                count
+            }
+            unsafe fn update_fn(&self, i : u64, n : *mut c_void) -> *mut c_void {
+                match self.len() - i - 1 { $($N => (self.$N)(unsafe { SGNode::<_>::from_raw(n) } ).into_raw(), )*
+                    _ => panic!("Out of range") }
+            }
+        }
+
+        declare_UpdateNodeFnTuple![@continue $($A: $N)*];
+    }
+}
+declare_UpdateNodeFnTuple![A9:9 A8:8 A7:7 A6:6 A5:5 A4:4 A3:3 A2:2 A1:1 A0:0];
+
+/*
+
+
+macro_rules! declare_UpdateNodeFnTuple {
+    (@continue $T:ident : $A:ident : $N:tt $($tail:tt)*) => { declare_UpdateNodeFnTuple![$($tail)*]; };
+    (@continue) => {};
+    ($($T:ident : $A:ident : $N:tt)*) => {
+        impl<$($A, $T : Fn(SGNode<$A>)->SGNode<$A>),*> UpdateNodeFnTuple for ($($T),*)
+        {
+            fn len() -> u64 { ($($N,)*).0 }
+            unsafe fn update_fn(&self, i : u64, n : *mut c_void) -> *mut c_void {
+                match i { $($N => (self.$N)(unsafe { SGNode::<$A>::from_raw(n) } ).into_raw(), )*
+                    _ => panic!("Out of range") }
+            }
+        }
+
+        declare_UpdateNodeFnTuple![@continue $($T : $A : $N)*];
+    }
+}
+declare_UpdateNodeFnTuple![T9:A9:9 T8:A8:8 T7:A7:7 T6:A6:6 T5:A5:5 T4:A4:4 T3:A3:3 T2:A2:2 T1:A1:1 T0:A0:0];
+
+
+*/
+
+
+impl SGNode<ContainerNode> {
+    /// Update the child node: all node must be of the same type, but there can be a dynamic
+    /// number of them.
+    /// However, each update must have the same amount of nodes. If not, use the
+    /// reset() function in between.
+    ///
+    /// There is currently a limit of 64 nodes
+    pub fn update_dynamic<T : std::any::Any>(&mut self, info : &[&Fn(SGNode<T>)->SGNode<T>])
+    {
+        let mut raw = self.raw;
+        let type_id = std::any::TypeId::of::<T>();
+        let len = info.len();
+        assert!(len <= 64, "There is a limit of 64 child nodes");
+        let mut mask = 0u64;
+        if raw.is_null() {
+            raw = cpp!(unsafe [type_id as "quint64", len as "std::size_t"] -> *mut c_void as "QSGNode*" {
+                return new ContainerNode(type_id, len);
+            });
+            self.raw = raw;
+        } else {
+            mask = cpp!(unsafe [raw as "ContainerNode*", type_id as "quint64", len as "std::size_t"] -> u64 as "quint64" {
+                if (raw->size != len || raw->type_id != type_id) {
+                    rust!(sgnode_0 []{ panic!("update_dynamic must always be called with the same type and the same number of elements") });
+                }
+                return raw->mask;
+            });
+        }
+        let mut bit = 1u64;
+        let mut before_iter : *mut c_void = std::ptr::null_mut();
+        for update_fn in info {
+            before_iter = Self::iteration(raw, before_iter, &mut bit, &mut mask, |n| { update_fn(unsafe { SGNode::<T>::from_raw(n) } ).into_raw() });
+        }
+        cpp!(unsafe [raw as "ContainerNode*", mask as "quint64"] {
+            raw->mask = mask;
+        });
+    }
+
+    /// Update the child node: given a tuple of update function, runs it for every node
+    ///
+    /// The argument is a tuple of update functions. The same type must be used every time
+    pub fn update_static<'a, T : UpdateNodeFnTuple<'a> + 'static>(&mut self, info : T)
+    {
+        let type_id = std::any::TypeId::of::<T>();
+        let mut mask = 0u64;
+        if self.raw.is_null() {
+            self.raw = cpp!(unsafe [type_id as "quint64"] -> *mut c_void as "QSGNode*" {
+                return new ContainerNode(type_id, -1);
+            });
+        } else {
+            let raw = self.raw;
+            mask = cpp!(unsafe [raw as "ContainerNode*", type_id as "quint64"] -> u64 as "quint64" {
+                if (raw->size != std::size_t(-1) || raw->type_id != type_id) {
+                    rust!(sgnode_3 []{ panic!("update_static must always be called with the same type of functions") });
+                }
+                return raw->mask;
+            });
+        }
+        let mut bit = 1u64;
+        let mut before_iter : *mut c_void = std::ptr::null_mut();
+        for i in 0..info.len() {
+            before_iter = Self::iteration(self.raw, before_iter, &mut bit, &mut mask, |n| { unsafe { info.update_fn(i, n) } });
+
+        }
+        let raw_ = self.raw;
+        cpp!(unsafe [raw_ as "ContainerNode*", mask as "quint64"] {
+            raw_->mask = mask;
+        });
+    }
+
+
+    // returns the new before_iter
+    fn iteration<F : FnOnce(*mut c_void)->*mut c_void>(
+            raw: *mut c_void, before_iter : *mut c_void, bit : &mut u64, mask : &mut u64, update_fn : F)
+            -> *mut c_void {
+        let node = if (*mask & *bit) == 0 {
+            std::ptr::null_mut()
+        } else {
+            cpp!(unsafe [raw as "QSGNode*", before_iter as "QSGNode*"] -> *mut c_void as "QSGNode*" {
+                auto node = before_iter ? before_iter->nextSibling() : raw->firstChild();
+                if (!node) rust!(sgnode_2 []{ panic!("There must be a node as the mask says so") });
+                node->setFlag(QSGNode::OwnedByParent, false); // now we own it;
+                return node;
+            })
+        };
+        let node = update_fn(node);
+        *mask = if node.is_null() { *mask & !*bit } else { *mask | *bit };
+        if !node.is_null() {
+            cpp!(unsafe [raw as "QSGNode*", node as "QSGNode*", before_iter as "QSGNode*"] {
+                if (!node->parent()) {
+                    if (before_iter)
+                        raw->insertChildNodeAfter(node, before_iter);
+                    else
+                        raw->prependChildNode(node);
+                } else if (node->parent() != raw) {
+                    rust!(sgnode_4 []{ panic!("Returned node from another parent") });
+                }
+                node->setFlag(QSGNode::OwnedByParent);
+            });
+        }
+        (*bit) <<= 1;
+        if node.is_null() { before_iter } else { node }
+    }
+
+}
+
+
+/*
 
 pub trait UpdateNodeInfo {
     fn create(&self) -> SGNode;
@@ -65,12 +270,7 @@ impl SGNode {
         }
     }
 }
-impl Drop for SGNode {
-    fn drop(&mut self) {
-        let raw = self.raw;
-        cpp!(unsafe [raw as "QSGNode*"] { delete raw; });
-    }
-}
+*/
 /*
 #[repr(C)]
 struct SGGeometryNode {

@@ -236,7 +236,7 @@ pub trait QQuickItem : QObject {
 
     fn geometry_changed(&mut self, _new_geometry : QRectF, _old_geometry : QRectF) {}
 
-    fn update_paint_node(&mut self, _node : SGNode ) { }
+    fn update_paint_node(&mut self, node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> { return node; }
 }
 
 cpp!{{
@@ -283,20 +283,13 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
         });
         QQuickItem::geometryChanged(newGeometry, oldGeometry);
     }
-/*
-    QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
-        TraitObject sgnode = node ? static_cast<RustSGNode>(node) : TraitObject();
-        static_cast<RustSGNode>(node);
-        return rust-!(Rust_QQuickItem_metaobject[rust_object : &QQuickItem as "TraitObject"]
-                -> *const QMetaObject as "const QMetaObject*" {
-            rust_object.meta_object())
 
-    virtual QSGNode *updatePaintNode(QSGNode *, UpdatePaintNodeData *) {
-        rust-!(Rust_QQuickItem_updatePaintNode[rust_object : &mut QQuickItem as "TraitObject",
-                newGeometry : QRectF as "QRectF", oldGeometry : QRectF as "QRectF"] {
-            rust_object.geometry_changed(newGeometry, oldGeometry);
+    QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
+        return rust!(Rust_QQuickItem_updatePaintNode[rust_object : &mut QQuickItem as "TraitObject",
+                    node : *mut c_void as "QSGNode*"] -> SGNode<ContainerNode> as "QSGNode*" {
+            return rust_object.update_paint_node(unsafe { SGNode::<ContainerNode>::from_raw(node) });
         });
-    }*/
+    }
     /*
     virtual void releaseResources();
     virtual void updatePolish();
