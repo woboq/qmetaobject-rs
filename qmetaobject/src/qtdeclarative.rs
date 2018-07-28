@@ -275,13 +275,13 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void dropEvent(QDropEvent *);
     virtual bool childMouseEventFilter(QQuickItem *, QEvent *);
     virtual void windowDeactivateEvent();*/
-    virtual void geometryChanged(const QRectF &newGeometry,
-                                 const QRectF &oldGeometry) {
+    virtual void geometryChanged(const QRectF &new_geometry,
+                                 const QRectF &old_geometry) {
         rust!(Rust_QQuickItem_geometryChanged[rust_object : &mut QQuickItem as "TraitObject",
-                newGeometry : QRectF as "QRectF", oldGeometry : QRectF as "QRectF"] {
-            rust_object.geometry_changed(newGeometry, oldGeometry);
+                new_geometry : QRectF as "QRectF", old_geometry : QRectF as "QRectF"] {
+            rust_object.geometry_changed(new_geometry, old_geometry);
         });
-        QQuickItem::geometryChanged(newGeometry, oldGeometry);
+        QQuickItem::geometryChanged(new_geometry, old_geometry);
     }
 
     QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {

@@ -38,7 +38,9 @@ impl<T> Drop for SGNode<T> {
     }
 }
 
-/// A node that contains other nodes
+/// Tag to be used in SGNode. SGNode<ContainerNode> is a node that simply contains other node.
+/// Either all the node have the same type, but the number of nodes is not known at compile time,
+/// or the child node can have different type, but the amont of nodes is known at compile time
 pub enum ContainerNode {}
 
 cpp!{{
@@ -51,46 +53,21 @@ struct ContainerNode : QSGNode {
 }}
 
 // Don't reimplement
-pub trait UpdateNodeFnTuple<'a> {
+pub trait UpdateNodeFnTuple<T> {
     fn len(&self) -> u64;
     unsafe fn update_fn(&self, i : u64, *mut c_void) -> *mut c_void;
 }
 
+// Implementation for tuple of different sizes
 macro_rules! declare_UpdateNodeFnTuple {
-    (@continue $A:ident : $N:tt $($tail:tt)*) => { declare_UpdateNodeFnTuple![$($tail)*]; };
-    (@continue) => {};
-    ($($A:ident : $N:tt)*) => {
-        impl<'a $(,$A)*> UpdateNodeFnTuple<'a> for ( $(&'a Fn(SGNode<$A>)->SGNode<$A>,)* )
+    (@continue $T:ident : $A:ident : $N:tt $($tail:tt)+) => { declare_UpdateNodeFnTuple![$($tail)*]; };
+    (@continue $T:ident : $A:ident : $N:tt) => {};
+    ($($T:ident : $A:ident : $N:tt)+) => {
+        impl<$($A, $T : Fn(SGNode<$A>)->SGNode<$A>),*> UpdateNodeFnTuple<($($A,)*)> for ($($T,)*)
         {
-            fn len(&self) -> u64 {
-                #[allow(unused_mut)]
-                let mut count = 0;
-                $(count+=($N,1).1;)*
-                count
-            }
+            fn len(&self) -> u64 { ($($N,)* ).0 }
             unsafe fn update_fn(&self, i : u64, n : *mut c_void) -> *mut c_void {
-                match self.len() - i - 1 { $($N => (self.$N)(unsafe { SGNode::<_>::from_raw(n) } ).into_raw(), )*
-                    _ => panic!("Out of range") }
-            }
-        }
-
-        declare_UpdateNodeFnTuple![@continue $($A: $N)*];
-    }
-}
-declare_UpdateNodeFnTuple![A9:9 A8:8 A7:7 A6:6 A5:5 A4:4 A3:3 A2:2 A1:1 A0:0];
-
-/*
-
-
-macro_rules! declare_UpdateNodeFnTuple {
-    (@continue $T:ident : $A:ident : $N:tt $($tail:tt)*) => { declare_UpdateNodeFnTuple![$($tail)*]; };
-    (@continue) => {};
-    ($($T:ident : $A:ident : $N:tt)*) => {
-        impl<$($A, $T : Fn(SGNode<$A>)->SGNode<$A>),*> UpdateNodeFnTuple for ($($T),*)
-        {
-            fn len() -> u64 { ($($N,)*).0 }
-            unsafe fn update_fn(&self, i : u64, n : *mut c_void) -> *mut c_void {
-                match i { $($N => (self.$N)(unsafe { SGNode::<$A>::from_raw(n) } ).into_raw(), )*
+                match self.len() - i - 1 { $($N => (self.$N)( SGNode::<_>::from_raw(n) ).into_raw(), )*
                     _ => panic!("Out of range") }
             }
         }
@@ -100,22 +77,45 @@ macro_rules! declare_UpdateNodeFnTuple {
 }
 declare_UpdateNodeFnTuple![T9:A9:9 T8:A8:8 T7:A7:7 T6:A6:6 T5:A5:5 T4:A4:4 T3:A3:3 T2:A2:2 T1:A1:1 T0:A0:0];
 
-
-*/
-
+// Implementation for single element
+impl<A, T : Fn(SGNode<A>)->SGNode<A>> UpdateNodeFnTuple<(A,)> for T
+{
+    fn len(&self) -> u64 { 1 }
+    unsafe fn update_fn(&self, _i : u64, n : *mut c_void) -> *mut c_void {
+        self(SGNode::<A>::from_raw(n)).into_raw()
+    }
+}
 
 impl SGNode<ContainerNode> {
-    /// Update the child node: all node must be of the same type, but there can be a dynamic
-    /// number of them.
-    /// However, each update must have the same amount of nodes. If not, use the
-    /// reset() function in between.
+    /// Update the child nodes from an iterator.
     ///
-    /// There is currently a limit of 64 nodes
-    pub fn update_dynamic<T : std::any::Any>(&mut self, info : &[&Fn(SGNode<T>)->SGNode<T>])
+    /// When calling this function, all child nodes must be of the same type, but the amount
+    /// of node must not be known at compile time.
+    ///
+    /// The array must have the same size every time the function is called on the node.
+    /// (panic otherwise).
+    /// call reset() if you want to change the size.
+    ///
+    /// ```
+    /// # use qmetaobject::{QRectF, QObject, qtdeclarative::QQuickItem};
+    /// # use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
+    /// # struct Dummy<T> { items : Vec<QRectF>, _phantom :T }
+    /// # impl<T> QQuickItem for Dummy<T> where Dummy<T> : QObject  {
+    /// // in the reimplementation of  QQuickItem::update_paint_node
+    /// fn update_paint_node(&mut self, mut node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> {
+    ///    let items : &Vec<QRectF> = &self.items;
+    ///    node.update_dynamic(items.iter(),
+    ///        |i, mut n| -> SGNode<RectangleNode> { n.create(self); n.set_rect(*i); n });
+    ///    node
+    ///  }
+    /// # }
+    /// ```
+    pub fn update_dynamic<T : std::any::Any, Iter : ExactSizeIterator, F>(&mut self, iter : Iter, mut f : F)
+        where F :  FnMut(<Iter as Iterator>::Item, SGNode<T>)->SGNode<T>
     {
         let mut raw = self.raw;
         let type_id = std::any::TypeId::of::<T>();
-        let len = info.len();
+        let len = iter.len();
         assert!(len <= 64, "There is a limit of 64 child nodes");
         let mut mask = 0u64;
         if raw.is_null() {
@@ -133,8 +133,9 @@ impl SGNode<ContainerNode> {
         }
         let mut bit = 1u64;
         let mut before_iter : *mut c_void = std::ptr::null_mut();
-        for update_fn in info {
-            before_iter = Self::iteration(raw, before_iter, &mut bit, &mut mask, |n| { update_fn(unsafe { SGNode::<T>::from_raw(n) } ).into_raw() });
+        for i in iter {
+            before_iter = Self::iteration(raw, before_iter, &mut bit, &mut mask,
+                |n| { f(i, unsafe { SGNode::<T>::from_raw(n) } ).into_raw() });
         }
         cpp!(unsafe [raw as "ContainerNode*", mask as "quint64"] {
             raw->mask = mask;
@@ -143,10 +144,38 @@ impl SGNode<ContainerNode> {
 
     /// Update the child node: given a tuple of update function, runs it for every node
     ///
-    /// The argument is a tuple of update functions. The same type must be used every time
-    pub fn update_static<'a, T : UpdateNodeFnTuple<'a> + 'static>(&mut self, info : T)
+    /// The argument is a tuple of update functions. The same node types must be used every time
+    /// this function is called. (If reset() was not called in between)
+    /// (Panic otherwise).
+    /// Each node type can be different.
+    ///
+    /// In this example, the node has two children node
+    ///
+    /// ```
+    /// # use qmetaobject::{QRectF, QObject, qtdeclarative::QQuickItem};
+    /// # use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
+    /// # struct Dummy<T> { items : Vec<QRectF>, _phantom :T }
+    /// # impl<T> QQuickItem for Dummy<T> where Dummy<T> : QObject  {
+    /// // in the reimplementation of  QQuickItem::update_paint_node
+    /// fn update_paint_node(&mut self, mut node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> {
+    ///      node.update_static((
+    ///          |mut n : SGNode<RectangleNode>| -> SGNode<RectangleNode> {
+    ///              n.create(self);
+    ///              n.set_rect(QRectF { x: 0., y: 0., width: 42., height: 42. });
+    ///              n
+    ///          },
+    ///          |mut n : SGNode<RectangleNode>| -> SGNode<RectangleNode> {
+    ///              n.create(self);
+    ///              n.set_rect(QRectF { x: 0., y: 0., width: 42., height: 42. });
+    ///              n
+    ///          }));
+    ///      node
+    ///  }
+    /// # }
+    ///  ```
+    pub fn update_static<A : 'static, T : UpdateNodeFnTuple<A>>(&mut self, info : T)
     {
-        let type_id = std::any::TypeId::of::<T>();
+        let type_id = std::any::TypeId::of::<A>();
         let mut mask = 0u64;
         if self.raw.is_null() {
             self.raw = cpp!(unsafe [type_id as "quint64"] -> *mut c_void as "QSGNode*" {
@@ -206,7 +235,6 @@ impl SGNode<ContainerNode> {
         (*bit) <<= 1;
         if node.is_null() { before_iter } else { node }
     }
-
 }
 
 
@@ -271,6 +299,43 @@ impl SGNode {
     }
 }
 */
+
+
+/// Wrapper around QSGRectangleNode
+pub enum RectangleNode{}
+
+
+impl SGNode<RectangleNode> {
+    pub fn set_color(&mut self, color: QColor) {
+        let raw = self.raw;
+        cpp!(unsafe [raw as "QSGRectangleNode*", color as "QColor"] {
+            if(raw) raw->setColor(color);
+        });
+    }
+    pub fn set_rect(&mut self, rect: QRectF) {
+        let raw = self.raw;
+        cpp!(unsafe [raw as "QSGRectangleNode*", rect as "QRectF"] {
+            if (raw) raw->setRect(rect);
+        });
+    }
+
+    pub fn create(&mut self, item: &QQuickItem ) {
+        if !self.raw.is_null() {
+            return;
+        }
+        let item = item.get_cpp_object();
+        self.raw = cpp!(unsafe [item as "QQuickItem*"] -> *mut c_void as "void*" {
+            if (!item) return nullptr;
+            if (auto window = item->window())
+                return window->createRectangleNode();
+            return nullptr;
+        });
+    }
+
+}
+
+
+
 /*
 #[repr(C)]
 struct SGGeometryNode {
