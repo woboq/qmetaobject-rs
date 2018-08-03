@@ -65,9 +65,9 @@ macro_rules! declare_UpdateNodeFnTuple {
     ($($T:ident : $A:ident : $N:tt)+) => {
         impl<$($A, $T : Fn(SGNode<$A>)->SGNode<$A>),*> UpdateNodeFnTuple<($($A,)*)> for ($($T,)*)
         {
-            fn len(&self) -> u64 { ($($N,)* ).0 }
+            fn len(&self) -> u64 { ($($N,)* ).0 + 1 }
             unsafe fn update_fn(&self, i : u64, n : *mut c_void) -> *mut c_void {
-                match self.len() - i - 1 { $($N => (self.$N)( SGNode::<_>::from_raw(n) ).into_raw(), )*
+                match i { $($N => (self.$N)( SGNode::<_>::from_raw(n) ).into_raw(), )*
                     _ => panic!("Out of range") }
             }
         }
@@ -453,26 +453,6 @@ bitflags! {
 }
 
 
-/*
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum {}
-*/
-
-#[repr(C)]
-pub struct SGTextureBox {
-    cpp : *mut c_void,
-}
-impl Drop for SGTextureBox {
-    fn drop(&mut self) {
-        let cpp = self.cpp;
-        cpp!(unsafe [cpp as "QSGTexture*"] { delete cpp; });
-    }
-}
-/*impl<'a> SGTextureRef<'a> {
-    //pub fn anisotropyLevel() ->
-
-}*/
 
 
 bitflags! {
@@ -498,59 +478,6 @@ pub fn create_texture_from_image(item : &QQuickItem, image : &QImage,
         return nullptr;
     })
 }
-
-/*
-pub trait QSGNode {
-    fn is_sub_tree_blocked(&self) -> bool { false }
-    fn preprocess(&mut self) { }
-}*/
-/*
-struct SGNodeHolder<T : QSGNode> {
-    cpp: *mut std::os::raw::c_void,
-    node: RefCell<T>,
-}
-
-struct BaseNode {
-}
-*/
-
-
-cpp!{{
-struct RustSGNode : QSGNode {
-    TraitObject QSGNode_trait;
-    ~RustSGNode() {
-        /*TraitObject toDelete = QSGNode_trait;
-        QSGNode_trait = {};
-        if (toDelete) {
-            rust!(RustSGNode_delete[mut QSGNode_trait : *mut QSGNode as "TraitObject"] {
-                let b = unsafe { Box::from_raw(QSGNode_trait) };
-            })
-        }*/
-    }
-    /*bool isSubtreeBlocked() const override {
-        return rust!(QSGNode_isSubtreeBlocked [QSGNode_trait : &QSGNode as "TraitObject"] -> bool as "bool" {
-            return QSGNode_trait.is_sub_tree_blocked();
-        });
-    }
-    void preprocess() override {
-        return rust!(QSGNode_preprocess [QSGNode_trait : &mut QSGNode as "TraitObject"] {
-            QSGNode_trait.preprocess()
-        });
-    }*/
-};
-}}
-
-/*
-cpp_trait!{ RustSGNode : "QSGNode",
-    pub trait QSGNode {
-        fn is_sub_tree_blocked(&self) -> bool for "bool isSubtreeBlocked() const" {
-            return rust!(QSGNode_isSubtreeBlocked [QSGNode_trait : &QSGNode as "TraitObject"] -> bool {
-                QSGNode_trait.is_sub_tree_blocked();
-            );
-        }
-    }
-}
-*/
 
 
 */

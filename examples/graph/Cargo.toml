@@ -2,8 +2,12 @@
 name = "graph"
 version = "0.1.0"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+build = "build.rs"
 
 [dependencies]
 qmetaobject = { path = "../../qmetaobject"}
 cstr = "0.1.4"
+cpp = "0.4"
 
+[build-dependencies]
+cpp_build = "0.4"

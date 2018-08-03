@@ -7,7 +7,7 @@ Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
 /// Macro to embed files and made them available to the Qt resource system
 ///
 /// ```ignore
-/// rc!(my_ressource,
+/// qrc!(my_ressource,
 ///     "qml" {
 ///         "main.qml",
 ///         "Foo.qml" as "foo/Foo.qml",

@@ -1,11 +1,13 @@
+#![allow(non_snake_case)]
+#![allow(unused_variables)]
+#[macro_use]
 extern crate qmetaobject;
 use qmetaobject::*;
 use qmetaobject::scenegraph::*;
 #[macro_use] extern crate cstr;
+#[macro_use] extern crate cpp;
 
-
-#[allow(unused_variables)]
-#[allow(non_snake_case)]
+mod nodes;
 
 
 #[derive(Default, QObject)]
@@ -16,36 +18,23 @@ struct Graph {
     m_samplesChanged : bool,
     m_geometryChanged : bool,
 
-    appendSample : qt_method!(fn appendSample(&mut self, value: f64) {
-        self.m_samples.push(value);
-	    self.m_samplesChanged = true;
-	    //update();
-    }),
+    appendSample : qt_method!(fn(&mut self, value: f64)),
     removeFirstSample : qt_method!(fn removeFirstSample(&mut self) {
         self.m_samples.drain(0..1);
         self.m_samplesChanged = true;
-        //update();
+        (self as &QQuickItem).update();
     }),
 }
 
-
-struct LineNode {
-    inside: SGNode,
-}
-impl LineNode {
-    fn update_geometry(&mut self, _ : QRectF, _ : &[f64]) {}
-}
-
-fn createLineNode(_ : u32, _ : f64, _ : QColor) -> LineNode {
-    LineNode{ inside: SGNode{ raw: std::ptr::null_mut() } }
-}
-
-impl NodeType for LineNode {
-    fn from_node(n: &mut SGNode) -> &mut Self {
-        unsafe { std::mem::transmute(n) }
-    }
-    fn into_node(self) -> SGNode {
-        self.inside
+impl Graph {
+    fn appendSample(&mut self, value: f64) {
+        self.m_samples.push(value);
+        self.m_samplesChanged = true;
+        // FIXME! find a better way maybe
+        let obj = self.get_cpp_object();
+        assert!(!obj.is_null());
+        cpp!(unsafe [obj as "QQuickItem*"] { obj->setFlag(QQuickItem::ItemHasContents); });
+        (self as &QQuickItem).update();
     }
 }
 
@@ -57,39 +46,40 @@ impl QQuickItem for Graph
         (self as &QQuickItem).update();
     }
 
-    fn update_paint_node(&mut self, mut node : SGNode ) {
+    fn update_paint_node(&mut self, mut node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> {
         let rect = (self as &QQuickItem).bounding_rect();
-        node.update_nodes(&[
-            &UpdateNode {
-                create: (|| createLineNode(10, 0.5, QColor::from_name("steelblue"))),
-                update: (|n| { if self.m_geometryChanged || self.m_samplesChanged {
-                            n.update_geometry(rect, &self.m_samples);
-                        } })
-            },
-            &UpdateNode {
-                create: (|| createLineNode(20, 0.2, QColor::from_rgba_f(0.2,0.2,0.2, 0.4))),
-                update: (|n| { if self.m_geometryChanged || self.m_samplesChanged {
-                            n.update_geometry(rect, &self.m_samples);
-                        } })
-            }
-        ]);
-        /*node.update_node(vec![
-            ( (|ctx| createNoisyNode(ctx)) ,
-                ( |n| { if self.m_geometryChanged { n.set_rect(rect); } } )),
-            ( (|ctx| createGridNode(ctx)) ,
-                (|n| { if self.m_geometryChanged { n.set_rect(rect); } } )),
-            ( (|_| createLineNode(10, 0.5, QColor::from_name("steelblue"))),
-                |n| { if self.m_geometryChanged || self.m_samplesChanged {
-                    n.update_geometry(rect, self.m_samples);
-                } } ),
-            ( (|_| createLineNode(20, 0.2, QColor::from_rgba_f(0.2,0.2,0.2, 0.4))),
-                |n| { if self.m_geometryChanged || self.m_samplesChanged {
-                    n.update_geometry(rect, self.m_samples);
-                } } )
 
-        ]);*/
+        node.update_static((
+            |mut n| -> SGNode<nodes::NoisyNode> {
+                nodes::create_noisy_node(&mut n, self);
+                if self.m_geometryChanged { nodes::noisy_node_set_rect(&mut n, rect); }
+                n
+            },
+            |mut n| -> SGNode<nodes::GridNode> {
+                if self.m_geometryChanged { nodes::update_grid_node(&mut n, rect); }
+                n
+            },
+            |mut n| {
+                if self.m_geometryChanged || self.m_samplesChanged {
+                    nodes::create_line_node(&mut n, 10., 0.5, QColor::from_name("steelblue"));
+                    nodes::update_line_node(&mut n,  rect, &self.m_samples);
+                }
+                n
+            },
+            |mut n| {
+                if self.m_geometryChanged || self.m_samplesChanged {
+                    nodes::create_line_node(&mut n, 20., 0.2, QColor::from_rgba_f(0.2,0.2,0.2, 0.4));
+                    // Fixme! share the geometry
+                    nodes::update_line_node(&mut n,  rect, &self.m_samples);
+                }
+                n
+            }
+
+        ));
+
         self.m_geometryChanged = false;
         self.m_samplesChanged = false;
+        node
     }
 }
 

@@ -36,8 +36,8 @@ pub use lazy_static::*;
 #[doc(hidden)]
 #[macro_export] macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 
-#[macro_use]
-extern crate bitflags;
+//#[macro_use]
+//extern crate bitflags;
 
 use std::os::raw::c_void;
 
@@ -435,6 +435,7 @@ pub mod qtdeclarative;
 pub use qtdeclarative::*;
 pub mod qmetatype;
 pub use qmetatype::*;
+#[macro_use]
 pub mod qrc;
 pub mod connections;
 pub use connections::RustSignal;
