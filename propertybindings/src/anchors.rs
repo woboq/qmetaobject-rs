@@ -1,4 +1,5 @@
-use super::{Property, Geometry, PropertyBindingFn};
+use super::{Property, PropertyBindingFn};
+use super::items::{Geometry};
 use std::marker::PhantomData;
 pub enum BeginTag {}
 pub enum EndTag {}

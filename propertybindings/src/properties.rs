@@ -379,26 +379,6 @@ mod tests {
 */
 
 
-
-
 }
 
-
-#[derive(Default)]
-pub struct Geometry<'a> {
-    pub x: Property<'a,f64>,
-    pub y: Property<'a,f64>,
-    pub width: Property<'a,f64>,
-    pub height: Property<'a,f64>,
-}
-impl<'a> Geometry<'a> {
-    pub fn width(&self) -> f64 { self.width.get() }
-    pub fn height(&self) -> f64 { self.height.get() }
-    pub fn left(&self) -> f64 { self.x.get() }
-    pub fn top(&self) -> f64 { self.y.get() }
-    pub fn right(&self) -> f64 { self.x.get() + self.width.get() }
-    pub fn bottom(&self) -> f64 { self.y.get() + self.height.get() }
-    pub fn vertical_center(&self)  -> f64 { self.x.get() + self.width.get() / 2. }
-    pub fn horizontal_center(&self)  -> f64 { self.y.get() + self.height.get() / 2. }
-}
 
