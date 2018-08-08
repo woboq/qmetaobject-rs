@@ -218,15 +218,6 @@ pub trait QGadget  {
     fn meta_object(&self)->*const QMetaObject;
     /// Returns a pointer to a meta object
     fn static_meta_object()->*const QMetaObject where Self:Sized;
-
-    /// Returns a QVariant containing a copy of this object
-    fn to_qvariant(&self) -> QVariant where Self: Clone + Default {
-        let id : i32 = <Self as QMetaType>::register(""); // FIXME: we should not register it always
-        //let id = self.metatype();
-        unsafe { cpp!([self as "const void*", id as "int"] -> QVariant as "QVariant"  {
-            return QVariant(id, self);
-        } ) }
-    }
 }
 
 #[doc(hidden)]

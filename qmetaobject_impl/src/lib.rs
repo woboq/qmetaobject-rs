@@ -466,18 +466,25 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         let i = i as u32;
         let property_name = &prop.name;
         let typ = &prop.typ;
+
+
         let mut notify = quote! {};
         if let Some(ref signal) = prop.notify_signal {
             let signal : syn::Ident = signal.clone().into();
             notify = quote!{ obj.#signal() };
         }
 
-        let register_type = if builtin_type(&prop.typ) == 0 { quote! {
-            #RegisterPropertyMetaType => unsafe {
-                let r = *a as *mut i32;
-                *r = <#typ as #crate_::PropertyType>::register_type(stringify!(#typ));
+        let register_type = if builtin_type(&prop.typ) == 0 {
+            let typ_str = typ.clone().into_token_stream().to_string();
+            let typ_str = typ_str.as_bytes();
+            quote! {
+                #RegisterPropertyMetaType => unsafe {
+                    let r = *a as *mut i32;
+                    *r = <#typ as #crate_::PropertyType>::register_type(
+                        ::std::ffi::CStr::from_bytes_with_nul_unchecked(&[#(#typ_str ,)* 0u8]) );
+                }
             }
-        }} else { quote!{} };
+        } else { quote!{} };
 
         let getter = if let Some(ref getter) = prop.getter {
             let getter_ident : syn::Ident = getter.clone().into();
@@ -554,9 +561,12 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         let args : Vec<_> = method.args.iter().enumerate().map(|(i, arg)| {
             let i = i as u32;
             if builtin_type(&arg.typ) == 0 {
-                let typ  = &arg.typ;
+                let typ = &arg.typ;
+                let typ_str = arg.typ.clone().into_token_stream().to_string();
+                let typ_str = typ_str.as_bytes();
                 quote! {
-                    #i => { unsafe { *(*a as *mut i32) = <#typ as #crate_::QMetaType>::register(stringify!(#typ)) }; }
+                    #i => { unsafe { *(*a as *mut i32) = <#typ as #crate_::QMetaType>::register(
+                        Some(::std::ffi::CStr::from_bytes_with_nul_unchecked(&[#(#typ_str ,)* 0u8]))) }; }
                 }
             } else {
                 quote! {}
@@ -748,7 +758,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         body = quote! { #body
             impl #impl_generics #crate_::PropertyType for #name #ty_generics #where_clause {
                 const READ_ONLY : bool = true;
-                fn register_type(_name : &str) -> i32 {
+                fn register_type(_name : &::std::ffi::CStr) -> i32 {
                     #crate_::register_metatype_qobject::<Self>()
                 }
                 unsafe fn pass_to_qt(&mut self, a: *mut std::os::raw::c_void) {
