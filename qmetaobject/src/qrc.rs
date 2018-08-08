@@ -38,7 +38,7 @@ macro_rules! qrc {
         fn $name() {
             #[allow(unused)]
             #[derive(QResource_internal)]
-            enum RC { Input = (0, stringify![$($rest)*]).0 }
+            enum RC { Input = (0, stringify!($($rest)*)).0 }
             register();
         }
     }
