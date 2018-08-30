@@ -1,3 +1,5 @@
+#![recursion_limit="512"]
+
 #[cfg(test)]
 #[macro_use] extern crate cstr;
 

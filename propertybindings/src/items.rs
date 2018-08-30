@@ -371,6 +371,43 @@ impl<'a> Item<'a> for Rectangle<'a> {
 impl<'a> Rectangle<'a> {
     pub fn new() -> Rc<Self> { Default::default() }
 }
+/*
+//cpp_class!(unsafe struct QQuickTextItem as "QScopedPointer<QQuickItem>")
+
+#[derive(Default)]
+pub struct Text<'a> {
+    pub geometry : Geometry<'a>,
+    pub layout_info: LayoutInfo<'a>,
+    pub text: Property<'a, QString>,
+}
+
+impl<'a> Item<'a> for Text<'a> {
+    fn geometry(&self) -> &Geometry<'a> { &self.geometry }
+    fn layout_info(&self) -> &LayoutInfo<'a> { &self.layout_info }
+
+    fn update_paint_node(&self, mut node : SGNode<ContainerNode>, item: &QQuickItem) -> SGNode<ContainerNode>
+    {
+        node.update_static(
+            |mut n : SGNode<RectangleNode>| -> SGNode<RectangleNode> {
+                n.create(item);
+                n.set_color(self.color.get());
+                let g = self.geometry();
+                n.set_rect(QRectF { x: g.left(), y:g.top(), width: g.width(), height: g.height()  });
+                n
+            }
+        );
+        node
+    }
+
+}
+impl<'a> Rectangle<'a> {
+    pub fn new() -> Rc<Self> { Default::default() }
+}
+
+
+
+*/
+
 
 
 /*
@@ -473,6 +510,11 @@ impl<'a> QQuickItem for QuickItem<'a>
         }
     }
 }
+
+
+
+
+
  /*
 #[cfg(test)]
 mod test {
