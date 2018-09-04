@@ -237,6 +237,9 @@ pub trait QQuickItem : QObject {
     fn geometry_changed(&mut self, _new_geometry : QRectF, _old_geometry : QRectF) {}
 
     fn update_paint_node(&mut self, node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> { return node; }
+
+    fn class_begin(&mut self) {}
+    fn component_complete(&mut self) {}
 }
 
 cpp!{{
@@ -250,9 +253,22 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
     virtual bool isTextureProvider() const;
     virtual QSGTextureProvider *textureProvider() const;
-    virtual void itemChange(ItemChange, const ItemChangeData &);
-    void classBegin() override;
-    void componentComplete() override;
+    virtual void itemChange(ItemChange, const ItemChangeData &);*/
+    void classBegin() override {
+        QQuickItem::classBegin();
+        rust!(Rust_QQuickItem_classBegin[rust_object : &mut QQuickItem as "TraitObject"] {
+            rust_object.class_begin();
+        });
+    }
+
+    void componentComplete() override {
+        QQuickItem::componentComplete();
+        rust!(Rust_QQuickItem_componentComplete[rust_object : &mut QQuickItem as "TraitObject"] {
+            rust_object.component_complete();
+        });
+    }
+
+    /*
     virtual void keyPressEvent(QKeyEvent *event);
     virtual void keyReleaseEvent(QKeyEvent *event);
     virtual void inputMethodEvent(QInputMethodEvent *);
