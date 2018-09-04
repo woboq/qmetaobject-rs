@@ -202,13 +202,16 @@ pub fn qml_register_type<T : QObject + Default + Sized>(uri : &std::ffi::CStr, v
             int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
             meta_object);
 
+        int parserStatusCast = meta_object && meta_object->inherits(&QQuickItem::staticMetaObject)
+            ? QQmlPrivate::StaticCastSelector<QQuickItem,QQmlParserStatus>::cast() : -1;
+
         QQmlPrivate::RegisterType type = {
             0 /*version*/, ptrType, 0, /* FIXME?*/
             int(size), creator_fn,
             QString(),
             uri_ptr, version_major, version_minor, qml_name_ptr, meta_object,
             nullptr, nullptr, // attached properties
-            -1, -1, -1,
+            parserStatusCast, -1, -1,
             nullptr, nullptr,
             nullptr,
             0
