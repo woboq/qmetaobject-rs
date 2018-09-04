@@ -466,24 +466,8 @@ cpp!{{
 struct QuickItem<'a> {
     base: qt_base_class!(trait QQuickItem),
     node : Option<Rc<Item<'a> + 'a>>,
-    init: qt_property!(bool; WRITE set_init)
 }
 impl<'a> QuickItem<'a> {
-
-    pub fn set_init(&mut self, _: bool) {
-        let b : Rc<Rectangle<'a>> =  rsml!( Rectangle { color: QColor::from_name("blue") } );
-        let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
-
-        let i : Rc<ColumnLayout<'a>> = rsml!(
-            ColumnLayout {
-                geometry.width : 110.,
-                geometry.height : 90.,
-            }
-        );
-        i.add_child(b);
-        i.add_child(y);
-        self.set_node(i);
-    }
 
     pub fn set_node(&mut self, node: Rc<Item<'a> + 'a>) {
         self.node = Some(node);
@@ -509,6 +493,23 @@ impl<'a> QQuickItem for QuickItem<'a>
             i.geometry().height.set(new_geometry.height);
         }
     }
+
+    fn class_begin(&mut self) {
+        let b : Rc<Rectangle<'a>> =  rsml!( Rectangle { color: QColor::from_name("blue") } );
+        let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
+
+        let i : Rc<ColumnLayout<'a>> = rsml!(
+            ColumnLayout {
+                geometry.width : 110.,
+                geometry.height : 90.,
+            }
+        );
+        i.add_child(b);
+        i.add_child(y);
+        self.set_node(i);
+    }
+
+
 }
 
 
@@ -545,7 +546,6 @@ Window {
     MyItem {
         anchors.fill: parent
         anchors.margins: 100
-        init: true
     }
 
 }
