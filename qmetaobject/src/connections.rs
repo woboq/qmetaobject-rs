@@ -95,9 +95,10 @@ impl<Args> CppSignal<Args> {
 /// Args represents the type of the arguments, similar to the CppSignal ones
 pub struct RustSignal<Args> {
     phantom: std::marker::PhantomData<Args>,
+    _u : bool, // Actually but a field so it has a size;
 }
 impl<Args> Default for RustSignal<Args> {
-    fn default() -> Self { RustSignal{ phantom: Default::default() } }
+    fn default() -> Self { RustSignal{ phantom: Default::default(), _u: false } }
 }
 impl<Args> RustSignal<Args> {
     /// return a CppSignal corresponding to this signal.
@@ -137,7 +138,7 @@ macro_rules! declare_SlotTraits {
                 let mut count = 0;
                 $(count+=($N,1).1;)*
                 self(
-                    // a is an array containing the argument, with a[0] boing a pointer to the
+                    // a is an array containing the argument, with a[0] being a pointer to the
                     // return value, and a[1] being a pointer to the first argument.
                     // $N is (count-1, count-2, ..., 0), so (count - $N) will be (1,2,...,count)
                     $(&(*(*(a.offset(count - $N)) as *const $A))),*
