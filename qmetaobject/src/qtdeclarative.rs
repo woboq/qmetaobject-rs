@@ -324,7 +324,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 
 }}
 
-impl QQuickItem {
+impl<'a> QQuickItem +'a {
     pub fn bounding_rect(&self) -> QRectF {
         let obj = self.get_cpp_object();
         cpp!(unsafe [obj as "Rust_QQuickItem*"] -> QRectF as "QRectF" {

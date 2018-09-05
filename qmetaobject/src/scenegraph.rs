@@ -334,6 +334,56 @@ impl SGNode<RectangleNode> {
 
 }
 
+/// Wrapper around QSGTransformNode
+pub enum TransformNode{}
+
+
+impl SGNode<TransformNode> {
+    pub fn set_translation(&mut self, x: f64, y:f64) {
+        if self.raw.is_null() {
+            self.create();
+        }
+        let raw = self.raw;
+        cpp!(unsafe [raw as "QSGTransformNode*", x as "double", y as "double"] {
+            QMatrix4x4 m;
+            m.translate(x, y);
+            if (raw) raw->setMatrix(m);
+        });
+    }
+
+    pub fn create(&mut self) {
+        if !self.raw.is_null() {
+            return;
+        }
+        self.raw = cpp!(unsafe [] -> *mut c_void as "void*" { return new QSGTransformNode; });
+    }
+
+    pub fn update_sub_node<F : FnMut(SGNode<ContainerNode>)->SGNode<ContainerNode> >(&mut self, mut f : F)
+    {
+        if self.raw.is_null() {
+            self.create();
+        }
+        let raw = self.raw;
+        let sub = unsafe { SGNode::<ContainerNode>::from_raw(cpp!([raw as "QSGNode*"]
+                -> *mut c_void as "QSGNode*" {
+            auto n = raw->firstChild();
+            if (n)
+                n->setFlag(QSGNode::OwnedByParent, false); // now we own it;
+            return n;
+        })) };
+        let sub = f(sub);
+        let node = sub.into_raw();
+        cpp!(unsafe [node as "QSGNode*", raw as "QSGNode*"] {
+            if (!node->parent()) {
+                raw->prependChildNode(node);
+            } else if (node->parent() != raw) {
+                rust!(sgnode_5 []{ panic!("Returned node from another parent") });
+            }
+            node->setFlag(QSGNode::OwnedByParent);
+        });
+    }
+}
+
 
 
 /*
