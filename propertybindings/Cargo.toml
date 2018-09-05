@@ -7,9 +7,8 @@ build = "../qmetaobject/build.rs"
 [dependencies]
 qmetaobject = { path = "../qmetaobject"}
 cpp = "0.4"
-
-[dev-dependencies]
 cstr = "0.1.4"
+
 
 [build-dependencies]
 cpp_build = "0.4"

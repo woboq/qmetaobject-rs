@@ -270,7 +270,7 @@ struct PropertyImpl<'a, T> {
     dependencies : RefCell<double_link::Head<NotifyList>>,
     rev_dep : RefCell<double_link::Head<SenderList>>,
     updating: Cell<bool>,
-    callbacks: RefCell<Vec<Box<FnMut() +'a>>>
+    callbacks: RefCell<Vec<Box<FnMut(&T) +'a>>>
 }
 impl<'a, T> PropertyBase for PropertyImpl<'a, T>  {
     fn update<'b>(&'b self, dep : Weak<PropertyBase + 'b>) {
@@ -312,7 +312,7 @@ impl<'a, T> PropertyBase for PropertyImpl<'a, T>  {
             }
         }
         for cb in self.callbacks.borrow_mut().iter_mut() {
-            (*cb)();
+            (*cb)(&self.value.borrow());
         }
     }
 
@@ -379,8 +379,8 @@ impl<'a, T  : Default + Clone> Property<'a, T>  {
         WeakProperty{ d: Rc::downgrade(&self.d) }
     }
 
-    pub fn on_notify(&self, callback: Box<FnMut() + 'a>) {
-        self.d.callbacks.borrow_mut().push(callback);
+    pub fn on_notify<F: FnMut(&T) + 'a>(&self, callback: F) {
+        self.d.callbacks.borrow_mut().push(Box::new(callback));
     }
 }
 impl<'a, T : Default> From<T> for Property<'a, T> {
@@ -539,7 +539,7 @@ mod tests {
         let x = Cell::new(0);
         let bar = Property::from(2);
         let foo = Property::from(2);
-        foo.on_notify(Box::new(|| x.set(x.get() + 1)));
+        foo.on_notify(|_| x.set(x.get() + 1));
         foo.set(3);
         assert_eq!(x.get(), 1);
         foo.set(45);
