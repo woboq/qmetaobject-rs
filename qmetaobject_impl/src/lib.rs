@@ -19,7 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #[macro_use]
 extern crate syn;
-use syn::synom::Parser;
+use syn::parse::{Parse, Parser, ParseStream, Result};
 #[macro_use]
 extern crate quote;
 
@@ -309,23 +309,35 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                 Write(syn::Ident),
                                 Const,
                             }
-                            named!(property_flag -> Flag, do_parse!(
-                                k: syn!(syn::Ident) >>
-                                flag: alt!(
-                                    cond_reduce!(&k == "NOTIFY", syn!(syn::Ident)) => { |i| Flag::Notify(i) } |
-                                    cond_reduce!(&k == "CONST", epsilon!()) => { |_| Flag::Const } |
-                                    cond_reduce!(&k == "READ", syn!(syn::Ident)) => { |i| Flag::Read(i) } |
-                                    cond_reduce!(&k == "WRITE", syn!(syn::Ident)) => { |i| Flag::Write(i) }
-                                ) >> (flag)));
-                            named!(property_parser -> (syn::Type, Vec<Flag>), do_parse!(
-                                ty: syn!(syn::Type) >>
-                                //trail: call!(syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated_with, property_flags) >>
-                                trail: option!(do_parse!(
-                                    punct!(;) >>
-                                    flags: many0!(call!(property_flag)) >>
-                                    (flags)
-                                )) >>
-                                ((ty, trail.unwrap_or_default()))));
+                            impl Parse for Flag {
+                                fn parse(input: ParseStream) -> Result<Self> {
+                                    let k = input.parse::<syn::Ident>()?;
+                                    if &k == "NOTIFY" {
+                                        Ok(Flag::Notify(input.parse()?))
+                                    } else if &k == "CONST" {
+                                        Ok(Flag::Const)
+                                    } else if &k == "READ" {
+                                        Ok(Flag::Read(input.parse()?))
+                                    } else if &k == "WRITE" {
+                                        Ok(Flag::Write(input.parse()?))
+                                    } else {
+                                        Err(input.error("expected a property keyword"))
+                                    }
+                                }
+
+                            }
+
+                            let property_parser = |input: ParseStream| -> Result<(syn::Type, Vec<Flag>)> {
+                                Ok((input.parse()?,
+                                    input.parse::<Option<Token![;]>>()?.map(|_| -> Result<Vec<Flag>> {
+                                        let mut r = Vec::<Flag>::new();
+                                        while !input.is_empty() {
+                                            r.push(input.parse()?)
+                                        }
+                                        Ok(r)
+                                    }).unwrap_or(Ok(Default::default()))?))
+                            };
+
                             let parsed = property_parser.parse(mac.mac.tts.clone().into())
                                 .expect("Could not parse property");
 
@@ -393,7 +405,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             });
                         }
                         "qt_signal" => {
-                            let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_separated;
+                            let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_terminated;
                             let args_list = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse signal");
                             let args = map_method_parameters(&args_list);
                             signals.push(MetaMethod {
@@ -404,10 +416,10 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             });
                         }
                         "qt_base_class" => {
-                            named!(parser -> syn::Ident, do_parse!(
-                                syn!(Token![trait]) >>
-                                t: syn!(syn::Ident) >>
-                                (t)));
+                            let parser = |input: ParseStream| -> Result<syn::Ident> {
+                                input.parse::<Token![trait]>()?;
+                                input.parse()
+                            };
                             base = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse base trait");
                             base_prop = f.ident.clone().expect("base prop needs a name");
                         }

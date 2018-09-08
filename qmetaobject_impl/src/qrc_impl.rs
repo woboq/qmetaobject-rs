@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 
-use syn::{ LitStr, punctuated::Punctuated};
-use syn::synom::Parser;
+use syn::LitStr;
+use syn::parse::{Parse, Parser, ParseStream, Result};
 use std::collections::BTreeMap;
 use std::fs;
 
@@ -11,30 +11,41 @@ struct Resource {
     files: Vec<File>,
 }
 
+impl Parse for Resource {
+    fn parse(input: ParseStream) -> Result<Self> {
+        Ok(Resource {
+            prefix: input.parse::<LitStr>()?.value(),
+            files: {
+                let content;
+                braced!(content in input);
+                content.parse_terminated::<File, Token![,]>(File::parse)?.into_iter().collect()
+            }
+        })
+    }
+}
+
 #[derive(Debug)]
 struct File {
     file: String,
     alias: Option<String>,
 }
 
+impl Parse for File {
+    fn parse(input: ParseStream) -> Result<Self> {
+        Ok(File {
+            file: input.parse::<LitStr>()?.value(),
+            alias: input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> { Ok(Some(input.parse::<LitStr>()?.value())) })?,
+        })
+    }
+}
+
+
 fn parse_qrc(source : &str) -> Vec<Resource> {
-    named!(file -> File,
-        do_parse!(
-            file: syn!(LitStr) >>
-            alias: option!(do_parse!(keyword!(as) >> a:syn!(LitStr) >> (a.value()))) >>
-            (File{ file: file.value(), alias })));
 
-    named!(resource -> Resource,
-        do_parse!(
-            prefix: syn!(LitStr) >>
-            b: braces!(call!(Punctuated::<File, Token![,]>::parse_terminated_with, file)) >>
-            (Resource{ prefix: prefix.value() , files: b.1.into_iter().collect()})));
-
-    named!(resources -> Vec<Resource>, map!(
-        call!(Punctuated::<Resource, Token![,]>::parse_terminated_with, resource),
-        |x| x.into_iter().collect()));
-
-    resources.parse_str(source).expect("Cannot parse qrc macro")
+    fn parser(input: ParseStream) -> Result<Vec<Resource>> {
+        Ok(input.parse_terminated::<Resource, Token![,]>(Resource::parse)?.into_iter().collect())
+    }
+    parser.parse_str(source).expect("Cannot parse qrc macro")
 }
 
 
