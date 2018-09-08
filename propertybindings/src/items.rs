@@ -1,6 +1,7 @@
 use super::*;
 use std::rc::{Rc};
-use std::cell::{RefCell, Cell};
+use std::os::raw::c_void;
+use std::cell::{RefCell};
 use std::ffi::CStr;
 use qmetaobject::scenegraph::{SGNode,ContainerNode,RectangleNode, TransformNode};
 use qmetaobject::{QColor, QQuickItem, QRectF, QString, QJSValue, QMetaType};
@@ -386,14 +387,66 @@ impl<'a> Rectangle<'a> {
     pub fn new() -> Rc<Self> { Default::default() }
 }
 
-//cpp_class!(unsafe struct QQuickTextItem as "QScopedPointer<QQuickItem>")
+#[derive(Default)]
+pub struct QmlItemWrapper {
+    internal_item: RefCell<QJSValue>
+}
+impl QmlItemWrapper {
+    pub fn init(&self, item: &QQuickItem, name: QString) {
+        let item = item.get_cpp_object();
+        let js = cpp!(unsafe [item as "QQuickItem*", name as "QString"] -> QJSValue as "QJSValue" {
+            if (!item) return {};
+            if (auto *engine = qmlEngine(item)) {
+                auto v = engine->evaluate(
+                    "(function (i) { return Qt.createQmlObject('import QtQuick 2.0; " + name
+                        + "{visible: false;}', i, 'RustTextItem')} )");
+                return v.call( { engine->newQObject(item) });
+            }
+            return {};
+        });
+        *self.internal_item.borrow_mut() = js.clone();
+    }
+
+    pub fn link_property<'a, T :QMetaType>(&self, p: &Property<'a, T>, name: &'static CStr) {
+        let js = self.internal_item.borrow().clone();
+        let func =  move |t : &T| {
+            let var = t.to_qvariant();
+            let name = name.as_ptr();
+            cpp!(unsafe [var as "QVariant", js as "QJSValue", name as "const char*"] {
+                if (auto item = qobject_cast<QQuickItem*>(js.toQObject())) {
+                    item->setProperty(name, var);
+                }
+            })
+        };
+        func(&p.value());
+        p.on_notify(func);
+    }
+
+    // unsafe because the node is not typed to this particular item
+    pub unsafe fn update_node(&self, n : SGNode<()>) -> SGNode<()> {
+        let raw = n.into_raw();
+        let internal_item = self.internal_item.as_ptr();
+        SGNode::from_raw(cpp!([internal_item as "QJSValue*", raw as "QSGNode*"]
+                ->  *mut c_void as "QSGNode*" {
+            if (auto item = qobject_cast<QQuickItem*>(internal_item->toQObject())) {
+                // updatePaintNode is protected
+                struct Helper : QQuickItem {
+                    static constexpr auto upn() -> QSGNode* (QQuickItem::*)(QSGNode *, QQuickItem::UpdatePaintNodeData *)
+                    { return &Helper::updatePaintNode; }
+                };
+                return (item->*Helper::upn())(raw, nullptr);
+            }
+            return nullptr;
+        }))
+    }
+}
 
 #[derive(Default)]
 pub struct Text<'a> {
     pub geometry : Geometry<'a>,
     pub layout_info: LayoutInfo<'a>,
     pub text: Property<'a, QString>,
-    internal_item: Cell<QJSValue>,
+    wrapper: QmlItemWrapper,
 }
 
 impl<'a> Item<'a> for Text<'a> {
@@ -402,26 +455,12 @@ impl<'a> Item<'a> for Text<'a> {
 
     fn update_paint_node(&self, mut node : SGNode<ContainerNode>, _item: &QQuickItem) -> SGNode<ContainerNode>
     {
-        use std::os::raw::c_void;
         node.update_static(|mut n : SGNode<TransformNode>| {
             let g = self.geometry();
             n.set_translation(g.left(), g.top());
             n.update_sub_node(|mut node : SGNode<ContainerNode>| {
                 node.update_static(|n : SGNode<()>| -> SGNode<()> {
-                    let raw = n.into_raw();
-                    let internal_item = self.internal_item.as_ptr();
-                    unsafe { SGNode::from_raw(cpp!([internal_item as "QJSValue*", raw as "QSGNode*"]
-                            ->  *mut c_void as "QSGNode*" {
-                        if (auto item = qobject_cast<QQuickItem*>(internal_item->toQObject())) {
-                            // updatePaintNode is protected
-                            struct Helper : QQuickItem {
-                                static constexpr auto upn() -> QSGNode* (QQuickItem::*)(QSGNode *, QQuickItem::UpdatePaintNodeData *)
-                                { return &Helper::updatePaintNode; }
-                            };
-                            return (item->*Helper::upn())(raw, nullptr);
-                        }
-                        return nullptr;
-                    }))}
+                    unsafe { self.wrapper.update_node(n) }
                 });
                 node
             });
@@ -432,36 +471,10 @@ impl<'a> Item<'a> for Text<'a> {
 
     fn init(&self, item: &QQuickItem)
     {
-        let item = item.get_cpp_object();
-        let js = cpp!(unsafe [item as "QQuickItem*"] -> QJSValue as "QJSValue" {
-            if (!item) return {};
-            if (auto *engine = qmlEngine(item)) {
-                auto v = engine->evaluate("(function (i) { return Qt.createQmlObject('import QtQuick 2.0; Text{visible: false;}', i, 'RustTextItem')} )");
-                return v.call( { engine->newQObject(item) });
-            }
-            return {};
-        });
-        self.internal_item.set(js.clone());
-
-        fn link_property<'a, T :QMetaType>(p: &Property<'a, T>, js: QJSValue, name: &'static CStr ) {
-            let func =  move |t : &T| {
-                let var = t.to_qvariant();
-                let name = name.as_ptr();
-                cpp!(unsafe [var as "QVariant", js as "QJSValue", name as "const char*"] {
-                    if (auto item = qobject_cast<QQuickItem*>(js.toQObject())) {
-                        item->setProperty(name, var);
-                    }
-                })
-            };
-            func(&p.value());
-            p.on_notify(func);
-        }
-
-        link_property(&self.text, js.clone(), cstr!("text"));
-/*        link_property(&self.geometry.x, js.clone(), cstr!("x"));
-        link_property(&self.geometry.y, js.clone(), cstr!("y"));*/
-        link_property(&self.geometry.width, js.clone(), cstr!("width"));
-        link_property(&self.geometry.height, js.clone(), cstr!("height"));
+        self.wrapper.init(item, "Text".into());
+        self.wrapper.link_property(&self.text,  cstr!("text"));
+        self.wrapper.link_property(&self.geometry.width, cstr!("width"));
+        self.wrapper.link_property(&self.geometry.height, cstr!("height"));
 
         /*let adjust_text = { let js = js.clone(); move |text : &QString| {
             cpp!(unsafe [text as "QString*", js as "QJSValue"] {
@@ -584,6 +597,7 @@ impl<'a> QQuickItem for QuickItem<'a>
     }
 
     fn geometry_changed(&mut self, new_geometry : QRectF, _old_geometry : QRectF) {
+        println!("GEOM");
         if let Some(ref i) = self.node {
             i.geometry().x.set(new_geometry.width / 2.);
             i.geometry().width.set(new_geometry.width / 2.);
@@ -615,8 +629,8 @@ impl<'a> QQuickItem for QuickItem<'a>
 
 
 
+/*
 
- /*
 #[cfg(test)]
 mod test {
     #[test]
@@ -657,4 +671,5 @@ Window {
     }
 
 }
-  */
+
+*/
