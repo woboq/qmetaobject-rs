@@ -4,7 +4,7 @@ use std::os::raw::c_void;
 use std::cell::{RefCell};
 use std::ffi::CStr;
 use qmetaobject::scenegraph::{SGNode,ContainerNode,RectangleNode, TransformNode};
-use qmetaobject::{QColor, QQuickItem, QRectF, QString, QJSValue, QMetaType};
+use qmetaobject::{QColor, QQuickItem, QRectF, QString, QJSValue, QMetaType, QPointF};
 
 
 #[derive(Default)]
@@ -23,6 +23,10 @@ impl<'a> Geometry<'a> {
     pub fn bottom(&self) -> f64 { self.y.get() + self.height.get() }
     pub fn vertical_center(&self)  -> f64 { self.x.get() + self.width.get() / 2. }
     pub fn horizontal_center(&self)  -> f64 { self.y.get() + self.height.get() / 2. }
+
+    pub fn to_qrectf(&self) -> QRectF {
+        QRectF { x: self.left(), y:self.top(), width: self.width(), height: self.height() }
+    }
 }
 /*
 enum SizePolicy {
@@ -52,12 +56,39 @@ impl<'a> Default for LayoutInfo<'a> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum MouseEvent {
+    Press(QPointF), Release(QPointF), Move(QPointF)
+}
+impl MouseEvent {
+    fn position_ref(&mut self) -> &mut QPointF {
+        match self {
+            MouseEvent::Press(ref mut x) => x,
+            MouseEvent::Release(ref mut x) => x,
+            MouseEvent::Move(ref mut x) => x,
+        }
+    }
+
+    pub fn position(mut self) -> QPointF {
+        *self.position_ref()
+    }
+
+    pub fn translated(mut self, translation: QPointF) -> MouseEvent {
+        {
+            let pos = self.position_ref();
+            *pos += translation;
+        }
+        self
+    }
+}
+
 pub trait Item<'a> {
     fn geometry(&self) -> &Geometry<'a>;
     fn layout_info(&self) -> &LayoutInfo<'a>;
     fn update_paint_node(&self, node : SGNode<ContainerNode>, _item: &QQuickItem)
         -> SGNode<ContainerNode> { node }
-    fn init(&self, _item: &QQuickItem) {}
+    fn init(&self, _item: &(QQuickItem + 'a)) {}
+    fn mouse_event(&self, _event : MouseEvent) -> bool { false }
 }
 /*
 impl<'a> Item<'a> {
@@ -175,7 +206,6 @@ impl<'a> Item<'a> for ColumnLayout<'a> {
     fn update_paint_node(&self, mut node : SGNode<ContainerNode>, item: &QQuickItem) -> SGNode<ContainerNode>
     {
         let g = self.geometry();
-        println!("UPDATE {}" , g.left());
         node.update_static(|mut n : SGNode<TransformNode>| -> SGNode<TransformNode> {
             n.set_translation(g.left(), g.top());
             n.update_sub_node(|mut node : SGNode<ContainerNode>| {
@@ -188,9 +218,20 @@ impl<'a> Item<'a> for ColumnLayout<'a> {
         node
     }
 
-    fn init(&self, item: &QQuickItem) {
+    fn init(&self, item: &(QQuickItem + 'a)) {
         for i in self.children.borrow().iter() { i.init(item); }
     }
+
+    fn mouse_event(&self, event: MouseEvent) -> bool {
+        for i in self.children.borrow().iter() {
+            let g = i.geometry().to_qrectf();
+            if g.contains(event.position()) {
+                return i.mouse_event(event.translated(g.top_left()));
+            }
+        }
+        return false;
+    }
+
 }
 
 impl<'a> ItemContainer<'a> for Rc<ColumnLayout<'a>> {
@@ -368,14 +409,20 @@ impl<'a> Item<'a> for Rectangle<'a> {
     fn geometry(&self) -> &Geometry<'a> { &self.geometry }
     fn layout_info(&self) -> &LayoutInfo<'a> { &self.layout_info }
 
+    fn init(&self, item: &(QQuickItem + 'a)) {
+        let item_ptr = qmetaobject::QPointer::<QQuickItem>::from(item);
+        self.color.on_notify(move |_| {
+            item_ptr.as_ref().map(|x| x.update());
+        });
+    }
+
     fn update_paint_node(&self, mut node : SGNode<ContainerNode>, item: &QQuickItem) -> SGNode<ContainerNode>
     {
         node.update_static(
             |mut n : SGNode<RectangleNode>| -> SGNode<RectangleNode> {
                 n.create(item);
                 n.set_color(self.color.get());
-                let g = self.geometry();
-                n.set_rect(QRectF { x: g.left(), y:g.top(), width: g.width(), height: g.height()  });
+                n.set_rect(self.geometry.to_qrectf());
                 n
             }
         );
@@ -469,7 +516,7 @@ impl<'a> Item<'a> for Text<'a> {
         node
     }
 
-    fn init(&self, item: &QQuickItem)
+    fn init(&self, item: &(QQuickItem + 'a))
     {
         self.wrapper.init(item, "Text".into());
         self.wrapper.link_property(&self.text,  cstr!("text"));
@@ -503,19 +550,32 @@ impl<'a> Item<'a> for Text<'a> {
 }
 impl<'a> Text<'a> {
     pub fn new() -> Rc<Self> { Default::default() }
-    /*fn update_internal(&self) {
-        let text : QString = self.text.value();
-        let width = self.geometry.width();
-        let height = self.geometry.height();
-        let internal_item = self.internal_item.as_ptr();
-        cpp!(unsafe [text as "QString", internal_item as "QJSValue*", width as "double", height as "double"] {
-            if (auto item = qobject_cast<QQuickItem*>(internal_item->toQObject())) {
-                item->setProperty("text", text);
-                item->setSize({width, height});
-            }
-        })
-    }*/
 }
+
+
+#[derive(Default)]
+pub struct MouseArea<'a> {
+    pub geometry : Geometry<'a>,
+    pub layout_info: LayoutInfo<'a>,
+    pub pressed: Property<'a, bool>,
+}
+
+impl<'a> Item<'a> for MouseArea<'a> {
+    fn geometry(&self) -> &Geometry<'a> { &self.geometry }
+    fn layout_info(&self) -> &LayoutInfo<'a> { &self.layout_info }
+    fn mouse_event(&self, event: MouseEvent) -> bool {
+        match event {
+            MouseEvent::Press(_) => self.pressed.set(true),
+            MouseEvent::Release(_) => self.pressed.set(false),
+            _ => {}
+        }
+        true
+    }
+}
+impl<'a> MouseArea<'a> {
+    pub fn new() -> Rc<Self> { Default::default() }
+}
+
 
 /*
 
@@ -582,7 +642,10 @@ impl<'a> QuickItem<'a> {
         self.node = Some(node);
         let obj = self.get_cpp_object();
         assert!(!obj.is_null());
-        cpp!(unsafe [obj as "QQuickItem*"] { obj->setFlag(QQuickItem::ItemHasContents); });
+        cpp!(unsafe [obj as "QQuickItem*"] {
+            obj->setFlag(QQuickItem::ItemHasContents);
+            obj->setAcceptedMouseButtons(Qt::LeftButton);
+        });
         (self as &QQuickItem).update();
     }
 }
@@ -597,19 +660,21 @@ impl<'a> QQuickItem for QuickItem<'a>
     }
 
     fn geometry_changed(&mut self, new_geometry : QRectF, _old_geometry : QRectF) {
-        println!("GEOM");
         if let Some(ref i) = self.node {
-            i.geometry().x.set(new_geometry.width / 2.);
-            i.geometry().width.set(new_geometry.width / 2.);
+            i.geometry().width.set(new_geometry.width);
             i.geometry().height.set(new_geometry.height);
         }
         (self as &QQuickItem).update();
     }
 
     fn class_begin(&mut self) {
-        let b : Rc<Rectangle<'a>> =  rsml!( Rectangle { color: QColor::from_name("blue") } );
-        let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
+        //let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
+        let m : Rc<MouseArea<'a>> = rsml!( MouseArea {  } );
         let t : Rc<Text<'a>> = rsml!( Text { text: QString::from("Hello world") } );
+        let m_weak = Rc::downgrade(&m);
+        let b : Rc<Rectangle<'a>> =  rsml!( Rectangle {
+            color: QColor::from_name(if m_weak.upgrade().map_or(false, |x| x.pressed.get()) { "blue" } else { "yellow" })
+        } );
 
         let i : Rc<ColumnLayout<'a>> = rsml!(
             ColumnLayout {
@@ -619,8 +684,19 @@ impl<'a> QQuickItem for QuickItem<'a>
         );
         i.add_child(b);
         i.add_child(t);
-        i.add_child(y);
+        //i.add_child(y);
+        i.add_child(m);
         self.set_node(i);
+    }
+
+    fn mouse_event(&mut self, event: qmetaobject::QMouseEvent) -> bool {
+        let pos = event.position();
+        let e = match event.event_type() {
+            qmetaobject::QMouseEventType::MouseButtonPress => MouseEvent::Press(pos),
+            qmetaobject::QMouseEventType::MouseButtonRelease => MouseEvent::Release(pos),
+            qmetaobject::QMouseEventType::MouseMove => MouseEvent::Move(pos),
+        };
+        self.node.as_ref().map_or(false, |n| n.mouse_event(e))
     }
 
 
@@ -628,8 +704,6 @@ impl<'a> QQuickItem for QuickItem<'a>
 
 
 
-
-/*
 
 #[cfg(test)]
 mod test {
@@ -672,4 +746,3 @@ Window {
 
 }
 
-*/

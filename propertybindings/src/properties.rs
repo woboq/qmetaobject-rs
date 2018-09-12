@@ -379,7 +379,7 @@ impl<'a, T  : Default + Clone> Property<'a, T>  {
         WeakProperty{ d: Rc::downgrade(&self.d) }
     }
 
-    pub fn on_notify<F: FnMut(&T) + 'a>(&self, callback: F) {
+    pub fn on_notify<F>(&self, callback: F) where  F : for <'q> FnMut(&'q T) + 'a {
         self.d.callbacks.borrow_mut().push(Box::new(callback));
     }
 }
