@@ -254,7 +254,7 @@ pub fn qgadget_impl(input: TokenStream) -> TokenStream {
 
 fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
-    let ast : syn::DeriveInput = syn::parse(input).expect("could not parse struct");
+    let ast = parse_macro_input!(input as syn::DeriveInput);
 
     let name = &ast.ident;
 
@@ -686,8 +686,9 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             fn get_cpp_object(&self)-> *mut std::os::raw::c_void {
                 self.#base_prop.get()
             }
-            unsafe fn get_from_cpp(ptr: &mut std::os::raw::c_void) -> &mut Self {
-                <#name #ty_generics as #base>::get_rust_object(ptr)
+            unsafe fn get_from_cpp(ptr: *const std::os::raw::c_void) -> *const Self {
+                if ptr.is_null() { return std::ptr::null(); }
+                <#name #ty_generics as #base>::get_rust_object(&mut *(ptr as *mut std::os::raw::c_void)) as *const Self
             }
 
             unsafe fn cpp_construct(&mut self) -> *mut std::os::raw::c_void {

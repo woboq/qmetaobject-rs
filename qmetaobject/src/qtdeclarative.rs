@@ -373,14 +373,13 @@ impl QJSValue {
     // FIXME: &mut could be usefull, but then there can be several access to this object as mutable
     pub fn to_qobject<'a, T : QObject + 'a>(&'a self) -> Option<&'a QObject> {
         let mo = T::static_meta_object();
-        let obj = unsafe { cpp!([self as "const QJSValue*", mo as "const QMetaObject*"] -> *mut c_void as "QObject*" {
+        let obj = unsafe { cpp!([self as "const QJSValue*", mo as "const QMetaObject*"] -> *const c_void as "QObject*" {
             QObject *obj = self->toQObject();
             // FIXME! inheritence?
             return obj && obj->metaObject()->inherits(mo) ? obj : nullptr;
         }) };
         if obj.is_null() { return None; }
-        let obj : &'a mut c_void = unsafe { &mut *obj  };
-        Some(unsafe { T::get_from_cpp(obj) })
+        Some(unsafe { &*T::get_from_cpp(obj) })
     }
 }
 impl From<QString> for QJSValue {

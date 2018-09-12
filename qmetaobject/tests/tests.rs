@@ -450,6 +450,36 @@ fn with_life_time() {
         base: QObjectCppWrapper,
         _something : Option<T>,
     }
-
 }
 
+
+#[test]
+fn qpointer() {
+    let ptr;
+    {
+        let mut obj = MyObject::default();
+        obj.prop_x = 23;
+        unsafe { obj.cpp_construct() };
+        let obj /*: &mut QObject*/ = &obj;
+        ptr = QPointer::from(obj);
+        assert_eq!(ptr.as_ref().map_or(898, |x|x.prop_x), 23);
+    }
+    assert!(ptr.as_ref().is_none());
+
+    let ptr;
+    {
+        #[derive(Default)]
+        struct XX(QString);
+        impl qmetaobject::listmodel::SimpleListItem for XX {
+            fn get(&self, _idx : i32) -> QVariant { self.0.clone().into() }
+            fn names() -> Vec<QByteArray> { vec![ QByteArray::from("a") ] }
+        }
+        let mut obj = qmetaobject::listmodel::SimpleListModel::<XX>::default();
+        obj.push(XX("foo".into()));
+        unsafe { obj.cpp_construct() };
+        let obj_ref : &qmetaobject::listmodel::QAbstractListModel = &obj;
+        ptr = QPointer::<qmetaobject::listmodel::QAbstractListModel>::from(obj_ref);
+        assert_eq!(ptr.as_ref().map_or(898, |x|x.row_count()), 1);
+    }
+    assert!(ptr.as_ref().is_none());
+}

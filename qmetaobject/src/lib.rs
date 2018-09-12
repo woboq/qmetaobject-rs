@@ -106,7 +106,7 @@ pub trait QObject {
     /// Return the size of the C++ object
     fn cpp_size() -> usize where Self:Sized;
     /// Return a reference to an object, given a pointer to a C++ object
-    unsafe fn get_from_cpp<'a>(p: &'a mut c_void) -> &'a mut Self where Self:Sized;
+    unsafe fn get_from_cpp<'a>(p: *const c_void) -> *const Self where Self:Sized;
 
     // Part of the trait structure that sub trait must have.
     // Copy/paste this code replacing QObject with the type.
@@ -161,6 +161,39 @@ impl QObject {
         }))}
     }
 }
+
+cpp_class!(unsafe struct QPointerImpl as "QPointer<QObject>");
+
+#[derive(Clone)]
+/// A Wrapper around a QPointer
+// (we only need a *const T to support the !Sized case. (Maybe there is a better way)
+pub struct QPointer<T : QObject + ?Sized>(QPointerImpl, *const T);
+impl<T: QObject + ?Sized> QPointer<T> {
+    pub fn cpp_ptr(&self) -> *const c_void {
+        let x = &self.0;
+        cpp!(unsafe [x as "QPointer<QObject>*"] -> *const c_void as "QObject*" {
+            return x->data();
+        })
+    }
+
+    pub fn as_ptr(&self) -> *const T where T:Sized {
+        unsafe { T::get_from_cpp(self.cpp_ptr()) }
+    }
+
+    pub fn as_ref(&self) -> Option<&T> {
+        let x = self.cpp_ptr();
+        if x.is_null() { None } else { unsafe { Some(&*self.1) } }
+    }
+}
+impl<'a, T: QObject + ?Sized> From<&'a T> for QPointer<T> {
+    fn from(obj : &'a T) -> Self {
+        let cpp_obj = obj.get_cpp_object();
+        QPointer(cpp!(unsafe [cpp_obj as "QObject *"] -> QPointerImpl  as "QPointer<QObject>" {
+            return cpp_obj;
+        }), obj as *const T)
+    }
+}
+
 /*
 // Represent a pointer owned by rust
 //
