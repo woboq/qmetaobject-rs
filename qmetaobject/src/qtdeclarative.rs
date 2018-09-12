@@ -236,13 +236,16 @@ pub trait QQuickItem : QObject {
         std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
 
+    fn class_begin(&mut self) {}
+    fn component_complete(&mut self) {}
+
+    // FIXME: maybe have a QMouseEvent all the data?
+    fn mouse_pressed(&mut self, _pos : QPointF) -> bool { false }
 
     fn geometry_changed(&mut self, _new_geometry : QRectF, _old_geometry : QRectF) {}
 
     fn update_paint_node(&mut self, node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> { return node; }
 
-    fn class_begin(&mut self) {}
-    fn component_complete(&mut self) {}
 }
 
 cpp!{{
@@ -271,14 +274,22 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
         });
     }
 
-    /*
-    virtual void keyPressEvent(QKeyEvent *event);
+    /*virtual void keyPressEvent(QKeyEvent *event);
     virtual void keyReleaseEvent(QKeyEvent *event);
     virtual void inputMethodEvent(QInputMethodEvent *);
     virtual void focusInEvent(QFocusEvent *);
-    virtual void focusOutEvent(QFocusEvent *);
-    virtual void mousePressEvent(QMouseEvent *event);
-    virtual void mouseMoveEvent(QMouseEvent *event);
+    virtual void focusOutEvent(QFocusEvent *);*/
+
+    void mousePressEvent(QMouseEvent *event) override {
+        QPointF pos = event->localPos();
+        if (!rust!(Rust_QQuickItem_mousePressEvent[
+            rust_object : &mut QQuickItem as "TraitObject",
+            pos : QPointF as "QPointF"
+        ] -> bool as "bool" {
+            rust_object.mouse_pressed(pos)
+        })) { event->ignore(); }
+    }
+    /*virtual void mouseMoveEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
     virtual void mouseDoubleClickEvent(QMouseEvent *event);
     virtual void mouseUngrabEvent(); // XXX todo - params?

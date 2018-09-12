@@ -318,6 +318,20 @@ pub struct QRectF {
     pub height : qreal
 }
 
+impl QRectF {
+    pub fn contains(&self, pos : QPointF) -> bool {
+        cpp!(unsafe [self as "const QRectF*", pos as "QPointF"] -> bool as "bool" {
+            return self->contains(pos);
+        })
+    }
+}
+
+#[repr(C)]
+#[derive(Default, Clone, Copy, PartialEq, Debug)]
+pub struct QPointF {
+    pub x : qreal,
+    pub y : qreal,
+}
 
 cpp_class!(#[derive(Default, Clone, Copy, PartialEq)] pub unsafe struct QColor as "QColor");
 impl QColor {
