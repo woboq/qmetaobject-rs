@@ -4,7 +4,7 @@ use std::os::raw::c_void;
 use std::cell::{RefCell};
 use std::ffi::CStr;
 use qmetaobject::scenegraph::{SGNode,ContainerNode,RectangleNode, TransformNode};
-use qmetaobject::{QColor, QQuickItem, QRectF, QString, QJSValue, QMetaType, QPointF};
+use qmetaobject::{QObject, QColor, QQuickItem, QRectF, QString, QJSValue, QMetaType, QPointF};
 
 
 #[derive(Default)]
@@ -462,8 +462,10 @@ impl QmlItemWrapper {
             cpp!(unsafe [var as "QVariant", js as "QJSValue", name as "const char*"] {
                 if (auto item = qobject_cast<QQuickItem*>(js.toQObject())) {
                     item->setProperty(name, var);
+                    if (QQuickItem *par = item->parentItem())
+                        par->update();
                 }
-            })
+            });
         };
         func(&p.value());
         p.on_notify(func);
@@ -621,8 +623,9 @@ rsml! {
 
 */
 
-
-use qmetaobject::{QObject};
+pub trait ItemFactory {
+    fn create() -> Rc<Item<'static>>;
+}
 
 
 cpp!{{
@@ -630,14 +633,14 @@ cpp!{{
 #include <QtQml/QQmlEngine>
 }}
 
-#[derive(QObject, Default)]
-struct QuickItem<'a> {
+#[derive(QObject)]
+pub struct RSMLItem<T : ItemFactory + 'static> {
     base: qt_base_class!(trait QQuickItem),
-    node : Option<Rc<Item<'a> + 'a>>,
+    node : Option<Rc<Item<'static> + 'static>>,
+    _phantom: std::marker::PhantomData<T>,
 }
-impl<'a> QuickItem<'a> {
-
-    pub fn set_node(&mut self, node: Rc<Item<'a> + 'a>) {
+impl<T : ItemFactory + 'static> RSMLItem<T> {
+    fn set_node(&mut self, node: Rc<Item<'static>>) {
         node.init(self);
         self.node = Some(node);
         let obj = self.get_cpp_object();
@@ -649,8 +652,11 @@ impl<'a> QuickItem<'a> {
         (self as &QQuickItem).update();
     }
 }
+impl<T : ItemFactory + 'static>  Default for RSMLItem<T> {
+    fn default() -> Self { RSMLItem{ base: Default::default(), node: None, _phantom: Default::default() } }
+}
 
-impl<'a> QQuickItem for QuickItem<'a>
+impl<T : ItemFactory + 'static> QQuickItem for RSMLItem<T>
 {
     fn update_paint_node(&mut self, mut node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> {
         if let Some(ref i) = self.node {
@@ -668,25 +674,7 @@ impl<'a> QQuickItem for QuickItem<'a>
     }
 
     fn class_begin(&mut self) {
-        //let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
-        let m : Rc<MouseArea<'a>> = rsml!( MouseArea {  } );
-        let t : Rc<Text<'a>> = rsml!( Text { text: QString::from("Hello world") } );
-        let m_weak = Rc::downgrade(&m);
-        let b : Rc<Rectangle<'a>> =  rsml!( Rectangle {
-            color: QColor::from_name(if m_weak.upgrade().map_or(false, |x| x.pressed.get()) { "blue" } else { "yellow" })
-        } );
-
-        let i : Rc<ColumnLayout<'a>> = rsml!(
-            ColumnLayout {
-                geometry.width : 110.,
-                geometry.height : 90.,
-            }
-        );
-        i.add_child(b);
-        i.add_child(t);
-        //i.add_child(y);
-        i.add_child(m);
-        self.set_node(i);
+        self.set_node(T::create());
     }
 
     fn mouse_event(&mut self, event: qmetaobject::QMouseEvent) -> bool {
@@ -698,20 +686,47 @@ impl<'a> QQuickItem for QuickItem<'a>
         };
         self.node.as_ref().map_or(false, |n| n.mouse_event(e))
     }
-
-
 }
 
 
 
-
+/*
 #[cfg(test)]
 mod test {
     #[test]
     fn test() {
         use qmetaobject::*;
-        use super::QuickItem;
-        qml_register_type::<QuickItem>(cstr!("MyItem"), 1, 0, cstr!("MyItem"));
+        use super::*;
+        use std::rc::{Rc};
+
+        enum MyItem {}
+        impl ItemFactory for MyItem {
+            fn create() -> Rc<Item<'static>> {
+                //let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
+                let m : Rc<MouseArea> = rsml!( MouseArea {  } );
+                let t : Rc<Text> = rsml!( Text { text: QString::from("Hello world") } );
+                let m_weak = Rc::downgrade(&m);
+                let b : Rc<Rectangle> =  rsml!( Rectangle {
+                    color: QColor::from_name(if m_weak.upgrade().map_or(false, |x| x.pressed.get()) { "blue" } else { "yellow" })
+                } );
+
+                let i : Rc<ColumnLayout> = rsml!(
+                    ColumnLayout {
+                        geometry.width : 110.,
+                        geometry.height : 90.,
+                    }
+                );
+                i.add_child(b);
+                i.add_child(t);
+                //i.add_child(y);
+                i.add_child(m);
+                i
+            }
+
+        }
+
+
+        qml_register_type::<RSMLItem<MyItem>>(cstr!("MyItem"), 1, 0, cstr!("MyItem"));
         let mut engine = QmlEngine::new();
         engine.load_data(r#"
 import QtQuick 2.0
@@ -744,5 +759,5 @@ Window {
         engine.exec();
     }
 
-}
+}*/
 
