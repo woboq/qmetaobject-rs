@@ -560,6 +560,7 @@ pub struct MouseArea<'a> {
     pub geometry : Geometry<'a>,
     pub layout_info: LayoutInfo<'a>,
     pub pressed: Property<'a, bool>,
+    pub on_clicked: Signal<'a>,
 }
 
 impl<'a> Item<'a> for MouseArea<'a> {
@@ -568,7 +569,10 @@ impl<'a> Item<'a> for MouseArea<'a> {
     fn mouse_event(&self, event: MouseEvent) -> bool {
         match event {
             MouseEvent::Press(_) => self.pressed.set(true),
-            MouseEvent::Release(_) => self.pressed.set(false),
+            MouseEvent::Release(_) => {
+                self.pressed.set(false);
+                self.on_clicked.emit();
+            }
             _ => {}
         }
         true

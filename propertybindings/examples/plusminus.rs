@@ -14,77 +14,21 @@ impl propertybindings::items::ItemFactory for PlusMinus {
 
     fn create() -> Rc<propertybindings::items::Item<'static>> {
         use propertybindings::items::*;
-//         use qmetaobject::{QString, QColor};
-
         let model = Rc::new(PlusMinus::default());
-
-        //let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
-        let mouse1 = rsml!( MouseArea { } );
-        let mouse2 = rsml!( MouseArea { } );
-
-        mouse1.pressed.on_notify({
-            let model = model.clone();
-            move |x| if !*x { model.counter.set(model.counter.get() + 1) }
-        });
-        mouse2.pressed.on_notify({
-            let model = model.clone();
-            move |x| if !*x { model.counter.set(model.counter.get() - 1) }
-        });
+        let model1 = model.clone();
+        let model2 = model.clone();
 
         let i = rsml!(
             ColumnLayout {
-                geometry.width : 110.,
-                geometry.height : 90.,
+                MouseArea { on_clicked: model1.counter.set(model1.counter.get() - 1) }
                 Text { text: model.counter.get().to_string().into() }
+                MouseArea { on_clicked: model2.counter.set(model2.counter.get() + 1) }
             }
         );
-        //i.add_child(rsml!( Text { text: model.counter.get().to_string().into() } ));
-        i.add_child(mouse1);
-        i.add_child(mouse2);
         i
     }
 
 }
-
-
-/*
-#[cfg(test)]
-mod test {
-    #[test]
-    fn test() {
-        use super::*;
-        use std::rc::{Rc};
-
-        enum MyItem {}
-        impl ItemFactory for MyItem {
-            fn create() -> Rc<Item<'static>> {
-                //let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
-                let m : Rc<MouseArea> = rsml!( MouseArea {  } );
-                let t : Rc<Text> = rsml!( Text { text: QString::from("Hello world") } );
-                let m_weak = Rc::downgrade(&m);
-                let b : Rc<Rectangle> =  rsml!( Rectangle {
-                    color: QColor::from_name(if m_weak.upgrade().map_or(false, |x| x.pressed.get()) { "blue" } else { "yellow" })
-                } );
-
-                let i : Rc<ColumnLayout> = rsml!(
-                    ColumnLayout {
-                        geometry.width : 110.,
-                        geometry.height : 90.,
-                    }
-                );
-                i.add_child(b);
-                i.add_child(t);
-                //i.add_child(y);
-                i.add_child(m);
-                i
-            }
-
-        }
-
-
-
-}
-*/
 
 
 fn main() {

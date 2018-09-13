@@ -379,7 +379,7 @@ impl<'a, T  : Default + Clone> Property<'a, T>  {
         WeakProperty{ d: Rc::downgrade(&self.d) }
     }
 
-    pub fn on_notify<F>(&self, callback: F) where  F : for <'q> FnMut(&'q T) + 'a {
+    pub fn on_notify<F>(&self, callback: F) where  F : FnMut(&T) + 'a {
         self.d.callbacks.borrow_mut().push(Box::new(callback));
     }
 }
@@ -453,3 +453,20 @@ mod tests {
         assert_eq!(x.get(), 4);
     }
 }
+
+#[derive(Default)]
+pub struct Signal<'a> {
+    callbacks: RefCell<Vec<Box<FnMut() + 'a>>>,
+}
+
+impl<'a> Signal<'a>  {
+    pub fn set_binding<F : FnMut() + 'a>(&self, f : F) {
+        self.callbacks.borrow_mut().push(Box::new(f));
+    }
+    pub fn emit(&self) {
+        for cb in self.callbacks.borrow_mut().iter_mut() {
+            (*cb)();
+        }
+    }
+}
+
