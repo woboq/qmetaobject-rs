@@ -12,6 +12,8 @@ extern crate qmetaobject;
 pub mod properties;
 pub use properties::*;
 pub mod anchors;
+#[macro_use]
+pub mod rslm;
 pub mod items;
 
 

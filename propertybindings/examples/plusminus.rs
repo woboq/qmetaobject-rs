@@ -31,14 +31,15 @@ impl propertybindings::items::ItemFactory for PlusMinus {
             move |x| if !*x { model.counter.set(model.counter.get() - 1) }
         });
 
-        let i : Rc<ColumnLayout> = rsml!(
+        let i = rsml!(
             ColumnLayout {
                 geometry.width : 110.,
                 geometry.height : 90.,
+                Text { text: model.counter.get().to_string().into() }
             }
         );
+        //i.add_child(rsml!( Text { text: model.counter.get().to_string().into() } ));
         i.add_child(mouse1);
-        i.add_child(rsml!( Text { text: model.counter.get().to_string().into() } ));
         i.add_child(mouse2);
         i
     }
