@@ -239,8 +239,8 @@ pub trait QQuickItem : QObject {
     fn class_begin(&mut self) {}
     fn component_complete(&mut self) {}
 
-    // FIXME: maybe have a QMouseEvent all the data?
-    fn mouse_pressed(&mut self, _pos : QPointF) -> bool { false }
+    /// Handle mouse press, release, or move events. Returns true if the event was accepted.
+    fn mouse_event(&mut self, _event : QMouseEvent) -> bool { false }
 
     fn geometry_changed(&mut self, _new_geometry : QRectF, _old_geometry : QRectF) {}
 
@@ -280,18 +280,23 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void focusInEvent(QFocusEvent *);
     virtual void focusOutEvent(QFocusEvent *);*/
 
-    void mousePressEvent(QMouseEvent *event) override {
-        QPointF pos = event->localPos();
-        if (!rust!(Rust_QQuickItem_mousePressEvent[
+    void mousePressEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+    void mouseMoveEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+    void mouseReleaseEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+    //void mouseDoubleClickEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+
+    void handleMouseEvent(QMouseEvent *event) {
+       if (!rust!(Rust_QQuickItem_mousePressEvent[
             rust_object : &mut QQuickItem as "TraitObject",
-            pos : QPointF as "QPointF"
+            event : QMouseEvent as "QMouseEvent*"
         ] -> bool as "bool" {
-            rust_object.mouse_pressed(pos)
+            rust_object.mouse_event(event)
         })) { event->ignore(); }
     }
-    /*virtual void mouseMoveEvent(QMouseEvent *event);
-    virtual void mouseReleaseEvent(QMouseEvent *event);
-    virtual void mouseDoubleClickEvent(QMouseEvent *event);
+
+    /*
+
+
     virtual void mouseUngrabEvent(); // XXX todo - params?
     virtual void touchUngrabEvent();
     virtual void wheelEvent(QWheelEvent *event);
@@ -345,6 +350,29 @@ impl<'a> QQuickItem +'a {
     pub fn update(&self) {
         let obj = self.get_cpp_object();
         cpp!(unsafe [obj as "Rust_QQuickItem*"] { if (obj) obj->update(); });
+    }
+}
+
+#[repr(u32)]
+pub enum QMouseEventType {
+    MouseButtonPress = 2,
+    MouseButtonRelease = 3,
+    //MouseButtonDblClick = 4,
+    MouseMove = 5,
+}
+
+/// A reference to a QMouseEvent
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct QMouseEvent<'a>(*const c_void, std::marker::PhantomData<&'a u32>);
+impl<'a> QMouseEvent<'a> {
+    /// Returns the type of event
+    pub fn event_type(self) -> QMouseEventType {
+        cpp!(unsafe [self as "QMouseEvent*"] -> QMouseEventType as "int" { return self->type(); })
+    }
+    /// Return the position, wrapper around Qt's QMouseEvent::localPos()
+    pub fn position(self) -> QPointF {
+        cpp!(unsafe [self as "QMouseEvent*"] -> QPointF as "QPointF" { return self->localPos(); })
     }
 }
 

@@ -324,6 +324,9 @@ impl QRectF {
             return self->contains(pos);
         })
     }
+    pub fn top_left(&self) -> QPointF {
+        QPointF { x: self.x, y: self.y }
+    }
 }
 
 #[repr(C)]
@@ -332,6 +335,33 @@ pub struct QPointF {
     pub x : qreal,
     pub y : qreal,
 }
+impl std::ops::Add for QPointF {
+    type Output = QPointF;
+    fn add(self, other: QPointF) -> QPointF {
+        QPointF {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+impl std::ops::AddAssign for QPointF {
+    fn add_assign(&mut self, other: QPointF) {
+        *self = QPointF {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        };
+    }
+}
+
+
+#[test]
+fn test_qpointf_qrectf() {
+    let rect = QRectF{ x: 200., y: 150., width: 60., height: 75. };
+    let pt = QPointF{ x: 12., y: 5.5 };
+    assert!(!rect.contains(pt));
+    assert!(rect.contains(pt + rect.top_left()));
+}
+
 
 cpp_class!(#[derive(Default, Clone, Copy, PartialEq)] pub unsafe struct QColor as "QColor");
 impl QColor {
