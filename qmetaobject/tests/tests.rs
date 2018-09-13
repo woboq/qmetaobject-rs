@@ -456,17 +456,22 @@ fn with_life_time() {
 #[test]
 fn qpointer() {
     let ptr;
+    let pt2;
     {
         let mut obj = MyObject::default();
         obj.prop_x = 23;
         unsafe { obj.cpp_construct() };
         let obj /*: &mut QObject*/ = &obj;
         ptr = QPointer::from(obj);
+        pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x|x.prop_x), 23);
+        assert_eq!(pt2.as_ref().map_or(898, |x|x.prop_x), 23);
     }
     assert!(ptr.as_ref().is_none());
+    assert!(pt2.as_ref().is_none());
 
     let ptr;
+    let pt2;
     {
         #[derive(Default)]
         struct XX(QString);
@@ -479,7 +484,10 @@ fn qpointer() {
         unsafe { obj.cpp_construct() };
         let obj_ref : &qmetaobject::listmodel::QAbstractListModel = &obj;
         ptr = QPointer::<qmetaobject::listmodel::QAbstractListModel>::from(obj_ref);
+        pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x|x.row_count()), 1);
+        assert_eq!(pt2.as_ref().map_or(898, |x|x.row_count()), 1);
     }
     assert!(ptr.as_ref().is_none());
+    assert!(pt2.as_ref().is_none());
 }

@@ -164,7 +164,6 @@ impl QObject {
 
 cpp_class!(unsafe struct QPointerImpl as "QPointer<QObject>");
 
-#[derive(Clone)]
 /// A Wrapper around a QPointer
 // (we only need a *const T to support the !Sized case. (Maybe there is a better way)
 pub struct QPointer<T : QObject + ?Sized>(QPointerImpl, *const T);
@@ -191,6 +190,18 @@ impl<'a, T: QObject + ?Sized> From<&'a T> for QPointer<T> {
         QPointer(cpp!(unsafe [cpp_obj as "QObject *"] -> QPointerImpl  as "QPointer<QObject>" {
             return cpp_obj;
         }), obj as *const T)
+    }
+}
+
+impl<T: QObject> Default for QPointer<T> {
+    fn default() -> Self {
+        QPointer(Default::default(), std::ptr::null())
+    }
+}
+
+impl<T: QObject + ?Sized> Clone for QPointer<T> {
+    fn clone(&self) -> Self {
+        QPointer(self.0.clone(), self.1)
     }
 }
 
