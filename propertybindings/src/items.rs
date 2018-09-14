@@ -397,6 +397,67 @@ fn test_layout() {
 
 }
 
+/// Can contains other Items, resize the items to the size of the Caintainer
+#[derive(Default)]
+pub struct Container<'a> {
+    pub geometry : Geometry<'a>,
+    pub layout_info: LayoutInfo<'a>,
+    children: RefCell<Vec<Rc<Item<'a> + 'a>>>,
+}
+impl<'a> Item<'a> for Container<'a> {
+    fn geometry(&self) -> &Geometry<'a> { &self.geometry }
+    fn layout_info(&self) -> &LayoutInfo<'a> { &self.layout_info }
+
+    fn update_paint_node(&self, mut node : SGNode<ContainerNode>, item: &QQuickItem) -> SGNode<ContainerNode>
+    {
+        let g = self.geometry();
+        node.update_static(|mut n : SGNode<TransformNode>| -> SGNode<TransformNode> {
+            n.set_translation(g.left(), g.top());
+            n.update_sub_node(|mut node : SGNode<ContainerNode>| {
+                node.update_dynamic(self.children.borrow().iter(),
+                    |i, n| i.update_paint_node(n, item) );
+                node
+            });
+            n
+        });
+        node
+    }
+
+    fn init(&self, item: &(QQuickItem + 'a)) {
+        for i in self.children.borrow().iter() { i.init(item); }
+    }
+
+    fn mouse_event(&self, event: MouseEvent) -> bool {
+        let mut ret = false;
+        for i in self.children.borrow().iter() {
+            ret = ret || i.mouse_event(event);
+        }
+        return ret;
+    }
+
+}
+
+impl<'a> ItemContainer<'a> for Rc<Container<'a>> {
+    fn add_child(&self, child : Rc<Item<'a> + 'a>) {
+        self.children.borrow_mut().push(child);
+        Container::build_layout(self);
+    }
+}
+
+impl<'a> Container<'a> {
+    pub fn new() -> Rc<Self> { Default::default() }
+
+    fn build_layout(this : &Rc<Self>) {
+        for x in this.children.borrow().iter() {
+            let w = Rc::downgrade(this);
+            x.geometry().width.set_binding(Some(move || Some(w.upgrade()?.geometry().width())));
+            let w = Rc::downgrade(this);
+            x.geometry().height.set_binding(Some(move || Some(w.upgrade()?.geometry().height())));
+            x.geometry().x.set(0.);
+            x.geometry().y.set(0.);
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct Rectangle<'a> {
@@ -490,11 +551,25 @@ impl QmlItemWrapper {
     }
 }
 
+/// constants that follow Qt::Alignment
+pub mod alignment {
+    pub const LEFT : i32 = 1;
+    pub const RIGHT : i32 = 2;
+    pub const HCENTER : i32 = 4;
+    pub const JUSTIFY : i32 = 8;
+    pub const TOP : i32 = 32;
+    pub const BOTTOM : i32 = 64;
+    pub const VCENTER : i32 = 128;
+
+}
+
 #[derive(Default)]
 pub struct Text<'a> {
     pub geometry : Geometry<'a>,
     pub layout_info: LayoutInfo<'a>,
     pub text: Property<'a, QString>,
+    pub vertical_alignment: Property<'a, i32>,
+    pub horizontal_alignment: Property<'a, i32>,
     wrapper: QmlItemWrapper,
 }
 
@@ -524,6 +599,8 @@ impl<'a> Item<'a> for Text<'a> {
         self.wrapper.link_property(&self.text,  cstr!("text"));
         self.wrapper.link_property(&self.geometry.width, cstr!("width"));
         self.wrapper.link_property(&self.geometry.height, cstr!("height"));
+        self.wrapper.link_property(&self.vertical_alignment, cstr!("verticalAlignment"));
+        self.wrapper.link_property(&self.horizontal_alignment, cstr!("horizontalAlignment"));
 
         /*let adjust_text = { let js = js.clone(); move |text : &QString| {
             cpp!(unsafe [text as "QString*", js as "QJSValue"] {

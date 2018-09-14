@@ -427,8 +427,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-
-
         let rec = Rc::new(RefCell::new(Rectangle::default()));
         rec.borrow_mut().width = Property::from(2);
         let wr = Rc::downgrade(&rec);
