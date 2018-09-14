@@ -1,5 +1,4 @@
 
-//inspired by on https://www.reddit.com/r/rust/comments/6i6cfl/macro_rules_make_it_hard_to_destruct_rust_structs/
 #[macro_export]
 macro_rules! rsml {
     // Declare a struct
@@ -22,7 +21,7 @@ macro_rules! rsml {
             fn default() -> Self {
                 Self {
                     $( $field:  Default::default() /*rsml!{ @decide_field_default $( $value )* }*/ ),*
-                }
+}
             }
         }*/
         impl<'a> $name<'a> {
@@ -55,31 +54,98 @@ macro_rules! rsml {
 
     // Initialize an object
     ($name:ident { $($rest:tt)* } ) => {
-        rsml!{@parse_as_initialize name: $name, fields: [], sub_items: [], $($rest)* }
+        rsml!{@find_all_id (parse_as_initialize_start {$name, $($rest)*}) [] $name => $($rest)* }
     };
 
-    //
-    (@parse_as_initialize name: $name:ident, fields: [$($field:ident $(. $field_cont:ident)* : $value:expr ,)*], sub_items: [$($sub_items:tt)*], ) => { {
-        let r = $name::new();
-        $(rsml!{ @init_field r, $name, $field $(. $field_cont)* , $value })*
-        $(rsml!{ @init_sub_items r, $sub_items})*
+    (@parse_as_initialize_start {$name:ident, $($rest:tt)*} $ids:tt ) => {
+        rsml!{@parse_as_initialize (parse_as_initialize_end { $name, $ids }), fields: [], sub_items: [], id: [], $($rest)* }
+    };
+
+
+
+    (@parse_as_initialize_end { $name:ident, [$(($ids:tt $ids_ty:ident))*] } fields: $fields:tt, sub_items: $sub_items:tt, id: $id:tt) => { {
+        #[derive(Default)]
+        struct IdsContainer<'a> {
+            $($ids: ::std::rc::Weak<$ids_ty<'a>> ,)*
+            _phantom: ::std::marker::PhantomData<&'a u32>,
+        }
+        #[allow(unused_variables)]
+        let container = std::rc::Rc::new(::std::cell::RefCell::new(IdsContainer::default()));
+        let (r, init) = rsml!{@init_sub_items_end {$name container [$($ids)*]} fields: $fields, sub_items: $sub_items, id: $id};
+        init();
         r
     } };
-    (@parse_as_initialize name: $name:ident, fields: [$($fields:tt)*], sub_items: $sub_items:tt, $field:ident $(. $field_cont:ident)* : $value:expr, $($rest:tt)* ) => {
-        rsml!{@parse_as_initialize name: $name, fields: [$($fields)* $field $(. $field_cont)* : $value , ],
-            sub_items: $sub_items, $($rest)* }
-    };
-    (@parse_as_initialize name: $name:ident, fields: [$($fields:tt)*], sub_items: $sub_items:tt, $field:ident $(. $field_cont:ident)* : $value:expr ) => {
-        rsml!{@parse_as_initialize name: $name, fields: [$($fields)* $field $(. $field_cont)* : $value , ],
-            sub_items: $sub_items, }
-    };
-    (@parse_as_initialize name: $name:ident, fields: $fields:tt, sub_items: [$($sub_items:tt)*], $nam:ident { $($inner:tt)* }  $($rest:tt)* ) => {
-        rsml!{@parse_as_initialize name: $name, fields: $fields, sub_items: [$($sub_items)* { $nam $($inner)* } ], $($rest)* }
+
+    (@parse_as_initialize ($callback:ident $callback_data:tt), fields: $fields:tt, sub_items: $sub_items:tt, id: $id:tt, ) => {
+        rsml!{@$callback $callback_data fields: $fields, sub_items: $sub_items, id: $id}
     };
 
-    (@init_sub_items $r:ident, { $name:ident $($inner:tt)* } ) => {
-        $r.add_child(rsml!{ $name { $($inner)* } });
+    (@parse_as_initialize $callback:tt, fields: [$($fields:tt)*], sub_items: $sub_items:tt, id: $id:tt, $field:ident $(. $field_cont:ident)* : $value:expr, $($rest:tt)* ) => {
+        rsml!{@parse_as_initialize $callback, fields: [$($fields)* $field $(. $field_cont)* : $value , ],
+            sub_items: $sub_items, id: $id, $($rest)* }
     };
+    (@parse_as_initialize $callback:tt, fields: [$($fields:tt)*], sub_items: $sub_items:tt, id: $id:tt, $field:ident $(. $field_cont:ident)* : $value:expr ) => {
+        rsml!{@parse_as_initialize $callback, fields: [$($fields)* $field $(. $field_cont)* : $value , ],
+            sub_items: $sub_items, id: $id, }
+    };
+    (@parse_as_initialize $callback:tt, fields: $fields:tt, sub_items: [$($sub_items:tt)*], id: $id:tt, $nam:ident { $($inner:tt)* }  $($rest:tt)* ) => {
+        rsml!{@parse_as_initialize $callback, fields: $fields, sub_items: [$($sub_items)* { $nam $($inner)* } ], id: $id, $($rest)* }
+    };
+    (@parse_as_initialize $callback:tt, fields: $fields:tt, sub_items: $sub_items:tt, id: [], @id: $id:ident, $($rest:tt)* ) => {
+        rsml!{@parse_as_initialize $callback, fields: $fields, sub_items: $sub_items, id: [$id], $($rest)* }
+    };
+    (@parse_as_initialize $callback:tt, fields: $fields:tt, sub_items: $sub_items:tt, id: $id:tt, , $($rest:tt)* ) => {
+        rsml!{@parse_as_initialize $callback, fields: $fields, sub_items: $sub_items, id: $id, $($rest)* }
+    };
+
+    (@init_sub_items $r:ident $container:ident $ids:tt, { $name:ident $($inner:tt)* } ) => {
+        //        $r.add_child(rsml!{ $name { $($inner)* } });
+        let (r, init) = rsml!{@parse_as_initialize (init_sub_items_end { $name $container $ids}), fields: [], sub_items: [], id: [],  $($inner)*};
+        $r.add_child(r);
+        init
+    };
+
+    (@init_sub_items_end { $name:ident $container:ident $ids:tt } fields: [$($field:ident $(. $field_cont:ident)* : $value:expr ,)*], sub_items: [$($sub_items:tt)*], id: [$($id:tt)*]) => { {
+        let r = <$name>::new();
+        $( $container.borrow_mut().$id = std::rc::Rc::downgrade(&r); )*
+        let init = || {};
+        $(let i = { rsml!{ @init_sub_items r $container $ids, $sub_items} }; let init = move || { init(); i(); };)*
+        #[allow(unused_variables)]
+        let container = $container.clone();
+        (r.clone(),  move || {init();  $(rsml!{ @init_field_with_ids r, container, $ids, $field $(. $field_cont)* , $value })* })
+    } };
+
+
+    // find all the id then call: rsml!{@callback $callback_data [$($ids)*] }
+    (@find_all_id ($callback:ident $callback_data:tt) [$($ids:tt)*] $parent_type:ident => /*$($rest:tt)* */) => {
+         rsml!{@$callback $callback_data [$($ids)*] }
+    };
+    (@find_all_id $callback:tt [$($ids:tt)*] $parent_type:ident => @id: $id:ident $($rest:tt)*) => {
+         rsml!{@find_all_id $callback [$($ids)* ($id $parent_type)] $parent_type => $($rest)* }
+    };
+    (@find_all_id $callback:tt [$($ids:tt)*] $old_parent_type:path => # $parent_type:ident $($rest:tt)*) => {
+         rsml!{@find_all_id $callback [$($ids)*] $parent_type => $($rest)* }
+    };
+    (@find_all_id $callback:tt [$($ids:tt)*] $old_parent_type:path => $parent_type:ident { $($ct:tt)* } $($rest:tt)*) => {
+         rsml!{@find_all_id $callback [$($ids)*] $parent_type => $($ct)* # $old_parent_type $($rest)* }
+    };
+    (@find_all_id $callback:tt [$($ids:tt)*] $parent_type:ident => $_x:tt $($rest:tt)*) => {
+         rsml!{@find_all_id $callback [$($ids)*] $parent_type => $($rest)* }
+    };
+
+
+    (@init_field_with_ids $r:ident, $container:ident, [$($id:ident)*], $field:ident $(. $field_cont:ident)* , $bind:expr) => {
+        {
+            #[allow(unused_variables)]
+            let container = $container.clone();
+            #[allow(unused_variables)]
+            #[allow(non_snake_case)]
+            $r.$field $(. $field_cont)* .set_binding(move || { $(let $id = container.borrow().$id.upgrade().unwrap();)* $bind });
+            /*$r.$field $(. $field_cont)* .set_binding((stringify!($name::$field $(. $field_cont)*).to_owned(),
+                move || Some({ let $name = wr.upgrade()?; $bind })));*/
+        }
+    };
+    (@init_field_with_ids $r:ident, $container:ident, $ids:tt, $field:ident $(. $field_cont:ident)* ,) => { };
 
 }
 
@@ -185,5 +251,41 @@ mod tests {
     }
 */
 
-
 }
+
+/*
+fn foo() {
+rsml!(
+            ColumnLayout {
+                Container {
+                    Rectangle { color: QColor::from_name("grey") }
+                    Text {
+                        text: "-".into(),
+                        vertical_alignment: alignment::VCENTER,
+                        horizontal_alignment: alignment::HCENTER,
+                    }
+                    MouseArea {
+                        @id: mouse1,
+                        on_clicked: model1.counter.set(model1.counter.get() - 1)
+                    }
+                }
+                Text {
+                    text: model.counter.get().to_string().into(),
+                    vertical_alignment: alignment::VCENTER,
+                    horizontal_alignment: alignment::HCENTER,
+                }
+                Container {
+                    Rectangle { color: QColor::from_name("grey") }
+                    Text {
+                        text: "+".into(),
+                        vertical_alignment: alignment::VCENTER,
+                        horizontal_alignment: alignment::HCENTER,
+                    }
+                    MouseArea {
+                        @id: mouse2,
+                        on_clicked: model2.counter.set(model2.counter.get() + 1)
+                    }
+                }
+            }
+        );
+}*/

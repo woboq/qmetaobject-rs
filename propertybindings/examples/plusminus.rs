@@ -1,3 +1,5 @@
+#![recursion_limit="4098"]
+
 #[macro_use] extern crate propertybindings;
 extern crate qmetaobject;
 #[macro_use] extern crate cstr;
@@ -22,13 +24,16 @@ impl propertybindings::items::ItemFactory for PlusMinus {
         rsml!(
             ColumnLayout {
                 Container {
-                    Rectangle { color: QColor::from_name("grey") }
+                    Rectangle { color: QColor::from_name(if mouse1.pressed.get() {"#aaa"} else {"#ccc"} ) }
                     Text {
                         text: "-".into(),
                         vertical_alignment: alignment::VCENTER,
                         horizontal_alignment: alignment::HCENTER,
                     }
-                    MouseArea { on_clicked: model1.counter.set(model1.counter.get() - 1) }
+                    MouseArea {
+                        @id: mouse1,
+                        on_clicked: model1.counter.set(model1.counter.get() - 1)
+                    }
                 }
                 Text {
                     text: model.counter.get().to_string().into(),
@@ -36,13 +41,16 @@ impl propertybindings::items::ItemFactory for PlusMinus {
                     horizontal_alignment: alignment::HCENTER,
                 }
                 Container {
-                    Rectangle { color: QColor::from_name("grey") }
+                    Rectangle { color: QColor::from_name(if mouse2.pressed.get() {"#aaa"} else {"#ccc"} ) }
                     Text {
                         text: "+".into(),
                         vertical_alignment: alignment::VCENTER,
                         horizontal_alignment: alignment::HCENTER,
                     }
-                    MouseArea { on_clicked: model2.counter.set(model2.counter.get() + 1) }
+                    MouseArea {
+                        @id: mouse2,
+                        on_clicked: model2.counter.set(model2.counter.get() + 1)
+                    }
                 }
             }
         )
