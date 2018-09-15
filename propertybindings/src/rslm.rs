@@ -60,13 +60,15 @@ macro_rules! rsml {
 
     (@parse_as_initialize_start {$name:ident, $($rest:tt)*} [$(($ids:tt $ids_ty:ident))*]) => { {
         #[derive(Default)]
+        #[allow(non_snake_case)]
         struct IdsContainer<'a> {
             $($ids: ::std::rc::Weak<$ids_ty<'a>> ,)*
-            _phantom: ::std::marker::PhantomData<&'a u32>,
+            $name : ::std::rc::Weak<$name<'a>> ,
         }
         #[allow(unused_variables)]
-        let container = std::rc::Rc::new(::std::cell::RefCell::new(IdsContainer::default()));
-        let (r, init) = rsml!{@parse_as_initialize (parse_as_initialize_end { $name container  [$($ids)*]}), fields: [], sub_items: [], id: [], $($rest)* };
+        let container = ::std::rc::Rc::new(::std::cell::RefCell::new(IdsContainer::default()));
+        let (r, init) = rsml!{@parse_as_initialize (parse_as_initialize_end { $name container  [$name $($ids)*]}), fields: [], sub_items: [], id: [], $($rest)* };
+        container.borrow_mut().$name = ::std::rc::Rc::downgrade(&r);
         init();
         r
     } };
@@ -103,7 +105,7 @@ macro_rules! rsml {
 
     (@parse_as_initialize_end { $name:ident $container:ident $ids:tt } fields: [$($field:ident $(. $field_cont:ident)* : $value:expr ,)*], sub_items: [$($sub_items:tt)*], id: [$($id:tt)*]) => { {
         let r = <$name>::new();
-        $( $container.borrow_mut().$id = std::rc::Rc::downgrade(&r); )*
+        $( $container.borrow_mut().$id = ::std::rc::Rc::downgrade(&r); )*
         let init = || {};
         $(let i = { rsml!{ @init_sub_items r $container $ids, $sub_items} }; let init = move || { init(); i(); };)*
         #[allow(unused_variables)]
