@@ -2,7 +2,14 @@ extern crate qmetaobject;
 use qmetaobject::*;
 extern crate chrono;
 use chrono::Timelike;
+use std::thread::JoinHandle;
+use std::sync::{Mutex, Condvar, Arc};
 
+#[derive(Default)]
+struct AbortCondVar {
+    is_aborted: Mutex<bool>,
+    abort_condvar: Condvar,
+}
 
 #[allow(non_snake_case)]
 #[derive(Default,QObject)]
@@ -12,11 +19,39 @@ struct TimeModel
     hour: qt_property!(u32; NOTIFY timeChanged READ get_hour),
     minute: qt_property!(u32; NOTIFY timeChanged READ get_minute),
     timeChanged: qt_signal!(),
+
+    thread: Option<(JoinHandle<()>, Arc<AbortCondVar>)>
+}
+
+impl Drop for TimeModel {
+    fn drop(&mut self) {
+        self.thread.as_ref().map(|x|{
+            let mut lock = x.1.is_aborted.lock().unwrap();
+            *lock = true;
+            x.1.abort_condvar.notify_one();
+        });
+    }
 }
 
 impl TimeModel {
     fn lazy_init(&mut self) {
-        // FIXME: initialize a timer that emits timeChanged
+        if self.thread.is_none() {
+            let ptr = QPointer::from(&*self);
+            let cb = qmetaobject::queued_callback(move |()| { ptr.as_ref().map(|x| x.timeChanged()); });
+            let arc = Arc::<AbortCondVar>::new(Default::default());
+            let arc2 = arc.clone();
+            let thread = std::thread::spawn(move || {
+                loop {
+                    {
+                        let lock = arc2.is_aborted.lock().unwrap();
+                        if *lock { break; }
+                        arc2.abort_condvar.wait_timeout(lock, std::time::Duration::from_millis(1000)).unwrap();
+                    }
+                    cb(());
+                }
+            });
+            self.thread = Some((thread, arc));
+        }
     }
     fn get_hour(&mut self) -> u32 {
         self.lazy_init();

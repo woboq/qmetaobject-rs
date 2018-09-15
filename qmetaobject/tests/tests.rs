@@ -22,6 +22,7 @@ use qmetaobject::*;
 extern crate lazy_static;
 use std::sync::Mutex;
 use std::ffi::CStr;
+use std::rc::Rc;
 
 lazy_static! {
     static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
@@ -270,13 +271,24 @@ fn qobject_properties() {
 
 #[test]
 fn singleshot() {
-
     let _lock = TEST_MUTEX.lock().unwrap();
 
-    let mut engine = std::cell::RefCell::new(QmlEngine::new());
-    single_shot(std::time::Duration::from_millis(0), ||{ engine.borrow_mut().quit(); });
-    engine.get_mut().exec();
+    let engine = Rc::new(QmlEngine::new());
+    let engine_copy = engine.clone();
+    single_shot(std::time::Duration::from_millis(0), move ||{ engine_copy.quit(); });
+    engine.exec();
 
+}
+
+#[test]
+fn test_queud_callback() {
+    let _lock = TEST_MUTEX.lock().unwrap();
+
+    let engine = Rc::new(QmlEngine::new());
+    let engine_copy = engine.clone();
+    let callback = queued_callback(move |()| {engine_copy.quit()});
+    std::thread::spawn(move || {callback(());}).join().unwrap();
+    engine.exec();
 }
 
 #[test]

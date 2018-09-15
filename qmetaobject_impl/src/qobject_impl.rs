@@ -556,9 +556,9 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         let array_size = signal.args.len() + 1;
         quote! {
             #[allow(non_snake_case)]
-            fn #sig_name(&mut self #(, #args_decl)*) {
+            fn #sig_name(&self #(, #args_decl)*) {
                 let a : [*mut ::std::os::raw::c_void; #array_size] = [ ::std::ptr::null_mut() #(, #args_ptr)* ];
-                unsafe { #crate_::invoke_signal((self as &mut #crate_::QObject).get_cpp_object(), #name::static_meta_object(), #i, &a) }
+                unsafe { #crate_::invoke_signal((self as &#crate_::QObject).get_cpp_object(), #name::static_meta_object(), #i, &a) }
             }
         }
     }));

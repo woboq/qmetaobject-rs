@@ -62,11 +62,11 @@ impl QmlEngine {
     }
 
     /// Launches the application
-    pub fn exec(&mut self) {
+    pub fn exec(&self) {
         unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->exec(); })}
     }
     /// Closes the application
-    pub fn quit(&mut self) {
+    pub fn quit(&self) {
         unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->quit(); })}
     }
 

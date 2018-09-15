@@ -40,6 +40,7 @@ pub use lazy_static::*;
 //extern crate bitflags;
 
 use std::os::raw::c_void;
+use std::cell::RefCell;
 
 pub mod qttypes;
 pub use qttypes::*;
@@ -179,6 +180,7 @@ impl<T: QObject + ?Sized> QPointer<T> {
         unsafe { T::get_from_cpp(self.cpp_ptr()) }
     }
 
+    /// Returns a reference to the opbject, or None if it was deleted
     pub fn as_ref(&self) -> Option<&T> {
         let x = self.cpp_ptr();
         if x.is_null() { None } else { unsafe { Some(&*self.1) } }
@@ -431,13 +433,13 @@ cpp!{{
         TraitObject fnbox;
         ~FnBoxWrapper() {
             if (fnbox) {
-                rust!(FnBoxWrapper_destructor [fnbox : *mut Fn() as "TraitObject"] {
+                rust!(FnBoxWrapper_destructor [fnbox : *mut FnMut() as "TraitObject"] {
                     unsafe { let _ = Box::from_raw(fnbox); }
                 });
             }
         }
         FnBoxWrapper &operator=(const FnBoxWrapper&) = delete;
-#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+#if false && QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
         FnBoxWrapper(const FnBoxWrapper&) = delete;
 #else
         // Prior to Qt 5.10 we can't have move-only wrapper. Just do the auto_ptr kind of hack.
@@ -446,7 +448,7 @@ cpp!{{
         FnBoxWrapper(FnBoxWrapper &&o) : fnbox(o.fnbox) {  o.fnbox = {}; }
         FnBoxWrapper &operator=(FnBoxWrapper &&o) { std::swap(o.fnbox, fnbox); return *this; }
         void operator()() {
-            rust!(FnBoxWrapper_operator [fnbox : *mut Fn() as "TraitObject"] {
+            rust!(FnBoxWrapper_operator [fnbox : *mut FnMut() as "TraitObject"] {
                 unsafe { (*fnbox)(); }
             });
         }
@@ -454,9 +456,7 @@ cpp!{{
 }}
 
 /// Call the callback once, after a given duration.
-///
-/// FIXME! This is actually unsafe currently.
-pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut() {
+pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut() + 'static {
     let func : Box<FnMut()> = Box::new(func);
     let mut func_raw = Box::into_raw(func);
     let interval_ms : u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
@@ -465,6 +465,60 @@ pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut()
     })};
 }
 
+macro_rules! identity{ ($x:ty) => { $x } } // workaround old version of syn
+
+/// Returns a callback that can be called in any thread. Calling the callback will then call the
+///
+/// given closure in the current Qt thread.
+/// If the current thread does no longer have an event loop when the callback is sent, the
+/// callback will not be recieved.
+///
+/// ```
+/// # extern crate qmetaobject; use qmetaobject::queued_callback;
+/// // in this example, we do not pass '()' as an argument.
+/// let callback = queued_callback(|()| println!("hello from main thread"));
+/// std::thread::spawn(move || {callback(());}).join();
+/// ```
+pub fn queued_callback<T : Send, F : FnMut(T) + 'static>(func: F) -> identity!(impl Fn(T) + Send)
+{
+    let current_thread = cpp!(unsafe [] -> QPointerImpl as "QPointer<QThread>" {
+        return QThread::currentThread();
+    });
+
+    // In this case, it is safe to send the function to another thread, as we will only call it
+    // from this thread.
+    // We put it in a RefCell so we can call it mutably.
+    struct UnsafeSendFn<T>(RefCell<T>);
+    unsafe impl<T> Send for UnsafeSendFn<T> {}
+    unsafe impl<T> Sync for UnsafeSendFn<T> {}
+    // put func in an arc because we need to keep it alive as long as the internal Box<FnMut> is
+    // alive. (And we can't just move it there because the returned closure can be called serveral
+    // times.
+    let func = std::sync::Arc::new(UnsafeSendFn(RefCell::new(func)));
+
+    move |x| {
+        let mut x = Some(x); // Workaround the fact we can't have a Box<FnOnce>
+        let func = func.clone();
+        let func : Box<FnMut()> = Box::new(move || {
+            // the borrow_mut could panic if the function was called recursively. This could happen
+            // if the event-loop re-enter.
+            let f = &mut (*(func.0).borrow_mut());
+            x.take().map(move |x| { f(x); });
+        });
+        let mut func_raw = Box::into_raw(func);
+        unsafe{ cpp!([mut func_raw as "FnBoxWrapper", current_thread as "QPointer<QThread>"] {
+            if (!current_thread) return;
+            if (!qApp || current_thread != qApp->thread()) {
+                QObject *reciever = new QObject();
+                reciever->moveToThread(current_thread);
+                QMetaObject::invokeMethod(reciever, std::move(func_raw), Qt::QueuedConnection); // does not allow move-only
+                reciever->deleteLater();
+            } else {
+                QMetaObject::invokeMethod(qApp, std::move(func_raw), Qt::QueuedConnection);
+            }
+        })};
+    }
+}
 
 pub mod listmodel;
 pub use listmodel::*;
