@@ -14,7 +14,7 @@ struct PlusMinus {
     counter : Property<'static, i32>,
 }
 
-impl propertybindings::items::ItemFactory for PlusMinus {
+impl propertybindings::quick::ItemFactory for PlusMinus {
 
     fn create() -> Rc<propertybindings::items::Item<'static>> {
         use propertybindings::items::*;
@@ -63,7 +63,7 @@ impl propertybindings::items::ItemFactory for PlusMinus {
 
 fn main() {
 
-    qmetaobject::qml_register_type::<propertybindings::items::RSMLItem<PlusMinus>>(cstr!("PlusMinus"), 1, 0, cstr!("PlusMinus"));
+    qmetaobject::qml_register_type::<propertybindings::quick::RSMLItem<PlusMinus>>(cstr!("PlusMinus"), 1, 0, cstr!("PlusMinus"));
     let mut engine = qmetaobject::QmlEngine::new();
     engine.load_data(r#"
 import QtQuick 2.0;

@@ -25,5 +25,6 @@ pub mod anchors;
 #[macro_use]
 pub mod rslm;
 pub mod items;
+pub mod quick;
 
 
