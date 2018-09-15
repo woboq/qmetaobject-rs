@@ -90,27 +90,12 @@ pub trait Item<'a> {
     fn init(&self, _item: &(QQuickItem + 'a)) {}
     fn mouse_event(&self, _event : MouseEvent) -> bool { false }
 }
-/*
-impl<'a> Item<'a> {
-    pub fn new() -> Rc<Self> { Default::default() }
-}
-*/
+
 
 pub trait ItemContainer<'a>  {
     fn add_child(&self, child : Rc<Item<'a> + 'a>);
 }
 
-/*
-#[derive(Default)]
-pub struct ItemBase<'a> {
-    geometry : Geometry<'a>,
-}
-
-impl<'a> GeometryItem<'a> for Item<'a> {
-    fn geometry(&self) -> &Geometry<'a> {
-        return &self.geometry;
-    }
-}*/
 
 mod layout_engine {
 
@@ -311,19 +296,9 @@ impl<'a> ColumnLayout<'a> {
         }
     }
 }
-/* DOES NOT WORK  (because we can't get a  &'a Property<'a>)
-fn init_fixed_sized<'a>(r: &Item<'a>, width : &'a Property<'a, f64>, height:  &'a Property<'a, f64>) {
-    r.layout_info().minimum_height.set_binding(move || height.get());
-    r.layout_info().preferred_height.set_binding(move || height.get());
-    r.layout_info().maximum_height.set_binding(move || height.get());
-    r.layout_info().minimum_width.set_binding(move || width.get());
-    r.layout_info().preferred_width.set_binding(move || width.get());
-    r.layout_info().maximum_width.set_binding(move || width.get());
-} */
 
 #[test]
 fn test_layout() {
-
 
     #[derive(Default)]
     pub struct LItem<'a> {
@@ -434,7 +409,6 @@ impl<'a> Item<'a> for Container<'a> {
         }
         return ret;
     }
-
 }
 
 impl<'a> ItemContainer<'a> for Rc<Container<'a>> {
@@ -495,11 +469,24 @@ impl<'a> Rectangle<'a> {
     pub fn new() -> Rc<Self> { Default::default() }
 }
 
+cpp!{{
+#include <QtQuick/QQuickItem>
+#include <QtQml/QQmlEngine>
+}}
+
+
+/// This allow to wrap any QQuickItem in order to get its scene graph node.
+/// Note that the wrapped item will be hidden and will not handle events.
+/// The goal is mostly to access scene graph nodes which would otherwise be private.
 #[derive(Default)]
 pub struct QmlItemWrapper {
     internal_item: RefCell<QJSValue>
 }
 impl QmlItemWrapper {
+
+    /// Create the internal QQuickItem, as a child of `item`.
+    /// `name`  is the QML Type  (for example "Text".
+    /// You should call link_property after calling init to initialize the properties.
     pub fn init(&self, item: &QQuickItem, name: QString) {
         let item = item.get_cpp_object();
         let js = cpp!(unsafe [item as "QQuickItem*", name as "QString"] -> QJSValue as "QJSValue" {
@@ -508,13 +495,21 @@ impl QmlItemWrapper {
                 auto v = engine->evaluate(
                     "(function (i) { return Qt.createQmlObject('import QtQuick 2.0; " + name
                         + "{visible: false;}', i, 'RustTextItem')} )");
-                return v.call( { engine->newQObject(item) });
+                auto js = v.call( { engine->newQObject(item) });
+                if (auto i = qobject_cast<QQuickItem*>(js.toQObject())) {
+                    // Don't let the normal scenegraph call updatePaintNode on it.
+                    i->setFlag(QQuickItem::ItemHasContents, false);
+                }
+                return js;
             }
             return {};
         });
         *self.internal_item.borrow_mut() = js.clone();
     }
 
+    /// Link a Property to a QML property of the item.
+    /// When the Property is changed, it will be updated the property on QQuickItem with the
+    /// given name. (Not the other way around).
     pub fn link_property<'a, T :QMetaType>(&self, p: &Property<'a, T>, name: &'static CStr) {
         let js = self.internal_item.borrow().clone();
         let func =  move |t : &T| {
@@ -563,6 +558,7 @@ pub mod alignment {
 
 }
 
+/// Wraps a QtQuick Text
 #[derive(Default)]
 pub struct Text<'a> {
     pub geometry : Geometry<'a>,
@@ -601,37 +597,13 @@ impl<'a> Item<'a> for Text<'a> {
         self.wrapper.link_property(&self.geometry.height, cstr!("height"));
         self.wrapper.link_property(&self.vertical_alignment, cstr!("verticalAlignment"));
         self.wrapper.link_property(&self.horizontal_alignment, cstr!("horizontalAlignment"));
-
-        /*let adjust_text = { let js = js.clone(); move |text : &QString| {
-            cpp!(unsafe [text as "QString*", js as "QJSValue"] {
-                if (auto item = qobject_cast<QQuickItem*>(js.toQObject())) {
-                    item->setProperty("text", *text);
-                }
-            })
-        }};
-        adjust_text(&self.text.value());
-        self.text.on_notify(adjust_text);
-        self.geometry.width.on_notify({ let js = js.clone(); move |width| {
-            cpp!(unsafe [js as "QJSValue", width as "double*"] {
-                if (auto item = qobject_cast<QQuickItem*>(js.toQObject())) {
-                    item->setWidth(*width);
-                }
-            })
-        }});
-        self.geometry.height.on_notify({ let js = js.clone(); move |height| {
-            cpp!(unsafe [js as "QJSValue", height as "double*"] {
-                if (auto item = qobject_cast<QQuickItem*>(js.toQObject())) {
-                    item->setHeight(*height);
-                }
-            })
-        }});*/
     }
 }
 impl<'a> Text<'a> {
     pub fn new() -> Rc<Self> { Default::default() }
 }
 
-
+/// Similar to a QtQuick MouseArea
 #[derive(Default)]
 pub struct MouseArea<'a> {
     pub geometry : Geometry<'a>,
@@ -659,60 +631,10 @@ impl<'a> MouseArea<'a> {
     pub fn new() -> Rc<Self> { Default::default() }
 }
 
-
-/*
-
-
-/*
-rsml! {
-    struct Button {
-        #geometry,
-        text: String,
-        clicked: Event
-    }
-}
-
-rsml! {
-    struct Button {
-        #geometry,
-        text: String,
-        clicked: @event
-    }
-}*/
-
-
-rsml! {
-// #[derive(Item)]
-// struct MyWindow {
-//    geometry: Geometry,
-    ColumnLayout {
-//        geometry: MyWindow.geometry
-        Button {
-           text: "+",
-           clicked => { label.text = label.text.parse() + 1;  }
-        }
-        let label = Label {
-           text: "0",
-        }
-        Button {
-           text: "-",
-           clicked => { label.text = label.text.parse() - 1;  }
-        }
-    }
-// }
-}
-
-*/
-
+/// Use as a factory for RSMLItem
 pub trait ItemFactory {
     fn create() -> Rc<Item<'static>>;
 }
-
-
-cpp!{{
-#include <QtQuick/QQuickItem>
-#include <QtQml/QQmlEngine>
-}}
 
 #[derive(QObject)]
 pub struct RSMLItem<T : ItemFactory + 'static> {
@@ -768,77 +690,4 @@ impl<T : ItemFactory + 'static> QQuickItem for RSMLItem<T>
         self.node.as_ref().map_or(false, |n| n.mouse_event(e))
     }
 }
-
-
-
-/*
-#[cfg(test)]
-mod test {
-    #[test]
-    fn test() {
-        use qmetaobject::*;
-        use super::*;
-        use std::rc::{Rc};
-
-        enum MyItem {}
-        impl ItemFactory for MyItem {
-            fn create() -> Rc<Item<'static>> {
-                //let y : Rc<Rectangle<'a>> = rsml!( Rectangle { color: QColor::from_name("yellow") } );
-                let m : Rc<MouseArea> = rsml!( MouseArea {  } );
-                let t : Rc<Text> = rsml!( Text { text: QString::from("Hello world") } );
-                let m_weak = Rc::downgrade(&m);
-                let b : Rc<Rectangle> =  rsml!( Rectangle {
-                    color: QColor::from_name(if m_weak.upgrade().map_or(false, |x| x.pressed.get()) { "blue" } else { "yellow" })
-                } );
-
-                let i : Rc<ColumnLayout> = rsml!(
-                    ColumnLayout {
-                        geometry.width : 110.,
-                        geometry.height : 90.,
-                    }
-                );
-                i.add_child(b);
-                i.add_child(t);
-                //i.add_child(y);
-                i.add_child(m);
-                i
-            }
-
-        }
-
-
-        qml_register_type::<RSMLItem<MyItem>>(cstr!("MyItem"), 1, 0, cstr!("MyItem"));
-        let mut engine = QmlEngine::new();
-        engine.load_data(r#"
-import QtQuick 2.0
-import QtQuick.Window 2.0
-import MyItem 1.0
-
-Window {
-    width: 800
-    height: 400
-    visible: true
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 100
-        color: "red"
-        border.color: "black"
-        border.width: 2
-    }
-
-    MyItem {
-        anchors.fill: parent
-        anchors.margins: 100
-    }
-
-}
-
-
-
-        "#.into());
-        engine.exec();
-    }
-
-}*/
 

@@ -9,6 +9,8 @@ use std::ptr::NonNull;
 
 // A double linked intrusive list.
 // This is unsafe to use.
+// It work because the pointer are of type Link for which we know that the data is not moving from
+// and that it is droped when it is destroyed.
 mod double_link {
 
     use std::ptr::NonNull;
@@ -247,6 +249,7 @@ trait PropertyBase {
     }
 }
 
+/// A binding is a function that returns a value of type T
 pub trait PropertyBindingFn<T> {
     fn run(&self) -> Option<T>;
     fn description(&self) -> String { String::default() }
@@ -254,10 +257,14 @@ pub trait PropertyBindingFn<T> {
 impl<F, T> PropertyBindingFn<T> for F where F : Fn()->T {
     fn run(&self) -> Option<T> { Some((*self)()) }
 }
+// Ideallly this should just be
+// impl<F, T> PropertyBindingFn<T> for F where F : Fn()->Option<T>
+// But that'd be ambiguous,  so wrap it in an option, even if it is ridiculous.
+// Fixme: is there a better solution
 impl<F, T> PropertyBindingFn<T> for Option<F> where F : Fn()->Option<T> {
     fn run(&self) -> Option<T> { self.as_ref().and_then(|x|x()) }
 }
-
+// This one is usefull for debugging.
 impl<F, T> PropertyBindingFn<T> for (String, F) where F : Fn()->Option<T> {
     fn run(&self) -> Option<T> { (self.1)() }
     fn description(&self) -> String { (self.0).clone() }
@@ -282,6 +289,7 @@ impl<'a, T> PropertyBase for PropertyImpl<'a, T>  {
             self.rev_dep.borrow_mut().clear();
 
             if let Some(val) = run_with_current(dep, || f.run()) {
+                // FIXME: check that the property does actualy change
                 *self.value.borrow_mut() = val;
                 self.update_dependencies();
             }
@@ -335,6 +343,9 @@ impl<'a, T  : Default + Clone> WeakProperty<'a, T>  {
     }
 }
 
+/// A Property represents a value which records when it is accessed. If the property's binding
+/// depends on others property, the property binding is automatically re-evaluated.
+// Fixme! the property should maybe be computed lazily, or the graph studied to avoid unnecesseray re-computation.
 #[derive(Default)]
 pub struct Property<'a, T> {
     d : Rc<PropertyImpl<'a, T>>
@@ -347,9 +358,11 @@ impl<'a, T  : Default + Clone> Property<'a, T>  {
         Property{ d: d }
     }
 
+    /// Set the value, and notify all the dependent property so their binding can be re-evaluated
     pub fn set(&self, t : T) {
         *self.d.binding.borrow_mut() = None;
         *self.d.value.borrow_mut() = t;
+        // FIXME! don't updae dependency if the property don't change.
         self.d.update_dependencies();
     }
     pub fn set_binding<F : PropertyBindingFn<T> + 'a>(&self, f : F) {
@@ -370,6 +383,8 @@ impl<'a, T  : Default + Clone> Property<'a, T>  {
         self.get()
     }
 
+    /// Get the value.
+    /// Accessing this property from another's property binding will mark the other property as a dependency.
     pub fn get(&self) -> T {
         self.d.accessed();
         self.d.value.borrow().clone()
@@ -379,6 +394,7 @@ impl<'a, T  : Default + Clone> Property<'a, T>  {
         WeakProperty{ d: Rc::downgrade(&self.d) }
     }
 
+    /// One can add callback which are being called when the property changes.
     pub fn on_notify<F>(&self, callback: F) where  F : FnMut(&T) + 'a {
         self.d.callbacks.borrow_mut().push(Box::new(callback));
     }
@@ -452,6 +468,7 @@ mod tests {
     }
 }
 
+/// A Signal.
 #[derive(Default)]
 pub struct Signal<'a> {
     callbacks: RefCell<Vec<Box<FnMut() + 'a>>>,

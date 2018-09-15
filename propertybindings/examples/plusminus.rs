@@ -1,3 +1,5 @@
+//! Exampleinspired from the example in https://github.com/antoyo/relm
+
 #![recursion_limit="4098"]
 
 #[macro_use] extern crate propertybindings;
@@ -64,23 +66,16 @@ fn main() {
     qmetaobject::qml_register_type::<propertybindings::items::RSMLItem<PlusMinus>>(cstr!("PlusMinus"), 1, 0, cstr!("PlusMinus"));
     let mut engine = qmetaobject::QmlEngine::new();
     engine.load_data(r#"
-import QtQuick 2.0
-import QtQuick.Window 2.0
-import PlusMinus 1.0
-
+import QtQuick 2.0;
+import QtQuick.Window 2.0;
+import PlusMinus 1.0;
 Window {
-    width: 300
-    height: 400
-    visible: true
+    width: 300;
+    height: 400;
+    visible: true;
 
-    PlusMinus {
-        anchors.fill: parent
-    }
-
+    PlusMinus { anchors.fill: parent; }
 }
-
-
-
         "#.into());
     engine.exec();
 }

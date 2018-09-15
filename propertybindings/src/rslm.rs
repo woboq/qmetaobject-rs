@@ -51,19 +51,14 @@ macro_rules! rsml {
     //(@parse_default = $value:expr) => { Property::from($value) };
     (@parse_default $($x:tt)*) => { Default::default() };
 
+    //---------------------------------------------------------------------------------------------
 
     // Initialize an object
     ($name:ident { $($rest:tt)* } ) => {
         rsml!{@find_all_id (parse_as_initialize_start {$name, $($rest)*}) [] $name => $($rest)* }
     };
 
-    (@parse_as_initialize_start {$name:ident, $($rest:tt)*} $ids:tt ) => {
-        rsml!{@parse_as_initialize (parse_as_initialize_end { $name, $ids }), fields: [], sub_items: [], id: [], $($rest)* }
-    };
-
-
-
-    (@parse_as_initialize_end { $name:ident, [$(($ids:tt $ids_ty:ident))*] } fields: $fields:tt, sub_items: $sub_items:tt, id: $id:tt) => { {
+    (@parse_as_initialize_start {$name:ident, $($rest:tt)*} [$(($ids:tt $ids_ty:ident))*]) => { {
         #[derive(Default)]
         struct IdsContainer<'a> {
             $($ids: ::std::rc::Weak<$ids_ty<'a>> ,)*
@@ -71,10 +66,11 @@ macro_rules! rsml {
         }
         #[allow(unused_variables)]
         let container = std::rc::Rc::new(::std::cell::RefCell::new(IdsContainer::default()));
-        let (r, init) = rsml!{@init_sub_items_end {$name container [$($ids)*]} fields: $fields, sub_items: $sub_items, id: $id};
+        let (r, init) = rsml!{@parse_as_initialize (parse_as_initialize_end { $name container  [$($ids)*]}), fields: [], sub_items: [], id: [], $($rest)* };
         init();
         r
     } };
+
 
     (@parse_as_initialize ($callback:ident $callback_data:tt), fields: $fields:tt, sub_items: $sub_items:tt, id: $id:tt, ) => {
         rsml!{@$callback $callback_data fields: $fields, sub_items: $sub_items, id: $id}
@@ -100,12 +96,12 @@ macro_rules! rsml {
 
     (@init_sub_items $r:ident $container:ident $ids:tt, { $name:ident $($inner:tt)* } ) => {
         //        $r.add_child(rsml!{ $name { $($inner)* } });
-        let (r, init) = rsml!{@parse_as_initialize (init_sub_items_end { $name $container $ids}), fields: [], sub_items: [], id: [],  $($inner)*};
+        let (r, init) = rsml!{@parse_as_initialize (parse_as_initialize_end { $name $container $ids}), fields: [], sub_items: [], id: [],  $($inner)*};
         $r.add_child(r);
         init
     };
 
-    (@init_sub_items_end { $name:ident $container:ident $ids:tt } fields: [$($field:ident $(. $field_cont:ident)* : $value:expr ,)*], sub_items: [$($sub_items:tt)*], id: [$($id:tt)*]) => { {
+    (@parse_as_initialize_end { $name:ident $container:ident $ids:tt } fields: [$($field:ident $(. $field_cont:ident)* : $value:expr ,)*], sub_items: [$($sub_items:tt)*], id: [$($id:tt)*]) => { {
         let r = <$name>::new();
         $( $container.borrow_mut().$id = std::rc::Rc::downgrade(&r); )*
         let init = || {};
