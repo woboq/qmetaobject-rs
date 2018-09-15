@@ -28,7 +28,7 @@ use quote::ToTokens;
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-use std::iter::Iterator;
+use ::std::iter::Iterator;
 
 mod qbjs;
 mod qrc_impl;
@@ -470,7 +470,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     let get_object = if is_qobject {
         quote!{ <#name #ty_generics as #base>::get_rust_object(&mut *o) }
     } else {
-        quote!{ std::mem::transmute::<*mut std::os::raw::c_void, &mut #name #ty_generics>(o) }
+        quote!{ ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o) }
     };
 
 
@@ -605,13 +605,13 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         let args_ptr : Vec<_> = signal.args.iter().map(|arg| {
             let n = &arg.name;
             let ty = &arg.typ;
-            quote! { unsafe { std::mem::transmute::<& #ty , *mut std::os::raw::c_void>(& #n) } }
+            quote! { unsafe { ::std::mem::transmute::<& #ty , *mut ::std::os::raw::c_void>(& #n) } }
         }).collect();
         let array_size = signal.args.len() + 1;
         quote! {
             #[allow(non_snake_case)]
             fn #sig_name(&mut self #(, #args_decl)*) {
-                let a : [*mut std::os::raw::c_void; #array_size] = [ std::ptr::null_mut() #(, #args_ptr)* ];
+                let a : [*mut ::std::os::raw::c_void; #array_size] = [ ::std::ptr::null_mut() #(, #args_ptr)* ];
                 unsafe { #crate_::invoke_signal((self as &mut #crate_::QObject).get_cpp_object(), #name::static_meta_object(), #i, &a) }
             }
         }
@@ -622,7 +622,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         // if *a[1] == offset_of(signal field)  =>  *a[0] = index and return.
         quote! {
             unsafe {
-                let null = std::ptr::null() as *const #name #ty_generics;
+                let null = ::std::ptr::null() as *const #name #ty_generics;
                 let offset = &(*null).#sig_name as *const _ as usize - (null as usize);
                 if (*(*(a.offset(1)) as *const usize)) == offset  {
                     *(*a as *mut i32) = #i as i32;
@@ -635,7 +635,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     let base_meta_object = if is_qobject {
         quote!{ <#name #ty_generics as #base>::get_object_description().meta_object }
     } else {
-        quote!{ std::ptr::null() }
+        quote!{ ::std::ptr::null() }
     };
 
     let mo = if ast.generics.params.is_empty() {
@@ -645,8 +645,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: static_metacall,
-                r: std::ptr::null(),
-                e: std::ptr::null(),
+                r: ::std::ptr::null(),
+                e: ::std::ptr::null(),
             };};
             return &*MO;
         }
@@ -658,9 +658,9 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             (quote!(), quote!() )
         };
         quote! {
-            use std::sync::Mutex;
-            use std::collections::HashMap;
-            use std::any::TypeId;
+            use ::std::sync::Mutex;
+            use ::std::collections::HashMap;
+            use ::std::any::TypeId;
 
             // FIXME! this could be global
             qmetaobject_lazy_static! {
@@ -674,8 +674,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: static_metacall #turbo_generics,
-                    r: std::ptr::null(),
-                    e: std::ptr::null(),
+                    r: ::std::ptr::null(),
+                    e: ::std::ptr::null(),
             }));
             return &**mo;
         }
@@ -683,31 +683,31 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
     let qobject_spec_func = if is_qobject {
         quote!{
-            fn get_cpp_object(&self)-> *mut std::os::raw::c_void {
+            fn get_cpp_object(&self)-> *mut ::std::os::raw::c_void {
                 self.#base_prop.get()
             }
-            unsafe fn get_from_cpp(ptr: *const std::os::raw::c_void) -> *const Self {
-                if ptr.is_null() { return std::ptr::null(); }
-                <#name #ty_generics as #base>::get_rust_object(&mut *(ptr as *mut std::os::raw::c_void)) as *const Self
+            unsafe fn get_from_cpp(ptr: *const ::std::os::raw::c_void) -> *const Self {
+                if ptr.is_null() { return ::std::ptr::null(); }
+                <#name #ty_generics as #base>::get_rust_object(&mut *(ptr as *mut ::std::os::raw::c_void)) as *const Self
             }
 
-            unsafe fn cpp_construct(&mut self) -> *mut std::os::raw::c_void {
+            unsafe fn cpp_construct(&mut self) -> *mut ::std::os::raw::c_void {
                 assert!(self.#base_prop.get().is_null());
                 let trait_object : *const #base = self;
                 let trait_object_ptr : *const *const #base = &trait_object;
                 let n = (<#name #ty_generics as #base>::get_object_description().create)
-                    (trait_object_ptr as *const std::os::raw::c_void);
+                    (trait_object_ptr as *const ::std::os::raw::c_void);
                 self.#base_prop.set(n);
                 n
             }
 
-            unsafe fn qml_construct(&mut self, mem : *mut std::os::raw::c_void,
-                                    extra_destruct : extern fn(*mut std::os::raw::c_void)) {
+            unsafe fn qml_construct(&mut self, mem : *mut ::std::os::raw::c_void,
+                                    extra_destruct : extern fn(*mut ::std::os::raw::c_void)) {
                 let trait_object : *const #base = self;
                 let trait_object_ptr : *const *const #base = &trait_object;
                 self.#base_prop.set(mem);
                 (<#name #ty_generics as #base>::get_object_description().qml_construct)(
-                    mem, trait_object_ptr as *const std::os::raw::c_void, extra_destruct);
+                    mem, trait_object_ptr as *const ::std::os::raw::c_void, extra_destruct);
             }
 
             fn cpp_size() -> usize {
@@ -736,8 +736,8 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
                 #[allow(unused_variables)]
-                extern "C" fn static_metacall #impl_generics (o: *mut std::os::raw::c_void, c: u32, idx: u32,
-                                              a: *const *mut std::os::raw::c_void) #where_clause {
+                extern "C" fn static_metacall #impl_generics (o: *mut ::std::os::raw::c_void, c: u32, idx: u32,
+                                              a: *const *mut ::std::os::raw::c_void) #where_clause {
                     if c == #InvokeMetaMethod { unsafe {
                         let obj : &mut #name #ty_generics = #get_object;
                         match idx {
@@ -774,14 +774,14 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                 fn register_type(_name : &::std::ffi::CStr) -> i32 {
                     #crate_::register_metatype_qobject::<Self>()
                 }
-                unsafe fn pass_to_qt(&mut self, a: *mut std::os::raw::c_void) {
-                    let r = a as *mut *const std::os::raw::c_void;
+                unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
+                    let r = a as *mut *const ::std::os::raw::c_void;
                     let obj = (self as &mut #crate_::QObject).get_cpp_object();
                     *r = if !obj.is_null() { obj }
                         else { (self as  &mut #crate_::QObject).cpp_construct() };
                 }
 
-                unsafe fn read_from_qt(_a: *const std::os::raw::c_void) -> Self {
+                unsafe fn read_from_qt(_a: *const ::std::os::raw::c_void) -> Self {
                     panic!("Cannot write into an Object property");
                 }
             }
@@ -817,7 +817,7 @@ fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             {  qt_pluginMetaData.as_ptr() }
 
             #[no_mangle]
-            pub extern fn qt_plugin_instance() -> *mut std::os::raw::c_void
+            pub extern fn qt_plugin_instance() -> *mut ::std::os::raw::c_void
             {
                 #crate_::into_leaked_cpp_ptr(#name::default())
             }
