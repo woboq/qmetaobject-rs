@@ -167,22 +167,10 @@ fn call_method() {
 #[test]
 fn simple_model() {
 
-    #[derive(Default)]
+    #[derive(Default,SimpleListItem)]
     struct TM {
-        a: QString,
-        b: u32,
-    }
-    impl qmetaobject::listmodel::SimpleListItem for TM {
-        fn get(&self, idx : i32) -> QVariant {
-            match idx {
-                0 => self.a.clone().into(),
-                1 => self.b.clone().into(),
-                _ => QVariant::default()
-            }
-        }
-        fn names() -> Vec<QByteArray> {
-            vec![ QByteArray::from("a"), QByteArray::from("b") ]
-        }
+        pub a: QString,
+        pub b: u32,
     }
     // FIXME! why vec! here?
     let model : qmetaobject::listmodel::SimpleListModel<TM> = (vec![TM{a: "hello".into(), b:1}]).into_iter().collect();

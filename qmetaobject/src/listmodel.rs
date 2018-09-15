@@ -187,6 +187,8 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 pub const USER_ROLE : i32 = 0x0100;
 
 /// A trait used in SimpleListModel.
+/// Can be derived with `#[derive(SimpleListModel)]`, in which case all the member of the struct
+/// get exposed. The public member needs to implement the QMetaType trait
 pub trait SimpleListItem {
     /// Get the item in for the given role.
     /// Note that the role is, in a way, an index in the names() array.

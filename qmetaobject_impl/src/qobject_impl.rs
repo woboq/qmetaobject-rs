@@ -225,35 +225,11 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     let mut is_plugin = false;
     let mut plugin_iid : Option<syn::LitStr> = None;
 
-    let mut crate_ = quote! { ::qmetaobject };
-    //let mut crate_ = quote! { super };
+    let crate_ = super::get_crate(&ast);
     let mut base : syn::Ident = parse_quote!(QGadget);
     let mut base_prop : syn::Ident = parse_quote!(missing_base_class_property);
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-
-    for i in ast.attrs.iter() {
-        if let Some(x) = i.interpret_meta() {
-            if x.name() == "QMetaObjectCrate" {
-                if let syn::Meta::NameValue(mnv) = x {
-                    use syn::Lit::*;
-                    let lit : syn::Path = match mnv.lit {
-                        Str(s) => syn::parse_str(&s.value()).expect("Can't parse QMetaObjectCrate"),
-                        _ => panic!("Can't parse QMetaObjectCrate")
-/*                        ByteStr(LitByteStr),
-                        Byte(LitByte),
-                        Char(LitChar),
-                        Int(LitInt),
-                        Float(LitFloat),
-                        Bool(LitBool),
-                        Verbatim(LitVerbatim),*/
-
-                    };
-                    crate_ = quote!( #lit );
-                }
-            }
-        }
-    }
 
     if let syn::Data::Struct(ref data) = ast.data {
         for f in data.fields.iter() {

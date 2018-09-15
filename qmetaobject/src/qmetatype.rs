@@ -219,7 +219,12 @@ qdeclare_builtin_metatype!{f32  => 38}
 //qdeclare_builtin_metatype!{"*c_void" => 31,
 qdeclare_builtin_metatype!{QString => 10}
 qdeclare_builtin_metatype!{QByteArray => 12}
-qdeclare_builtin_metatype!{QVariant => 41}
+//qdeclare_builtin_metatype!{QVariant => 41}
+impl QMetaType for QVariant {
+    fn register(_name : Option<&std::ffi::CStr>) -> i32 { 41 }
+    fn to_qvariant(&self) -> QVariant { self.clone() }
+    fn from_qvariant(variant : QVariant) -> Option<Self> { Some(variant) }
+}
 
 // FIXME!  32 bit!
 qdeclare_builtin_metatype!{isize  => 32}
