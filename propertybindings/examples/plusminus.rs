@@ -4,7 +4,6 @@
 
 #[macro_use] extern crate propertybindings;
 extern crate qmetaobject;
-#[macro_use] extern crate cstr;
 use std::rc::Rc;
 
 use propertybindings::properties::Property;
@@ -62,20 +61,5 @@ impl propertybindings::quick::ItemFactory for PlusMinus {
 
 
 fn main() {
-
-    qmetaobject::qml_register_type::<propertybindings::quick::RSMLItem<PlusMinus>>(cstr!("PlusMinus"), 1, 0, cstr!("PlusMinus"));
-    let mut engine = qmetaobject::QmlEngine::new();
-    engine.load_data(r#"
-import QtQuick 2.0;
-import QtQuick.Window 2.0;
-import PlusMinus 1.0;
-Window {
-    width: 300;
-    height: 400;
-    visible: true;
-
-    PlusMinus { anchors.fill: parent; }
-}
-        "#.into());
-    engine.exec();
+    propertybindings::quick::show_window::<PlusMinus>();
 }

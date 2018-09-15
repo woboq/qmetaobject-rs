@@ -4,7 +4,7 @@ use std::os::raw::c_void;
 use std::cell::{RefCell};
 use std::ffi::CStr;
 use qmetaobject::scenegraph::{SGNode,ContainerNode,RectangleNode, TransformNode};
-use qmetaobject::{QObject, QColor, QQuickItem, QRectF, QString, QJSValue, QMetaType, QPointF};
+use qmetaobject::{QColor, QQuickItem, QRectF, QString, QJSValue, QMetaType, QPointF};
 
 
 #[derive(Default)]
