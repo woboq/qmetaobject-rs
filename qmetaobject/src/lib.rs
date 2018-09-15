@@ -332,7 +332,9 @@ macro_rules! qt_base_class {
 /// `NOTIFY` followed by the name of a signal that need to be declared separately.
 /// `WRITE` followed by the name of a setter. `READ` follow by the name of a getter. Note that
 /// these are not mandatory and if no setter or no getter exist, it will set the field.
-/// `CONST` is also supported
+/// `CONST` is also supported.
+///
+/// `ALIAS` followed by an identifier allow to give a different name than the actual field name.
 ///
 /// ```
 /// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;

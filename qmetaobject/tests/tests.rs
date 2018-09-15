@@ -219,8 +219,8 @@ fn register_type() {
 fn simple_gadget() {
     #[derive(Default, Clone, QGadget)]
     struct MySimpleGadget {
-        num_value: qt_property!(u32),
-        str_value: qt_property!(String),
+        num_value: qt_property!(u32; ALIAS numValue),
+        str_value: qt_property!(String; ALIAS strValue),
         concat: qt_method!(fn concat(&self, separator : String) -> String {
             return format!("{}{}{}", self.str_value, separator, self.num_value)
         } ),
@@ -231,7 +231,7 @@ fn simple_gadget() {
     my_gadget.str_value = "plop".into();
 
     assert!(do_test_variant(my_gadget.to_qvariant(), "Item { function doTest() {
-        return _obj.str_value == 'plop' && _obj.num_value == 33
+        return _obj.strValue == 'plop' && _obj.numValue == 33
             && _obj.concat(':') == 'plop:33';
     }}"));
 }

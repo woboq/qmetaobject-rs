@@ -73,6 +73,7 @@ struct MetaProperty {
     notify_signal : Option<syn::Ident>,
     getter : Option<syn::Ident>,
     setter : Option<syn::Ident>,
+    alias : Option<syn::Ident>,
 }
 
 #[derive(Default)]
@@ -139,7 +140,7 @@ impl MetaObject {
         }
 
         for ref p in properties {
-            let n = self.add_string(p.name.to_string());
+            let n = self.add_string(p.alias.as_ref().unwrap_or(&p.name).to_string());
             let type_id = self.add_type(p.typ.clone());
             self.int_data.extend_from_slice(&[n , type_id, p.flags]);
         }
@@ -243,6 +244,7 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                 Notify(syn::Ident),
                                 Read(syn::Ident),
                                 Write(syn::Ident),
+                                Alias(syn::Ident),
                                 Const,
                             }
                             impl Parse for Flag {
@@ -256,6 +258,8 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                         Ok(Flag::Read(input.parse()?))
                                     } else if &k == "WRITE" {
                                         Ok(Flag::Write(input.parse()?))
+                                    } else if &k == "ALIAS" {
+                                        Ok(Flag::Alias(input.parse()?))
                                     } else {
                                         Err(input.error("expected a property keyword"))
                                     }
@@ -280,6 +284,7 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             let mut notify_signal = None;
                             let mut getter = None;
                             let mut setter = None;
+                            let mut alias = None;
                             let mut flags = 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000;
                             for it in parsed.1 {
                                 match it {
@@ -300,6 +305,10 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                         assert!(setter.is_none(), "Two READ for a property");
                                         setter = Some(i);
                                     }
+                                    Flag::Alias(i) => {
+                                        assert!(alias.is_none(), "Two READ for a property");
+                                        alias = Some(i);
+                                    }
                                 }
                             }
                             properties.push(MetaProperty {
@@ -309,6 +318,7 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                 notify_signal: notify_signal,
                                 getter: getter,
                                 setter: setter,
+                                alias: alias,
                             });
                         }
                         "qt_method" => {
