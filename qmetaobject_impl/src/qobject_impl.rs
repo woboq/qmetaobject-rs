@@ -1,31 +1,31 @@
-use syn;
-use syn::parse::{Parse, Parser, ParseStream, Result};
-use quote::ToTokens;
-use proc_macro::TokenStream;
-use ::std::iter::Iterator;
 use super::qbjs;
+use proc_macro::TokenStream;
+use quote::ToTokens;
+use std::iter::Iterator;
+use syn;
+use syn::parse::{Parse, ParseStream, Parser, Result};
 
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
 #[allow(dead_code)]
 mod MetaObjectCall {
     // QMetaObject::Call
-    pub const InvokeMetaMethod               : u32 = 0;
-    pub const ReadProperty                   : u32 = 1;
-    pub const WriteProperty                  : u32 = 2;
-    pub const ResetProperty                  : u32 = 3;
-    pub const QueryPropertyDesignable        : u32 = 4;
-    pub const QueryPropertyScriptable        : u32 = 5;
-    pub const QueryPropertyStored            : u32 = 6;
-    pub const QueryPropertyEditable          : u32 = 7;
-    pub const QueryPropertyUser              : u32 = 8;
-    pub const CreateInstance                 : u32 = 9;
-    pub const IndexOfMethod                  : u32 = 10;
-    pub const RegisterPropertyMetaType       : u32 = 11;
-    pub const RegisterMethodArgumentMetaType : u32 = 12;
+    pub const InvokeMetaMethod: u32 = 0;
+    pub const ReadProperty: u32 = 1;
+    pub const WriteProperty: u32 = 2;
+    pub const ResetProperty: u32 = 3;
+    pub const QueryPropertyDesignable: u32 = 4;
+    pub const QueryPropertyScriptable: u32 = 5;
+    pub const QueryPropertyStored: u32 = 6;
+    pub const QueryPropertyEditable: u32 = 7;
+    pub const QueryPropertyUser: u32 = 8;
+    pub const CreateInstance: u32 = 9;
+    pub const IndexOfMethod: u32 = 10;
+    pub const RegisterPropertyMetaType: u32 = 11;
+    pub const RegisterMethodArgumentMetaType: u32 = 12;
 }
 
-fn builtin_type(name : &syn::Type) -> u32 {
+fn builtin_type(name: &syn::Type) -> u32 {
     match name.clone().into_token_stream().to_string().as_ref() {
         "()" | "( )" => 43,
         "bool" => 1,
@@ -43,18 +43,23 @@ fn builtin_type(name : &syn::Type) -> u32 {
         "QString" => 10,
         "QByteArray" => 12,
         "QVariant" => 41,
-        _ => 0
+        _ => 0,
     }
 }
 
-fn write_u32(val : i32) -> [u8;4] {
-    [(val & 0xff) as u8 , ((val >> 8) & 0xff) as u8, ((val >> 16) & 0xff) as u8, ((val >> 24) & 0xff) as u8]
+fn write_u32(val: i32) -> [u8; 4] {
+    [
+        (val & 0xff) as u8,
+        ((val >> 8) & 0xff) as u8,
+        ((val >> 16) & 0xff) as u8,
+        ((val >> 24) & 0xff) as u8,
+    ]
 }
 
 #[derive(Clone)]
 struct MetaMethodParameter {
-    typ : syn::Type,
-    name : Option<syn::Ident>
+    typ: syn::Type,
+    name: Option<syn::Ident>,
 }
 
 #[derive(Clone)]
@@ -67,23 +72,23 @@ struct MetaMethod {
 
 #[derive(Clone)]
 struct MetaProperty {
-    name : syn::Ident,
-    typ : syn::Type,
-    flags : u32,
-    notify_signal : Option<syn::Ident>,
-    getter : Option<syn::Ident>,
-    setter : Option<syn::Ident>,
-    alias : Option<syn::Ident>,
+    name: syn::Ident,
+    typ: syn::Type,
+    flags: u32,
+    notify_signal: Option<syn::Ident>,
+    getter: Option<syn::Ident>,
+    setter: Option<syn::Ident>,
+    alias: Option<syn::Ident>,
 }
 
 #[derive(Default)]
 struct MetaObject {
-    int_data : Vec<u32>,
-    string_data : Vec<String>,
+    int_data: Vec<u32>,
+    string_data: Vec<String>,
 }
 impl MetaObject {
     fn build_string_data(&self) -> Vec<u8> {
-        let mut result : Vec<u8> = Vec::new();
+        let mut result: Vec<u8> = Vec::new();
         let sizeof_qbytearraydata = 24;
         let mut ofs = sizeof_qbytearraydata * self.string_data.len() as i32;
         for ref s in &self.string_data {
@@ -105,10 +110,13 @@ impl MetaObject {
         return result;
     }
 
-    fn compute_int_data(&mut self, class_name: String, properties : &[MetaProperty],
-                        methods : &[MetaMethod], signal_count : usize) {
-
-
+    fn compute_int_data(
+        &mut self,
+        class_name: String,
+        properties: &[MetaProperty],
+        methods: &[MetaMethod],
+        signal_count: usize,
+    ) {
         let has_notify = properties.iter().any(|p| p.notify_signal.is_some());
 
         self.add_string(class_name.clone());
@@ -118,41 +126,48 @@ impl MetaObject {
         let property_offset = offset + methods.len() as u32 * 5;
         //...
 
-
         self.int_data.extend_from_slice(&[
             7, // revision
             0, // classname
-            0, 0, // class info count and offset
-            methods.len() as u32, offset, // method count and offset
-            properties.len() as u32, property_offset, // properties count and offset
-            0, 0, // enum count and offset
-            0, 0, // constructor count and offset
-            0x4 /* PropertyAccessInStaticMetaCall */,   // flags
+            0,
+            0, // class info count and offset
+            methods.len() as u32,
+            offset, // method count and offset
+            properties.len() as u32,
+            property_offset, // properties count and offset
+            0,
+            0, // enum count and offset
+            0,
+            0,                   // constructor count and offset
+            0x4,                 // flags (PropertyAccessInStaticMetaCall)
             signal_count as u32, // signalCount
         ]);
 
-        offset = property_offset + properties.len() as u32 * (if has_notify {4} else {3});
+        offset = property_offset + properties.len() as u32 * (if has_notify { 4 } else { 3 });
 
         for ref m in methods {
             let n = self.add_string(m.name.to_string());
-            self.int_data.extend_from_slice(&[n , m.args.len() as u32, offset, 1, m.flags]);
+            self.int_data
+                .extend_from_slice(&[n, m.args.len() as u32, offset, 1, m.flags]);
             offset += 1 + 2 * m.args.len() as u32;
         }
 
         for ref p in properties {
             let n = self.add_string(p.alias.as_ref().unwrap_or(&p.name).to_string());
             let type_id = self.add_type(p.typ.clone());
-            self.int_data.extend_from_slice(&[n , type_id, p.flags]);
+            self.int_data.extend_from_slice(&[n, type_id, p.flags]);
         }
         if has_notify {
             for ref p in properties {
                 match p.notify_signal {
                     None => self.int_data.push(0 as u32),
-                    Some(ref signal) => self.int_data.push(methods.iter().position(
-                        |x| x.name == *signal && (x.flags & 0x4) != 0).expect("Invalid NOTIFY signal") as u32)
-
-                }
-                ;
+                    Some(ref signal) => self.int_data.push(
+                        methods
+                            .iter()
+                            .position(|x| x.name == *signal && (x.flags & 0x4) != 0)
+                            .expect("Invalid NOTIFY signal") as u32,
+                    ),
+                };
             }
         }
 
@@ -173,7 +188,7 @@ impl MetaObject {
         }
     }
 
-    fn add_type(&mut self, ty : syn::Type) -> u32 {
+    fn add_type(&mut self, ty: syn::Type) -> u32 {
         let mut type_id = builtin_type(&ty);
         let string = ty.into_token_stream().to_string();
         if type_id == 0 {
@@ -182,39 +197,52 @@ impl MetaObject {
         type_id
     }
 
-    fn add_string(&mut self, string : String) -> u32 {
+    fn add_string(&mut self, string: String) -> u32 {
         self.string_data.push(string);
         return self.string_data.len() as u32 - 1;
     }
 }
 
-fn map_method_parameters(args : &syn::punctuated::Punctuated<syn::FnArg, Token![,]>) -> Vec<MetaMethodParameter> {
-    args.iter().filter_map(|x| {
-        match x {
+fn map_method_parameters(
+    args: &syn::punctuated::Punctuated<syn::FnArg, Token![,]>,
+) -> Vec<MetaMethodParameter> {
+    args.iter()
+        .filter_map(|x| match x {
             &syn::FnArg::Captured(ref cap) => Some(MetaMethodParameter {
-                name: if let syn::Pat::Ident(ref id) = cap.pat { Some(id.ident.clone()) } else { None },
-                typ: cap.ty.clone()
+                name: if let syn::Pat::Ident(ref id) = cap.pat {
+                    Some(id.ident.clone())
+                } else {
+                    None
+                },
+                typ: cap.ty.clone(),
             }),
-            _ => None
-        }
-    }).collect()
+            _ => None,
+        })
+        .collect()
 }
 
-fn map_method_parameters2(args : &syn::punctuated::Punctuated<syn::BareFnArg, Token![,]>) -> Vec<MetaMethodParameter> {
-    args.iter().filter_map(|x| {
-        if let Some(ref name) = x.name {
-            Some(MetaMethodParameter{
-                name: if let syn::BareFnArgName::Named(ref id) = name.0 { Some(id.clone()) } else { None },
-                typ: x.ty.clone()
-            })
-        } else {
-            None
-        }
-    }).collect()
+fn map_method_parameters2(
+    args: &syn::punctuated::Punctuated<syn::BareFnArg, Token![,]>,
+) -> Vec<MetaMethodParameter> {
+    args.iter()
+        .filter_map(|x| {
+            if let Some(ref name) = x.name {
+                Some(MetaMethodParameter {
+                    name: if let syn::BareFnArgName::Named(ref id) = name.0 {
+                        Some(id.clone())
+                    } else {
+                        None
+                    },
+                    typ: x.ty.clone(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
-pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
-
+pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let ast = parse_macro_input!(input as syn::DeriveInput);
 
     let name = &ast.ident;
@@ -224,11 +252,11 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     let mut signals = vec![];
     let mut func_bodies = vec![];
     let mut is_plugin = false;
-    let mut plugin_iid : Option<syn::LitStr> = None;
+    let mut plugin_iid: Option<syn::LitStr> = None;
 
     let crate_ = super::get_crate(&ast);
-    let mut base : syn::Ident = parse_quote!(QGadget);
-    let mut base_prop : syn::Ident = parse_quote!(missing_base_class_property);
+    let mut base: syn::Ident = parse_quote!(QGadget);
+    let mut base_prop: syn::Ident = parse_quote!(missing_base_class_property);
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
@@ -264,21 +292,27 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                         Err(input.error("expected a property keyword"))
                                     }
                                 }
-
                             }
 
-                            let property_parser = |input: ParseStream| -> Result<(syn::Type, Vec<Flag>)> {
-                                Ok((input.parse()?,
-                                    input.parse::<Option<Token![;]>>()?.map(|_| -> Result<Vec<Flag>> {
-                                        let mut r = Vec::<Flag>::new();
-                                        while !input.is_empty() {
-                                            r.push(input.parse()?)
-                                        }
-                                        Ok(r)
-                                    }).unwrap_or(Ok(Default::default()))?))
-                            };
+                            let property_parser =
+                                |input: ParseStream| -> Result<(syn::Type, Vec<Flag>)> {
+                                    Ok((
+                                        input.parse()?,
+                                        input
+                                            .parse::<Option<Token![;]>>()?
+                                            .map(|_| -> Result<Vec<Flag>> {
+                                                let mut r = Vec::<Flag>::new();
+                                                while !input.is_empty() {
+                                                    r.push(input.parse()?)
+                                                }
+                                                Ok(r)
+                                            })
+                                            .unwrap_or(Ok(Default::default()))?,
+                                    ))
+                                };
 
-                            let parsed = property_parser.parse(mac.mac.tts.clone().into())
+                            let parsed = property_parser
+                                .parse(mac.mac.tts.clone().into())
                                 .expect("Could not parse property");
 
                             let mut notify_signal = None;
@@ -289,7 +323,10 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             for it in parsed.1 {
                                 match it {
                                     Flag::Notify(signal) => {
-                                        assert!(notify_signal.is_none(), "Two NOTIFY for a property");
+                                        assert!(
+                                            notify_signal.is_none(),
+                                            "Two NOTIFY for a property"
+                                        );
                                         notify_signal = Some(signal);
                                         flags |= 0x00400000;
                                     }
@@ -322,26 +359,30 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                             });
                         }
                         "qt_method" => {
-
                             let name = f.ident.clone().expect("Method does not have a name");
 
-                            let (output, args) =
-                                if let Ok(method_ast) = syn::parse::<syn::ItemFn>(mac.mac.tts.clone().into()) {
-                                    assert_eq!(method_ast.ident, name);
-                                    let tts = &mac.mac.tts;
-                                    func_bodies.push(quote! { #tts } );
-                                    let args = map_method_parameters(&method_ast.decl.inputs);
-                                    (method_ast.decl.output, args)
-                                } else { if let Ok(method_decl) = syn::parse::<syn::TypeBareFn>(mac.mac.tts.clone().into()) {
+                            let (output, args) = if let Ok(method_ast) =
+                                syn::parse::<syn::ItemFn>(mac.mac.tts.clone().into())
+                            {
+                                assert_eq!(method_ast.ident, name);
+                                let tts = &mac.mac.tts;
+                                func_bodies.push(quote! { #tts });
+                                let args = map_method_parameters(&method_ast.decl.inputs);
+                                (method_ast.decl.output, args)
+                            } else {
+                                if let Ok(method_decl) =
+                                    syn::parse::<syn::TypeBareFn>(mac.mac.tts.clone().into())
+                                {
                                     let args = map_method_parameters2(&method_decl.inputs);
                                     (method_decl.output, args)
                                 } else {
                                     panic!("Cannot parse qt_method {}", name);
-                                }};
+                                }
+                            };
 
                             let ret_type = match output {
                                 syn::ReturnType::Default => parse_quote!{()},
-                                syn::ReturnType::Type(_, ref typ) =>  (**typ).clone()
+                                syn::ReturnType::Type(_, ref typ) => (**typ).clone(),
                             };
                             methods.push(MetaMethod {
                                 name: name,
@@ -352,7 +393,9 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                         }
                         "qt_signal" => {
                             let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_terminated;
-                            let args_list = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse signal");
+                            let args_list = parser
+                                .parse(mac.mac.tts.clone().into())
+                                .expect("Could not parse signal");
                             let args = map_method_parameters(&args_list);
                             signals.push(MetaMethod {
                                 name: f.ident.clone().expect("Signal does not have a name"),
@@ -366,12 +409,15 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
                                 input.parse::<Token![trait]>()?;
                                 input.parse()
                             };
-                            base = parser.parse(mac.mac.tts.clone().into()).expect("Could not parse base trait");
+                            base = parser
+                                .parse(mac.mac.tts.clone().into())
+                                .expect("Could not parse base trait");
                             base_prop = f.ident.clone().expect("base prop needs a name");
                         }
                         "qt_plugin" => {
                             is_plugin = true;
-                            let iid : syn::LitStr = syn::parse(mac.mac.tts.clone().into()).expect("Could not parse q_plugin iid");
+                            let iid: syn::LitStr = syn::parse(mac.mac.tts.clone().into())
+                                .expect("Could not parse q_plugin iid");
                             plugin_iid = Some(iid);
                         }
                         _ => {}
@@ -380,14 +426,19 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             }
             for i in f.attrs.iter() {
                 if let Some(x) = i.interpret_meta() {
-                    match x.name().to_string().as_ref()  {
+                    match x.name().to_string().as_ref() {
                         "qt_base_class" => {
                             if let syn::Meta::NameValue(mnv) = x {
                                 if let syn::Lit::Str(s) = mnv.lit {
-                                    base = syn::parse_str(&s.value()).expect("invalid qt_base_class");
+                                    base =
+                                        syn::parse_str(&s.value()).expect("invalid qt_base_class");
                                     base_prop = f.ident.clone().expect("base prop needs a name");
-                                } else { panic!("Can't parse qt_base_class"); }
-                            } else { panic!("Can't parse qt_base_class"); }
+                                } else {
+                                    panic!("Can't parse qt_base_class");
+                                }
+                            } else {
+                                panic!("Can't parse qt_base_class");
+                            }
                         }
                         _ => {}
                     }
@@ -396,7 +447,7 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         }
     } else {
         //Nope. This is an Enum. We cannot handle these!
-       panic!("#[derive(QObject)] is only defined for structs, not for enums!");
+        panic!("#[derive(QObject)] is only defined for structs, not for enums!");
     }
 
     // prepend the methods in the signal
@@ -404,12 +455,11 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
     methods2.extend(methods);
     let methods = methods2;
 
-    let mut mo : MetaObject = Default::default();
+    let mut mo: MetaObject = Default::default();
     mo.compute_int_data(name.to_string(), &properties, &methods, signals.len());
 
     let str_data = mo.build_string_data();
     let int_data = mo.int_data;
-
 
     use self::MetaObjectCall::*;
 
@@ -419,140 +469,170 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         quote!{ ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o) }
     };
 
-
-    let property_meta_call : Vec<_> = properties.iter().enumerate().map(|(i, prop)| {
-        let i = i as u32;
-        let property_name = &prop.name;
-        let typ = &prop.typ;
-
-
-        let mut notify = quote! {};
-        if let Some(ref signal) = prop.notify_signal {
-            let signal : syn::Ident = signal.clone().into();
-            notify = quote!{ obj.#signal() };
-        }
-
-        let register_type = if builtin_type(&prop.typ) == 0 {
-            let typ_str = typ.clone().into_token_stream().to_string();
-            let typ_str = typ_str.as_bytes();
-            quote! {
-                #RegisterPropertyMetaType => unsafe {
-                    let r = *a as *mut i32;
-                    *r = <#typ as #crate_::PropertyType>::register_type(
-                        ::std::ffi::CStr::from_bytes_with_nul_unchecked(&[#(#typ_str ,)* 0u8]) );
-                }
-            }
-        } else { quote!{} };
-
-        let getter = if let Some(ref getter) = prop.getter {
-            let getter_ident : syn::Ident = getter.clone().into();
-            quote!{
-                let mut tmp : #typ = obj.#getter_ident();
-                <#typ as #crate_::PropertyType>::pass_to_qt(&mut tmp, *a);
-            }
-        } else {
-            quote!{ <#typ as #crate_::PropertyType>::pass_to_qt(&mut obj.#property_name, *a); }
-        };
-
-        let setter = if let Some(ref setter) = prop.setter {
-            let setter_ident : syn::Ident = setter.clone().into();
-            quote!{
-                obj.#setter_ident(<#typ as #crate_::PropertyType>::read_from_qt(*a));
-            }
-        } else {
-            quote! {
-                obj.#property_name = <#typ as #crate_::PropertyType>::read_from_qt(*a);
-                #notify
-            }
-        };
-
-        quote! { #i => match c {
-            #ReadProperty => unsafe {
-                let obj : &mut #name = #get_object;
-                #getter
-            },
-            #WriteProperty => unsafe {
-                let obj : &mut #name = #get_object;
-                #setter
-            },
-            #ResetProperty => { /* TODO */},
-            #register_type
-            _ => {}
-        }}
-    }).collect();
-
-    let method_meta_call : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
-        let i = i as u32;
-        let method_name : syn::Ident = method.name.clone().into();
-        let args_call : Vec<_> = method.args.iter().enumerate().map(|(i, arg)| {
-            let i = i as isize;
-            let ty = &arg.typ;
-            quote! {
-                (*(*(a.offset(#i + 1)) as *const #ty)).clone()
-            }
-        }).collect();
-
-        fn is_void(ret_type : &syn::Type) -> bool {
-            if let syn::Type::Tuple(ref tuple) = ret_type {
-                return tuple.elems.len() == 0;
-            } else {
-                return false;
-            }
-        }
-
-        if is_void(&method.ret_type) {
-            quote! { #i => obj.#method_name(#(#args_call),*), }
-        } else {
-            let ret_type = &method.ret_type;
-            let args_call2 = args_call.clone();
-            quote! { #i => {
-                    let r = *a as *mut #ret_type;
-                    if r.is_null() { obj.#method_name(#(#args_call),*); }
-                    else { *r = obj.#method_name(#(#args_call2),*); }
-                }
-            }
-        }
-    }).collect();
-
-    let register_arguments : Vec<_> = methods.iter().enumerate().map(|(i, method)| {
-        let i = i as u32;
-        let args : Vec<_> = method.args.iter().enumerate().map(|(i, arg)| {
+    let property_meta_call: Vec<_> = properties
+        .iter()
+        .enumerate()
+        .map(|(i, prop)| {
             let i = i as u32;
-            if builtin_type(&arg.typ) == 0 {
-                let typ = &arg.typ;
-                let typ_str = arg.typ.clone().into_token_stream().to_string();
+            let property_name = &prop.name;
+            let typ = &prop.typ;
+
+            let mut notify = quote!{};
+            if let Some(ref signal) = prop.notify_signal {
+                let signal: syn::Ident = signal.clone().into();
+                notify = quote!{ obj.#signal() };
+            }
+
+            let register_type = if builtin_type(&prop.typ) == 0 {
+                let typ_str = typ.clone().into_token_stream().to_string();
                 let typ_str = typ_str.as_bytes();
                 quote! {
-                    #i => { unsafe { *(*a as *mut i32) = <#typ as #crate_::QMetaType>::register(
-                        Some(::std::ffi::CStr::from_bytes_with_nul_unchecked(&[#(#typ_str ,)* 0u8]))) }; }
+                    #RegisterPropertyMetaType => unsafe {
+                        let r = *a as *mut i32;
+                        *r = <#typ as #crate_::PropertyType>::register_type(
+                            ::std::ffi::CStr::from_bytes_with_nul_unchecked(&[#(#typ_str ,)* 0u8]) );
+                    }
                 }
             } else {
-                quote! {}
-            }
-        }).collect();
+                quote!{}
+            };
 
-        quote! { #i => {
-            match unsafe {*(*(a.offset(1)) as *const u32)} {
-                #(#args)*
+            let getter = if let Some(ref getter) = prop.getter {
+                let getter_ident: syn::Ident = getter.clone().into();
+                quote!{
+                    let mut tmp : #typ = obj.#getter_ident();
+                    <#typ as #crate_::PropertyType>::pass_to_qt(&mut tmp, *a);
+                }
+            } else {
+                quote!{ <#typ as #crate_::PropertyType>::pass_to_qt(&mut obj.#property_name, *a); }
+            };
+
+            let setter = if let Some(ref setter) = prop.setter {
+                let setter_ident: syn::Ident = setter.clone().into();
+                quote!{
+                    obj.#setter_ident(<#typ as #crate_::PropertyType>::read_from_qt(*a));
+                }
+            } else {
+                quote! {
+                    obj.#property_name = <#typ as #crate_::PropertyType>::read_from_qt(*a);
+                    #notify
+                }
+            };
+
+            quote! { #i => match c {
+                #ReadProperty => unsafe {
+                    let obj : &mut #name = #get_object;
+                    #getter
+                },
+                #WriteProperty => unsafe {
+                    let obj : &mut #name = #get_object;
+                    #setter
+                },
+                #ResetProperty => { /* TODO */},
+                #register_type
                 _ => {}
+            }}
+        })
+        .collect();
+
+    let method_meta_call: Vec<_> = methods
+        .iter()
+        .enumerate()
+        .map(|(i, method)| {
+            let i = i as u32;
+            let method_name: syn::Ident = method.name.clone().into();
+            let args_call: Vec<_> = method
+                .args
+                .iter()
+                .enumerate()
+                .map(|(i, arg)| {
+                    let i = i as isize;
+                    let ty = &arg.typ;
+                    quote! {
+                        (*(*(a.offset(#i + 1)) as *const #ty)).clone()
+                    }
+                })
+                .collect();
+
+            fn is_void(ret_type: &syn::Type) -> bool {
+                if let syn::Type::Tuple(ref tuple) = ret_type {
+                    return tuple.elems.len() == 0;
+                } else {
+                    return false;
+                }
             }
-        }}
-    }).collect();
+
+            if is_void(&method.ret_type) {
+                quote! { #i => obj.#method_name(#(#args_call),*), }
+            } else {
+                let ret_type = &method.ret_type;
+                let args_call2 = args_call.clone();
+                quote! { #i => {
+                        let r = *a as *mut #ret_type;
+                        if r.is_null() { obj.#method_name(#(#args_call),*); }
+                        else { *r = obj.#method_name(#(#args_call2),*); }
+                    }
+                }
+            }
+        })
+        .collect();
+
+    let register_arguments: Vec<_> = methods
+        .iter()
+        .enumerate()
+        .map(|(i, method)| {
+            let i = i as u32;
+            let args: Vec<_> = method
+                .args
+                .iter()
+                .enumerate()
+                .map(|(i, arg)| {
+                    let i = i as u32;
+                    if builtin_type(&arg.typ) == 0 {
+                        let typ = &arg.typ;
+                        let typ_str = arg.typ.clone().into_token_stream().to_string();
+                        let typ_str = typ_str.as_bytes();
+                        quote! {
+                            #i => { unsafe { *(*a as *mut i32) = <#typ as #crate_::QMetaType>::register(
+                                Some(::std::ffi::CStr::from_bytes_with_nul_unchecked(&[#(#typ_str ,)* 0u8]))) }; }
+                        }
+                    } else {
+                        quote!{}
+                    }
+                })
+                .collect();
+
+            quote! { #i => {
+                match unsafe {*(*(a.offset(1)) as *const u32)} {
+                    #(#args)*
+                    _ => {}
+                }
+            }}
+        })
+        .collect();
 
     func_bodies.extend(signals.iter().enumerate().map(|(i, signal)| {
-        let sig_name  = &signal.name;
+        let sig_name = &signal.name;
         let i = i as u32;
-        let args_decl : Vec<_> = signal.args.iter().map(|arg| {
-            // FIXME!  we should probably use the signature verbatim
-            let n = &arg.name;
-            let ty = &arg.typ;
-            quote! { #n : #ty }
-        }).collect();
-        let args_ptr : Vec<_> = signal.args.iter().map(|arg| {
-            let n = &arg.name;
-            let ty = &arg.typ;
-            quote! { unsafe { ::std::mem::transmute::<& #ty , *mut ::std::os::raw::c_void>(& #n) } }
-        }).collect();
+        let args_decl: Vec<_> = signal
+            .args
+            .iter()
+            .map(|arg| {
+                // FIXME!  we should probably use the signature verbatim
+                let n = &arg.name;
+                let ty = &arg.typ;
+                quote! { #n : #ty }
+            })
+            .collect();
+        let args_ptr: Vec<_> = signal
+            .args
+            .iter()
+            .map(|arg| {
+                let n = &arg.name;
+                let ty = &arg.typ;
+                quote! { unsafe { ::std::mem::transmute::<& #ty , *mut ::std::os::raw::c_void>(& #n) } }
+            })
+            .collect();
         let array_size = signal.args.len() + 1;
         quote! {
             #[allow(non_snake_case)]
@@ -601,7 +681,7 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
         let (ty_generics, turbo_generics) = if ast.generics.type_params().count() != 0 {
             (quote!(#ty_generics), quote!(#turbo_generics))
         } else {
-            (quote!(), quote!() )
+            (quote!(), quote!())
         };
         quote! {
             use ::std::sync::Mutex;
@@ -661,12 +741,16 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
             }
         }
     } else {
-        quote!{ }
+        quote!{}
     };
 
-    let trait_name = if is_qobject { quote!{ QObject } } else { quote!{ QGadget } };
+    let trait_name = if is_qobject {
+        quote!{ QObject }
+    } else {
+        quote!{ QGadget }
+    };
 
-    let mut body =   quote!{
+    let mut body = quote!{
         #[allow(non_snake_case)]
         impl #impl_generics #name #ty_generics #where_clause {
             #(#func_bodies)*
@@ -736,15 +820,14 @@ pub fn generate(input: TokenStream, is_qobject : bool) -> TokenStream {
 
     if is_plugin {
         use qbjs::Value;
-        let mut object_data : Vec<(&'static str, Value)> = vec![
+        let mut object_data: Vec<(&'static str, Value)> = vec![
             ("IID", Value::String(plugin_iid.unwrap().value())),
             ("className", Value::String(name.to_string())),
             ("version", Value::Double(0x050100 as f64)),
             ("debug", Value::Double(0.0 as f64)),
-//            ("MetaData"] = CDef->Plugin.MetaData;
+            // ("MetaData"] = CDef->Plugin.MetaData;
         ];
         object_data.sort_by(|a, b| a.0.cmp(b.0));
-
 
         let plugin_data = qbjs::serialize(&object_data);
         let plugin_data_size = plugin_data.len();

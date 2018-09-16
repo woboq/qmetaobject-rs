@@ -1,6 +1,6 @@
+use super::*;
 use std;
 use std::os::raw::c_void;
-use super::*;
 
 cpp!{{
 #include <QtCore/QObject>
@@ -59,12 +59,14 @@ impl ConnectionHandle {
     /// After this function is called, all ConnectionHandle refering to this connection will be invalided.
     /// Calling disconnect on an invalided connection does nothing.
     pub fn disconnect(&mut self) {
-        unsafe{ cpp!([self as "const QMetaObject::Connection*"] { QObject::disconnect(*self);  }) }
+        unsafe { cpp!([self as "const QMetaObject::Connection*"] { QObject::disconnect(*self);  }) }
     }
 
     /// Returns true if the connection is valid.
     pub fn is_valid(&self) -> bool {
-        unsafe{ cpp!([self as "const QMetaObject::Connection*"] -> bool as "bool" { return *self; }) }
+        unsafe {
+            cpp!([self as "const QMetaObject::Connection*"] -> bool as "bool" { return *self; })
+        }
     }
 }
 
@@ -81,11 +83,16 @@ cpp_class!(
 /// For example, a C++ signal with signature `void (MyType::*)(int, QString)` will be represented
 /// by the struct `CppSignal<fn(int, QString)>`
 pub struct CppSignal<Args> {
-    inner : SignalCppRepresentation,
+    inner: SignalCppRepresentation,
     phantom: std::marker::PhantomData<Args>,
 }
 impl<Args> CppSignal<Args> {
-    pub unsafe fn new(inner: SignalCppRepresentation) -> Self { CppSignal{ inner, phantom: Default::default() } }
+    pub unsafe fn new(inner: SignalCppRepresentation) -> Self {
+        CppSignal {
+            inner,
+            phantom: Default::default(),
+        }
+    }
 }
 
 /// Types of signals constructed with the qt_signal! macro.
@@ -123,7 +130,7 @@ impl<Args> RustSignal<Args> {
 /// You should not implement this trait. It is already implemented for FnMut which has the
 /// same arguments.
 pub trait Slot<Args> {
-    unsafe fn apply(&mut self, a : *const *const c_void);
+    unsafe fn apply(&mut self, a: *const *const c_void);
 }
 macro_rules! declare_SlotTraits {
     (@continue $A:ident : $N:tt $($tail:tt)*) => { declare_SlotTraits![$($tail)*]; };

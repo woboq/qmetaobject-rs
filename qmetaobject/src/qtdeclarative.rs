@@ -15,8 +15,8 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-use super::*;
 use super::scenegraph::*;
+use super::*;
 
 cpp!{{
     #include <memory>
@@ -51,8 +51,8 @@ impl QmlEngine {
         })}
     }
 
-//     pub fn load_url(&mut self, uri: &str) {
-//     }
+    //     pub fn load_url(&mut self, uri: &str) {
+    //     }
 
     /// Loads qml data (See QQmlApplicationEngine::loadData)
     pub fn load_data(&mut self, data: QByteArray) {
@@ -67,7 +67,7 @@ impl QmlEngine {
     }
     /// Closes the application
     pub fn quit(&self) {
-        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->quit(); })}
+        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->quit(); }) }
     }
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
@@ -81,14 +81,14 @@ impl QmlEngine {
     ///
     /// Unsafe because it will call QObject::cpp_construct which require that T is no longer moved.
     /// (TODO: Consider using std::mem::Pin)
-    pub unsafe fn set_object_property<T : QObject + Sized>(&mut self, name: QString, obj: &mut T) {
+    pub unsafe fn set_object_property<T: QObject + Sized>(&mut self, name: QString, obj: &mut T) {
         let obj_ptr = obj.cpp_construct();
         cpp!([self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);
         })
     }
 
-    pub fn invoke_method(&mut self, name: QByteArray, args : &[QVariant]) -> QVariant {
+    pub fn invoke_method(&mut self, name: QByteArray, args: &[QVariant]) -> QVariant {
         let args_size = args.len();
         let args_ptr = args.as_ptr();
         unsafe{ cpp!([self as "QmlEngineHolder*", name as "QByteArray", args_size as "size_t", args_ptr as "QVariant*"]
@@ -110,7 +110,7 @@ impl QmlEngine {
     ///
     /// This will create the C++ object.
     /// Panic if the C++ object was already created.
-    pub fn new_qobject<T : QObject>(&mut self, obj : T) -> QJSValue {
+    pub fn new_qobject<T: QObject>(&mut self, obj: T) -> QJSValue {
         let obj_ptr = into_leaked_cpp_ptr(obj);
         unsafe { cpp!([self as "QmlEngineHolder*", obj_ptr as "QObject*"] -> QJSValue as "QJSValue" {
             return self->engine->newQObject(obj_ptr);
@@ -120,7 +120,7 @@ impl QmlEngine {
 
 /// Wrap a QQuickView
 pub struct QQuickView {
-    engine : QmlEngine
+    engine: QmlEngine,
 }
 impl QQuickView {
     /// Creates a new QQuickView, it's engine and an application
@@ -134,7 +134,9 @@ impl QQuickView {
     }
 
     /// Returns the wrapper to the engine
-    pub fn engine(&mut self) -> &mut QmlEngine { &mut self.engine }
+    pub fn engine(&mut self) -> &mut QmlEngine {
+        &mut self.engine
+    }
 
     /// Refer to the Qt documentation of QQuickView::show
     pub fn show(&mut self) {
@@ -156,24 +158,29 @@ impl QQuickView {
 /// Register the given type as a QML type
 ///
 /// Refer to the Qt documentation for qmlRegisterType.
-pub fn qml_register_type<T : QObject + Default + Sized>(uri : &std::ffi::CStr, version_major : u32,
-                                                        version_minor : u32, qml_name : &std::ffi::CStr)
-{
+pub fn qml_register_type<T: QObject + Default + Sized>(
+    uri: &std::ffi::CStr,
+    version_major: u32,
+    version_minor: u32,
+    qml_name: &std::ffi::CStr,
+) {
     let uri_ptr = uri.as_ptr();
     let qml_name_ptr = qml_name.as_ptr();
     let meta_object = T::static_meta_object();
 
-    extern fn extra_destruct(c : *mut c_void) {
-        unsafe { cpp!([c as "QObject*"]{ QQmlPrivate::qdeclarativeelement_destructor(c); })}
+    extern "C" fn extra_destruct(c: *mut c_void) {
+        unsafe { cpp!([c as "QObject*"]{ QQmlPrivate::qdeclarativeelement_destructor(c); }) }
     }
 
-    extern fn creator_fn<T : QObject + Default + Sized>(c : *mut c_void)  {
-        let mut b : Box<T> = Box::new(T::default());
-        let ed : extern fn(c : *mut c_void) = extra_destruct;
-        unsafe { b.qml_construct(c, ed); }
+    extern "C" fn creator_fn<T: QObject + Default + Sized>(c: *mut c_void) {
+        let mut b: Box<T> = Box::new(T::default());
+        let ed: extern "C" fn(c: *mut c_void) = extra_destruct;
+        unsafe {
+            b.qml_construct(c, ed);
+        }
         std::boxed::Box::into_raw(b);
     };
-    let creator_fn : extern fn(c : *mut c_void) = creator_fn::<T>;
+    let creator_fn: extern "C" fn(c: *mut c_void) = creator_fn::<T>;
 
     let size = T::cpp_size();
 
@@ -240,12 +247,15 @@ pub trait QQuickItem : QObject {
     fn component_complete(&mut self) {}
 
     /// Handle mouse press, release, or move events. Returns true if the event was accepted.
-    fn mouse_event(&mut self, _event : QMouseEvent) -> bool { false }
+    fn mouse_event(&mut self, _event: QMouseEvent) -> bool {
+        false
+    }
 
-    fn geometry_changed(&mut self, _new_geometry : QRectF, _old_geometry : QRectF) {}
+    fn geometry_changed(&mut self, _new_geometry: QRectF, _old_geometry: QRectF) {}
 
-    fn update_paint_node(&mut self, node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> { return node; }
-
+    fn update_paint_node(&mut self, node: SGNode<ContainerNode>) -> SGNode<ContainerNode> {
+        return node;
+    }
 }
 
 cpp!{{
@@ -340,7 +350,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 
 }}
 
-impl<'a> QQuickItem +'a {
+impl<'a> QQuickItem + 'a {
     pub fn bounding_rect(&self) -> QRectF {
         let obj = self.get_cpp_object();
         cpp!(unsafe [obj as "Rust_QQuickItem*"] -> QRectF as "QRectF" {
@@ -376,7 +386,6 @@ impl<'a> QMouseEvent<'a> {
     }
 }
 
-
 /// Wrapper for QJSValue
 cpp_class!(pub unsafe struct QJSValue as "QJSValue");
 impl QJSValue {
@@ -399,7 +408,7 @@ impl QJSValue {
     }
 
     // FIXME: &mut could be usefull, but then there can be several access to this object as mutable
-    pub fn to_qobject<'a, T : QObject + 'a>(&'a self) -> Option<&'a QObject> {
+    pub fn to_qobject<'a, T: QObject + 'a>(&'a self) -> Option<&'a QObject> {
         let mo = T::static_meta_object();
         let obj = unsafe { cpp!([self as "const QJSValue*", mo as "const QMetaObject*"] -> *const c_void as "QObject*" {
             QObject *obj = self->toQObject();
@@ -411,31 +420,30 @@ impl QJSValue {
     }
 }
 impl From<QString> for QJSValue {
-    fn from(a : QString) -> QJSValue {
-        unsafe {cpp!([a as "QString"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    fn from(a: QString) -> QJSValue {
+        unsafe { cpp!([a as "QString"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
     }
 }
 impl From<i32> for QJSValue {
-    fn from(a : i32) -> QJSValue {
-        unsafe {cpp!([a as "int"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    fn from(a: i32) -> QJSValue {
+        unsafe { cpp!([a as "int"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
     }
 }
 impl From<u32> for QJSValue {
-    fn from(a : u32) -> QJSValue {
-        unsafe {cpp!([a as "uint"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    fn from(a: u32) -> QJSValue {
+        unsafe { cpp!([a as "uint"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
     }
 }
 impl From<f64> for QJSValue {
-    fn from(a : f64) -> QJSValue {
-        unsafe {cpp!([a as "double"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    fn from(a: f64) -> QJSValue {
+        unsafe { cpp!([a as "double"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
     }
 }
 impl From<bool> for QJSValue {
-    fn from(a : bool) -> QJSValue {
-        unsafe {cpp!([a as "bool"] -> QJSValue as "QJSValue" { return QJSValue(a); })}
+    fn from(a: bool) -> QJSValue {
+        unsafe { cpp!([a as "bool"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
     }
 }
-
 
 #[cfg(test)]
 mod qjsvalue_tests {
@@ -450,27 +458,33 @@ mod qjsvalue_tests {
 
     #[test]
     fn test_qvariantlist_from_iter() {
-        let v = vec![1u32,2u32,3u32];
-        let qvl : QVariantList = v.iter().collect();
+        let v = vec![1u32, 2u32, 3u32];
+        let qvl: QVariantList = v.iter().collect();
         assert_eq!(qvl.len(), 3);
         assert_eq!(qvl[1].to_qbytearray().to_string(), "2");
-
     }
 }
-
 
 /// A QObject-like trait to inherit from QQmlExtensionPlugin.
 ///
 /// Refer to the Qt documentation of QQmlExtensionPlugin
-pub trait QQmlExtensionPlugin : QObject {
+pub trait QQmlExtensionPlugin: QObject {
     #[doc(hidden)] // implementation detail for the QObject custom derive
-    fn get_object_description() -> &'static QObjectDescription where Self:Sized {
-        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+    fn get_object_description() -> &'static QObjectDescription
+    where
+        Self: Sized,
+    {
+        unsafe {
+            cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<Rust_QQmlExtensionPlugin>();
-        } ) }
+        } )
+        }
     }
     #[doc(hidden)] // implementation detail for the QObject custom derive
-    unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
+    unsafe fn get_rust_object<'a>(p: &'a mut c_void) -> &'a mut Self
+    where
+        Self: Sized,
+    {
         let ptr = cpp!{[p as "Rust_QQmlExtensionPlugin*"] -> *mut c_void as "void*" {
             return p->rust_object.a;
         }};
@@ -478,9 +492,8 @@ pub trait QQmlExtensionPlugin : QObject {
     }
 
     /// Refer to the Qt documentation of QQmlExtensionPlugin::registerTypes
-    fn register_types(&mut self, uri : &std::ffi::CStr);
+    fn register_types(&mut self, uri: &std::ffi::CStr);
 }
-
 
 cpp!{{
 #include <qmetaobject_rust.hpp>

@@ -1,9 +1,9 @@
 use proc_macro::TokenStream;
 
-use syn::LitStr;
-use syn::parse::{Parse, Parser, ParseStream, Result};
 use std::collections::BTreeMap;
 use std::fs;
+use syn::parse::{Parse, ParseStream, Parser, Result};
+use syn::LitStr;
 
 #[derive(Debug)]
 struct Resource {
@@ -18,8 +18,11 @@ impl Parse for Resource {
             files: {
                 let content;
                 braced!(content in input);
-                content.parse_terminated::<File, Token![,]>(File::parse)?.into_iter().collect()
-            }
+                content
+                    .parse_terminated::<File, Token![,]>(File::parse)?
+                    .into_iter()
+                    .collect()
+            },
         })
     }
 }
@@ -34,27 +37,34 @@ impl Parse for File {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(File {
             file: input.parse::<LitStr>()?.value(),
-            alias: input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> { Ok(Some(input.parse::<LitStr>()?.value())) })?,
+            alias: input
+                .parse::<Option<Token![as]>>()?
+                .map_or(Ok(None), |_| -> Result<_> {
+                    Ok(Some(input.parse::<LitStr>()?.value()))
+                })?,
         })
     }
 }
 
-
-fn parse_qrc(source : &str) -> Vec<Resource> {
-
+fn parse_qrc(source: &str) -> Vec<Resource> {
     fn parser(input: ParseStream) -> Result<Vec<Resource>> {
-        Ok(input.parse_terminated::<Resource, Token![,]>(Resource::parse)?.into_iter().collect())
+        Ok(input
+            .parse_terminated::<Resource, Token![,]>(Resource::parse)?
+            .into_iter()
+            .collect())
     }
     parser.parse_str(source).expect("Cannot parse qrc macro")
 }
 
-
-fn qt_hash(key: &str) -> u32
-{
+fn qt_hash(key: &str) -> u32 {
     let mut h = 0u32;
 
     for p in key.chars() {
-        assert_eq!(p.len_utf16(), 1, "Surrogate pair not supported by the hash function");
+        assert_eq!(
+            p.len_utf16(),
+            1,
+            "Surrogate pair not supported by the hash function"
+        );
         h = (h << 4) + p as u32;
         h ^= (h & 0xf0000000) >> 23;
         h &= 0x0fffffff;
@@ -68,26 +78,25 @@ struct HashedString {
     string: String,
 }
 impl HashedString {
-    fn new(string : String) -> HashedString {
+    fn new(string: String) -> HashedString {
         let hash = qt_hash(&string);
         HashedString { hash, string }
     }
 }
 
-
 enum TreeNode {
     File(String), // The FileName
-    Directory(BTreeMap<HashedString,TreeNode>, u32)
+    Directory(BTreeMap<HashedString, TreeNode>, u32),
 }
 impl TreeNode {
     fn new_dir() -> TreeNode {
         TreeNode::Directory(Default::default(), 0)
     }
-    fn new_file(file : String) -> TreeNode {
+    fn new_file(file: String) -> TreeNode {
         TreeNode::File(file)
     }
 
-    fn insert_node(&mut self, rel_path : &str, node : TreeNode) {
+    fn insert_node(&mut self, rel_path: &str, node: TreeNode) {
         let contents = match self {
             TreeNode::Directory(ref mut contents, _) => contents,
             _ => panic!("root not a dir?"),
@@ -97,18 +106,21 @@ impl TreeNode {
             Some(idx) => {
                 let (name, rest) = rel_path.split_at(idx);
                 let hashed = HashedString::new(name.into());
-                contents.entry(hashed)
-                    .or_insert_with(||{ TreeNode::new_dir() })
+                contents
+                    .entry(hashed)
+                    .or_insert_with(|| TreeNode::new_dir())
                     .insert_node(&rest[1..], node);
             }
             None => {
                 let hashed = HashedString::new(rel_path.into());
-                contents.insert(hashed, node).and_then(|_|->Option<()> { panic!("Several time the same file?") });
+                contents
+                    .insert(hashed, node)
+                    .and_then(|_| -> Option<()> { panic!("Several time the same file?") });
             }
         };
     }
 
-    fn compute_offsets(&mut self, mut offset : u32) -> u32 {
+    fn compute_offsets(&mut self, mut offset: u32) -> u32 {
         if let TreeNode::Directory(ref mut dir, ref mut o) = self {
             *o = offset;
             offset += dir.len() as u32;
@@ -120,42 +132,49 @@ impl TreeNode {
     }
 }
 
-fn build_tree(resources : Vec<Resource>) -> TreeNode {
+fn build_tree(resources: Vec<Resource>) -> TreeNode {
     let mut root = TreeNode::new_dir();
     for r in resources {
         let mut node = TreeNode::new_dir();
         for f in r.files {
-            node.insert_node(f.alias.as_ref().unwrap_or(&f.file), TreeNode::new_file(f.file.clone()));
+            node.insert_node(
+                f.alias.as_ref().unwrap_or(&f.file),
+                TreeNode::new_file(f.file.clone()),
+            );
         }
         root.insert_node(&r.prefix, node);
     }
     root
 }
 
-fn push_u32_be(v: &mut Vec<u8>, val : u32) {
-    v.extend_from_slice(
-        &[((val >> 24) & 0xff) as u8 , ((val >> 16) & 0xff) as u8, ((val >> 8) & 0xff) as u8, ((val >> 0) & 0xff) as u8]);
+fn push_u32_be(v: &mut Vec<u8>, val: u32) {
+    v.extend_from_slice(&[
+        ((val >> 24) & 0xff) as u8,
+        ((val >> 16) & 0xff) as u8,
+        ((val >> 8) & 0xff) as u8,
+        ((val >> 0) & 0xff) as u8,
+    ]);
 }
 
-fn push_u16_be(v: &mut Vec<u8>, val : u16) {
-    v.extend_from_slice(
-        &[((val >> 8) & 0xff) as u8 , ((val >> 0) & 0xff) as u8]);
+fn push_u16_be(v: &mut Vec<u8>, val: u16) {
+    v.extend_from_slice(&[((val >> 8) & 0xff) as u8, ((val >> 0) & 0xff) as u8]);
 }
 
 #[derive(Default, Debug)]
 struct Data {
-    payload : Vec<u8>,
-    names : Vec<u8>,
-    tree_data : Vec<u8>,
+    payload: Vec<u8>,
+    names: Vec<u8>,
+    tree_data: Vec<u8>,
 }
 impl Data {
-    fn insert_file(&mut self, filename : &str) {
-        let mut data = fs::read(filename).unwrap_or_else(|_|panic!("Canot open file {}", filename));
+    fn insert_file(&mut self, filename: &str) {
+        let mut data =
+            fs::read(filename).unwrap_or_else(|_| panic!("Canot open file {}", filename));
         push_u32_be(&mut self.payload, data.len() as u32);
         self.payload.append(&mut data);
     }
 
-    fn insert_directory(&mut self, contents: &BTreeMap<HashedString,TreeNode>) {
+    fn insert_directory(&mut self, contents: &BTreeMap<HashedString, TreeNode>) {
         for (ref name, ref val) in contents {
             let name_off = self.insert_name(name);
             push_u32_be(&mut self.tree_data, name_off);
@@ -179,13 +198,13 @@ impl Data {
             push_u32_be(&mut self.tree_data, 0);
         }
         for (_, ref val) in contents {
-            if let TreeNode::Directory(ref c, _) = val  {
+            if let TreeNode::Directory(ref c, _) = val {
                 self.insert_directory(c)
             }
         }
     }
 
-    fn insert_name(&mut self, name : &HashedString) -> u32 {
+    fn insert_name(&mut self, name: &HashedString) -> u32 {
         let offset = self.names.len();
         push_u16_be(&mut self.names, name.string.len() as u16);
         push_u32_be(&mut self.names, name.hash);
@@ -199,7 +218,7 @@ impl Data {
     }
 }
 
-fn generate_data(root : &TreeNode) -> Data {
+fn generate_data(root: &TreeNode) -> Data {
     let mut d = Data::default();
 
     let contents = match root {
@@ -212,6 +231,7 @@ fn generate_data(root : &TreeNode) -> Data {
     push_u16_be(&mut d.tree_data, 2); // flag
     push_u32_be(&mut d.tree_data, contents.len() as u32);
     push_u32_be(&mut d.tree_data, 1); // first offset
+
     // modification time (64 bit) FIXME
     push_u32_be(&mut d.tree_data, 0);
     push_u32_be(&mut d.tree_data, 0);
@@ -220,8 +240,12 @@ fn generate_data(root : &TreeNode) -> Data {
     d
 }
 
-fn expand_macro(data : Data) -> TokenStream {
-    let Data{payload, names, tree_data} = data;
+fn expand_macro(data: Data) -> TokenStream {
+    let Data {
+        payload,
+        names,
+        tree_data,
+    } = data;
     let q = quote!{
         fn register() {
             use ::std::sync::{Once, ONCE_INIT};
@@ -238,7 +262,7 @@ fn expand_macro(data : Data) -> TokenStream {
     q.into()
 }
 
-pub fn process_qrc(source : &str) -> TokenStream {
+pub fn process_qrc(source: &str) -> TokenStream {
     let parsed = parse_qrc(source);
     let mut tree = build_tree(parsed);
     tree.compute_offsets(1);

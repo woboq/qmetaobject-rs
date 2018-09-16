@@ -16,7 +16,7 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#![recursion_limit="10240"]
+#![recursion_limit = "10240"]
 
 #[macro_use]
 extern crate cpp;
@@ -29,18 +29,20 @@ pub use qmetaobject_impl::*;
 
 /* In order to be able to use the lazy_static macro from the QObject custom derive, we re-export
    it under a new name qmetaobject_lazy_static */
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 #[allow(unused_imports)]
 #[doc(hidden)]
 pub use lazy_static::*;
 #[doc(hidden)]
-#[macro_export] macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
+#[macro_export]
+macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 
 //#[macro_use]
 //extern crate bitflags;
 
-use std::os::raw::c_void;
 use std::cell::RefCell;
+use std::os::raw::c_void;
 
 pub mod qttypes;
 pub use qttypes::*;
@@ -51,7 +53,7 @@ cpp!{{
 
 #[doc(hidden)]
 pub struct QObjectCppWrapper {
-    ptr: *mut c_void
+    ptr: *mut c_void,
 }
 impl Drop for QObjectCppWrapper {
     fn drop(&mut self) {
@@ -65,21 +67,32 @@ impl Drop for QObjectCppWrapper {
     }
 }
 impl Default for QObjectCppWrapper {
-    fn default() -> QObjectCppWrapper { QObjectCppWrapper{ ptr: std::ptr::null_mut() } }
+    fn default() -> QObjectCppWrapper {
+        QObjectCppWrapper {
+            ptr: std::ptr::null_mut(),
+        }
+    }
 }
 impl QObjectCppWrapper {
-    pub fn get(&self) -> *mut c_void { self.ptr }
-    pub fn set(&mut self, val : *mut c_void) { self.ptr = val; }
+    pub fn get(&self) -> *mut c_void {
+        self.ptr
+    }
+    pub fn set(&mut self, val: *mut c_void) {
+        self.ptr = val;
+    }
 }
 
 #[doc(hidden)]
 #[repr(C)]
 pub struct QObjectDescription {
-    pub size : usize,
+    pub size: usize,
     pub meta_object: *const QMetaObject,
-    pub create : unsafe extern fn(trait_object_ptr : *const c_void) -> *mut c_void,
-    pub qml_construct: unsafe extern fn(mem : *mut c_void, trait_object_ptr : *const c_void,
-                                        extra_destruct : extern fn(*mut c_void)),
+    pub create: unsafe extern "C" fn(trait_object_ptr: *const c_void) -> *mut c_void,
+    pub qml_construct: unsafe extern "C" fn(
+        mem: *mut c_void,
+        trait_object_ptr: *const c_void,
+        extra_destruct: extern "C" fn(*mut c_void),
+    ),
 }
 
 /// Trait that is implemented by the QObject custom derive macro
@@ -93,21 +106,31 @@ pub trait QObject {
     // Functions re-implemented by the custom derive:
 
     /// Returns a pointer to a meta object
-    fn meta_object(&self)->*const QMetaObject;
+    fn meta_object(&self) -> *const QMetaObject;
     /// Returns a pointer to a meta object
-    fn static_meta_object()->*const QMetaObject where Self:Sized;
+    fn static_meta_object() -> *const QMetaObject
+    where
+        Self: Sized;
     /// return a C++ pointer to the QObject*  (can be null if not yet initialized)
-    fn get_cpp_object(&self)-> *mut c_void;
+    fn get_cpp_object(&self) -> *mut c_void;
     /// Construct the C++ Object.
     ///
     /// Note, once this function is called, the object must not be moved in memory.
     unsafe fn cpp_construct(&mut self) -> *mut c_void;
     /// Construct the C++ Object, suitable for callbacks to construct QML objects.
-    unsafe fn qml_construct(&mut self, mem : *mut c_void, extra_destruct : extern fn(*mut c_void));
+    unsafe fn qml_construct(
+        &mut self,
+        mem: *mut c_void,
+        extra_destruct: extern "C" fn(*mut c_void),
+    );
     /// Return the size of the C++ object
-    fn cpp_size() -> usize where Self:Sized;
+    fn cpp_size() -> usize
+    where
+        Self: Sized;
     /// Return a reference to an object, given a pointer to a C++ object
-    unsafe fn get_from_cpp<'a>(p: *const c_void) -> *const Self where Self:Sized;
+    unsafe fn get_from_cpp<'a>(p: *const c_void) -> *const Self
+    where
+        Self: Sized;
 
     // Part of the trait structure that sub trait must have.
     // Copy/paste this code replacing QObject with the type.
@@ -119,7 +142,10 @@ pub trait QObject {
         } ) }
     }
     /// Implementation for get_from_cpp
-    unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
+    unsafe fn get_rust_object<'a>(p: &'a mut c_void) -> &'a mut Self
+    where
+        Self: Sized,
+    {
         // This function is not using get_object_description because we want t be extra fast.
         // Actually, this could be done without indireciton to C++ if we could extract the offset
         // of rust_object.a at (rust) compile time.
@@ -167,7 +193,7 @@ cpp_class!(unsafe struct QPointerImpl as "QPointer<QObject>");
 
 /// A Wrapper around a QPointer
 // (we only need a *const T to support the !Sized case. (Maybe there is a better way)
-pub struct QPointer<T : QObject + ?Sized>(QPointerImpl, *const T);
+pub struct QPointer<T: QObject + ?Sized>(QPointerImpl, *const T);
 impl<T: QObject + ?Sized> QPointer<T> {
     pub fn cpp_ptr(&self) -> *const c_void {
         let x = &self.0;
@@ -176,18 +202,25 @@ impl<T: QObject + ?Sized> QPointer<T> {
         })
     }
 
-    pub fn as_ptr(&self) -> *const T where T:Sized {
+    pub fn as_ptr(&self) -> *const T
+    where
+        T: Sized,
+    {
         unsafe { T::get_from_cpp(self.cpp_ptr()) }
     }
 
     /// Returns a reference to the opbject, or None if it was deleted
     pub fn as_ref(&self) -> Option<&T> {
         let x = self.cpp_ptr();
-        if x.is_null() { None } else { unsafe { Some(&*self.1) } }
+        if x.is_null() {
+            None
+        } else {
+            unsafe { Some(&*self.1) }
+        }
     }
 }
 impl<'a, T: QObject + ?Sized> From<&'a T> for QPointer<T> {
-    fn from(obj : &'a T) -> Self {
+    fn from(obj: &'a T) -> Self {
         let cpp_obj = obj.get_cpp_object();
         QPointer(cpp!(unsafe [cpp_obj as "QObject *"] -> QPointerImpl  as "QPointer<QObject>" {
             return cpp_obj;
@@ -249,8 +282,8 @@ pub struct QObjectRef<'a, T : QObject> {
 /// that takes ownership
 ///
 /// Panics if the C++ object was already created.
-pub fn into_leaked_cpp_ptr<T: QObject>(obj : T) -> *mut c_void {
-    let mut b : Box<T> = Box::new(obj);
+pub fn into_leaked_cpp_ptr<T: QObject>(obj: T) -> *mut c_void {
+    let mut b: Box<T> = Box::new(obj);
     let obj_ptr = unsafe { b.cpp_construct() };
     std::boxed::Box::into_raw(b);
     obj_ptr
@@ -259,11 +292,13 @@ pub fn into_leaked_cpp_ptr<T: QObject>(obj : T) -> *mut c_void {
 /// Trait that is implemented by the QGadget custom derive macro
 ///
 /// Do not implement this trait yourself, use `#[derive(QGadget)]`.
-pub trait QGadget  {
+pub trait QGadget {
     /// Returns a pointer to a meta object
-    fn meta_object(&self)->*const QMetaObject;
+    fn meta_object(&self) -> *const QMetaObject;
     /// Returns a pointer to a meta object
-    fn static_meta_object()->*const QMetaObject where Self:Sized;
+    fn static_meta_object() -> *const QMetaObject
+    where
+        Self: Sized;
 }
 
 #[doc(hidden)]
@@ -282,7 +317,12 @@ pub extern "C" fn RustObject_destruct(p: *mut QObject) {
 
 /// This function is called from the implementation of the signal.
 #[doc(hidden)]
-pub unsafe fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id : u32, a: &[*mut c_void] ) {
+pub unsafe fn invoke_signal(
+    object: *mut c_void,
+    meta: *const QMetaObject,
+    id: u32,
+    a: &[*mut c_void],
+) {
     let a = a.as_ptr();
     cpp!([object as "QObject*", meta as "const QMetaObject*", id as "int", a as "void**"] {
         QMetaObject::activate(object, meta, id, a);
@@ -293,10 +333,10 @@ pub unsafe fn invoke_signal(object : *mut c_void, meta : *const QMetaObject, id 
 #[doc(hidden)]
 #[repr(C)]
 pub struct QMetaObject {
-    pub superdata : *const QMetaObject,
+    pub superdata: *const QMetaObject,
     pub string_data: *const u8,
     pub data: *const u32,
-    pub static_metacall: extern fn(o: *mut c_void, c: u32, idx: u32, a: *const *mut c_void),
+    pub static_metacall: extern "C" fn(o: *mut c_void, c: u32, idx: u32, a: *const *mut c_void),
     pub r: *const c_void,
     pub e: *const c_void,
 }
@@ -322,7 +362,9 @@ unsafe impl Send for QMetaObject {}
 /// `base : qt_base_class(struct Foo)`. But this is not yet implemented
 #[macro_export]
 macro_rules! qt_base_class {
-    ($($t:tt)*) => { $crate::QObjectCppWrapper };
+    ($($t:tt)*) => {
+        $crate::QObjectCppWrapper
+    };
 }
 
 /// This macro can be used as a type of a field and can then turn this field in a Qt property.
@@ -352,7 +394,9 @@ macro_rules! qt_base_class {
 /// ```
 #[macro_export]
 macro_rules! qt_property {
-    ($t:ty $(; $($rest:tt)*)*) => { $t };
+    ($t:ty $(; $($rest:tt)*)*) => {
+        $t
+    };
 }
 
 /// This macro can be used to declare a method which will become a meta method.
@@ -456,8 +500,11 @@ cpp!{{
 }}
 
 /// Call the callback once, after a given duration.
-pub fn single_shot<F>(interval : std::time::Duration, func : F) where F: FnMut() + 'static {
-    let func : Box<FnMut()> = Box::new(func);
+pub fn single_shot<F>(interval: std::time::Duration, func: F)
+where
+    F: FnMut() + 'static,
+{
+    let func: Box<FnMut()> = Box::new(func);
     let mut func_raw = Box::into_raw(func);
     let interval_ms : u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
     unsafe{ cpp!([interval_ms as "int", mut func_raw as "FnBoxWrapper"] {
@@ -478,8 +525,7 @@ macro_rules! identity{ ($x:ty) => { $x } } // workaround old version of syn
 /// let callback = queued_callback(|()| println!("hello from main thread"));
 /// std::thread::spawn(move || {callback(());}).join();
 /// ```
-pub fn queued_callback<T : Send, F : FnMut(T) + 'static>(func: F) -> identity!(impl Fn(T) + Send)
-{
+pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> identity!(impl Fn(T) + Send) {
     let current_thread = cpp!(unsafe [] -> QPointerImpl as "QPointer<QThread>" {
         return QThread::currentThread();
     });
@@ -498,11 +544,13 @@ pub fn queued_callback<T : Send, F : FnMut(T) + 'static>(func: F) -> identity!(i
     move |x| {
         let mut x = Some(x); // Workaround the fact we can't have a Box<FnOnce>
         let func = func.clone();
-        let func : Box<FnMut()> = Box::new(move || {
+        let func: Box<FnMut()> = Box::new(move || {
             // the borrow_mut could panic if the function was called recursively. This could happen
             // if the event-loop re-enter.
             let f = &mut (*(func.0).borrow_mut());
-            x.take().map(move |x| { f(x); });
+            x.take().map(move |x| {
+                f(x);
+            });
         });
         let mut func_raw = Box::into_raw(func);
         unsafe{ cpp!([mut func_raw as "FnBoxWrapper", current_thread as "QPointer<QThread>"] {

@@ -18,10 +18,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern crate cpp_build;
 use std::process::Command;
 
-fn qmake_query(var : &str) -> String {
-    String::from_utf8(Command::new("qmake").args(&["-query", var])
-        .output().expect("Failed to execute qmake. Make sure 'qmake' is in your path")
-        .stdout).expect("UTF-8 conversion failed")
+fn qmake_query(var: &str) -> String {
+    String::from_utf8(
+        Command::new("qmake")
+            .args(&["-query", var])
+            .output()
+            .expect("Failed to execute qmake. Make sure 'qmake' is in your path")
+            .stdout,
+    ).expect("UTF-8 conversion failed")
 }
 
 fn main() {
@@ -37,11 +41,7 @@ fn main() {
     } else {
         ""
     };
-    let macos_lib_framework = if cfg!(target_os = "macos") {
-        ""
-    } else {
-        "5"
-    };
+    let macos_lib_framework = if cfg!(target_os = "macos") { "" } else { "5" };
 
     println!(
         "cargo:rustc-link-search{}={}",

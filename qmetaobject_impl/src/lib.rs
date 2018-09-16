@@ -15,7 +15,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate syn;
@@ -26,32 +26,33 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 mod qbjs;
-mod qrc_impl;
 mod qobject_impl;
+mod qrc_impl;
 mod simplelistitem_impl;
 
 /// Get the tokens to refer to the qmetaobject crate. By default, return "::qmetaobject" unless
 /// the QMetaObjectCrate is specified
-fn get_crate(input : &syn::DeriveInput) -> impl quote::ToTokens {
+fn get_crate(input: &syn::DeriveInput) -> impl quote::ToTokens {
     for i in input.attrs.iter() {
         if let Some(x) = i.interpret_meta() {
             if x.name() == "QMetaObjectCrate" {
                 if let syn::Meta::NameValue(mnv) = x {
                     use syn::Lit::*;
-                    let lit : syn::Path = match mnv.lit {
-                        Str(s) => syn::parse_str(&s.value()).expect("Can't parse QMetaObjectCrate Attribute"),
-                        _ => panic!("Can't parse QMetaObjectCrate Attribute")
+                    let lit: syn::Path = match mnv.lit {
+                        Str(s) => syn::parse_str(&s.value())
+                            .expect("Can't parse QMetaObjectCrate Attribute"),
+                        _ => panic!("Can't parse QMetaObjectCrate Attribute"),
                     };
                     return quote!( #lit );
                 }
             }
         }
-    };
+    }
 
     quote!(::qmetaobject)
 }
 
-#[proc_macro_derive(QObject, attributes(QMetaObjectCrate,qt_base_class))]
+#[proc_macro_derive(QObject, attributes(QMetaObjectCrate, qt_base_class))]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
     qobject_impl::generate(input, true)
 }
@@ -64,8 +65,12 @@ pub fn qgadget_impl(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(QResource_internal, attributes(qrc))]
 pub fn qresource_impl(input: TokenStream) -> TokenStream {
     let src = input.to_string();
-    let beg = src.find("stringify!(").expect("Internal error: no strignify in QResource_internal contents") + 11;
-    let end = src.rfind("))").expect("Internal error: no '))' in QResource_internal contents");
+    let beg = src
+        .find("stringify!(")
+        .expect("Internal error: no strignify in QResource_internal contents") + 11;
+    let end = src
+        .rfind("))")
+        .expect("Internal error: no '))' in QResource_internal contents");
     qrc_impl::process_qrc(&src[beg..end])
 }
 
@@ -73,4 +78,3 @@ pub fn qresource_impl(input: TokenStream) -> TokenStream {
 pub fn simplelistitem(input: TokenStream) -> TokenStream {
     simplelistitem_impl::derive(input)
 }
-

@@ -11,11 +11,14 @@ pub struct SGNode<T> {
     _phantom: std::marker::PhantomData<T>,
 }
 impl<T> SGNode<T> {
-    pub unsafe fn from_raw(raw : *mut c_void) -> Self {
+    pub unsafe fn from_raw(raw: *mut c_void) -> Self {
         /*let t = T::TYPE;
         debug_assert!(cpp!([raw as "QSGNode*", t as "QSGNode::NodeType"]
             -> bool as "bool" { return raw->type() == t; }));*/
-        Self { raw, _phantom: Default::default() }
+        Self {
+            raw,
+            _phantom: Default::default(),
+        }
     }
 
     /// "leak" the QSGNode* pointer, so the caller must take ownership
@@ -55,7 +58,7 @@ struct ContainerNode : QSGNode {
 // Don't reimplement
 pub trait UpdateNodeFnTuple<T> {
     fn len(&self) -> u64;
-    unsafe fn update_fn(&self, i : u64, *mut c_void) -> *mut c_void;
+    unsafe fn update_fn(&self, i: u64, *mut c_void) -> *mut c_void;
 }
 
 // Implementation for tuple of different sizes
@@ -78,10 +81,11 @@ macro_rules! declare_UpdateNodeFnTuple {
 declare_UpdateNodeFnTuple![T9:A9:9 T8:A8:8 T7:A7:7 T6:A6:6 T5:A5:5 T4:A4:4 T3:A3:3 T2:A2:2 T1:A1:1 T0:A0:0];
 
 // Implementation for single element
-impl<A, T : Fn(SGNode<A>)->SGNode<A>> UpdateNodeFnTuple<(A,)> for T
-{
-    fn len(&self) -> u64 { 1 }
-    unsafe fn update_fn(&self, _i : u64, n : *mut c_void) -> *mut c_void {
+impl<A, T: Fn(SGNode<A>) -> SGNode<A>> UpdateNodeFnTuple<(A,)> for T {
+    fn len(&self) -> u64 {
+        1
+    }
+    unsafe fn update_fn(&self, _i: u64, n: *mut c_void) -> *mut c_void {
         self(SGNode::<A>::from_raw(n)).into_raw()
     }
 }
@@ -110,8 +114,12 @@ impl SGNode<ContainerNode> {
     ///  }
     /// # }
     /// ```
-    pub fn update_dynamic<T : std::any::Any, Iter : ExactSizeIterator, F>(&mut self, iter : Iter, mut f : F)
-        where F :  FnMut(<Iter as Iterator>::Item, SGNode<T>)->SGNode<T>
+    pub fn update_dynamic<T: std::any::Any, Iter: ExactSizeIterator, F>(
+        &mut self,
+        iter: Iter,
+        mut f: F,
+    ) where
+        F: FnMut(<Iter as Iterator>::Item, SGNode<T>) -> SGNode<T>,
     {
         let mut raw = self.raw;
         let type_id = std::any::TypeId::of::<T>();
@@ -132,10 +140,11 @@ impl SGNode<ContainerNode> {
             });
         }
         let mut bit = 1u64;
-        let mut before_iter : *mut c_void = std::ptr::null_mut();
+        let mut before_iter: *mut c_void = std::ptr::null_mut();
         for i in iter {
-            before_iter = Self::iteration(raw, before_iter, &mut bit, &mut mask,
-                |n| { f(i, unsafe { SGNode::<T>::from_raw(n) } ).into_raw() });
+            before_iter = Self::iteration(raw, before_iter, &mut bit, &mut mask, |n| {
+                f(i, unsafe { SGNode::<T>::from_raw(n) }).into_raw()
+            });
         }
         cpp!(unsafe [raw as "ContainerNode*", mask as "quint64"] {
             raw->mask = mask;
@@ -173,8 +182,7 @@ impl SGNode<ContainerNode> {
     ///  }
     /// # }
     ///  ```
-    pub fn update_static<A : 'static, T : UpdateNodeFnTuple<A>>(&mut self, info : T)
-    {
+    pub fn update_static<A: 'static, T: UpdateNodeFnTuple<A>>(&mut self, info: T) {
         let type_id = std::any::TypeId::of::<A>();
         let mut mask = 0u64;
         if self.raw.is_null() {
@@ -191,10 +199,11 @@ impl SGNode<ContainerNode> {
             });
         }
         let mut bit = 1u64;
-        let mut before_iter : *mut c_void = std::ptr::null_mut();
+        let mut before_iter: *mut c_void = std::ptr::null_mut();
         for i in 0..info.len() {
-            before_iter = Self::iteration(self.raw, before_iter, &mut bit, &mut mask, |n| { unsafe { info.update_fn(i, n) } });
-
+            before_iter = Self::iteration(self.raw, before_iter, &mut bit, &mut mask, |n| unsafe {
+                info.update_fn(i, n)
+            });
         }
         let raw_ = self.raw;
         cpp!(unsafe [raw_ as "ContainerNode*", mask as "quint64"] {
@@ -202,11 +211,14 @@ impl SGNode<ContainerNode> {
         });
     }
 
-
     // returns the new before_iter
-    fn iteration<F : FnOnce(*mut c_void)->*mut c_void>(
-            raw: *mut c_void, before_iter : *mut c_void, bit : &mut u64, mask : &mut u64, update_fn : F)
-            -> *mut c_void {
+    fn iteration<F: FnOnce(*mut c_void) -> *mut c_void>(
+        raw: *mut c_void,
+        before_iter: *mut c_void,
+        bit: &mut u64,
+        mask: &mut u64,
+        update_fn: F,
+    ) -> *mut c_void {
         let node = if (*mask & *bit) == 0 {
             std::ptr::null_mut()
         } else {
@@ -218,7 +230,11 @@ impl SGNode<ContainerNode> {
             })
         };
         let node = update_fn(node);
-        *mask = if node.is_null() { *mask & !*bit } else { *mask | *bit };
+        *mask = if node.is_null() {
+            *mask & !*bit
+        } else {
+            *mask | *bit
+        };
         if !node.is_null() {
             cpp!(unsafe [raw as "QSGNode*", node as "QSGNode*", before_iter as "QSGNode*"] {
                 if (!node->parent()) {
@@ -233,10 +249,13 @@ impl SGNode<ContainerNode> {
             });
         }
         (*bit) <<= 1;
-        if node.is_null() { before_iter } else { node }
+        if node.is_null() {
+            before_iter
+        } else {
+            node
+        }
     }
 }
-
 
 /*
 
@@ -300,10 +319,8 @@ impl SGNode {
 }
 */
 
-
 /// Wrapper around QSGRectangleNode
-pub enum RectangleNode{}
-
+pub enum RectangleNode {}
 
 impl SGNode<RectangleNode> {
     pub fn set_color(&mut self, color: QColor) {
@@ -319,7 +336,7 @@ impl SGNode<RectangleNode> {
         });
     }
 
-    pub fn create(&mut self, item: &QQuickItem ) {
+    pub fn create(&mut self, item: &QQuickItem) {
         if !self.raw.is_null() {
             return;
         }
@@ -331,15 +348,13 @@ impl SGNode<RectangleNode> {
             return nullptr;
         });
     }
-
 }
 
 /// Wrapper around QSGTransformNode
-pub enum TransformNode{}
-
+pub enum TransformNode {}
 
 impl SGNode<TransformNode> {
-    pub fn set_translation(&mut self, x: f64, y:f64) {
+    pub fn set_translation(&mut self, x: f64, y: f64) {
         if self.raw.is_null() {
             self.create();
         }
@@ -358,19 +373,23 @@ impl SGNode<TransformNode> {
         self.raw = cpp!(unsafe [] -> *mut c_void as "void*" { return new QSGTransformNode; });
     }
 
-    pub fn update_sub_node<F : FnMut(SGNode<ContainerNode>)->SGNode<ContainerNode> >(&mut self, mut f : F)
-    {
+    pub fn update_sub_node<F: FnMut(SGNode<ContainerNode>) -> SGNode<ContainerNode>>(
+        &mut self,
+        mut f: F,
+    ) {
         if self.raw.is_null() {
             self.create();
         }
         let raw = self.raw;
-        let sub = unsafe { SGNode::<ContainerNode>::from_raw(cpp!([raw as "QSGNode*"]
+        let sub = unsafe {
+            SGNode::<ContainerNode>::from_raw(cpp!([raw as "QSGNode*"]
                 -> *mut c_void as "QSGNode*" {
             auto n = raw->firstChild();
             if (n)
                 n->setFlag(QSGNode::OwnedByParent, false); // now we own it;
             return n;
-        })) };
+        }))
+        };
         let sub = f(sub);
         let node = sub.into_raw();
         cpp!(unsafe [node as "QSGNode*", raw as "QSGNode*"] {
@@ -383,8 +402,6 @@ impl SGNode<TransformNode> {
         });
     }
 }
-
-
 
 /*
 #[repr(C)]
@@ -409,7 +426,6 @@ impl SGGeometryNode<> {
         })}}
     }
 }*/
-
 
 /*
 

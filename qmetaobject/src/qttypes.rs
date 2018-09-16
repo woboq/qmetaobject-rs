@@ -16,18 +16,18 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 extern crate std;
-use std::os::raw::c_char;
 use std::convert::From;
 use std::fmt::Display;
-use std::ops::{Index,IndexMut};
 use std::iter::FromIterator;
+use std::ops::{Index, IndexMut};
+use std::os::raw::c_char;
 use std::str::Utf8Error;
 
 cpp_class!(#[derive(PartialEq, PartialOrd, Eq, Ord)] pub unsafe struct QByteArray as "QByteArray");
 impl QByteArray {
     pub fn to_slice(&self) -> &[u8] {
         unsafe {
-            let mut size : usize = 0;
+            let mut size: usize = 0;
             let c_ptr = cpp!([self as "const QByteArray*", mut size as "size_t"] -> *const u8 as "const char*" {
                 size = self->size();
                 return self->constData();
@@ -40,7 +40,7 @@ impl QByteArray {
     }
 }
 impl<'a> From<&'a [u8]> for QByteArray {
-    fn from(s : &'a [u8]) -> QByteArray {
+    fn from(s: &'a [u8]) -> QByteArray {
         let len = s.len();
         let ptr = s.as_ptr();
         unsafe { cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
@@ -48,16 +48,18 @@ impl<'a> From<&'a [u8]> for QByteArray {
     }
 }
 impl<'a> From<&'a str> for QByteArray {
-    fn from(s : &'a str) -> QByteArray {
+    fn from(s: &'a str) -> QByteArray {
         return s.as_bytes().into();
     }
 }
 
 impl From<String> for QByteArray {
-    fn from(s : String) -> QByteArray { QByteArray::from(&*s) }
+    fn from(s: String) -> QByteArray {
+        QByteArray::from(&*s)
+    }
 }
 impl From<QString> for QByteArray {
-    fn from(s : QString) -> QByteArray {
+    fn from(s: QString) -> QByteArray {
         unsafe {
             cpp!([s as "QString"] -> QByteArray as "QByteArray"
             { return std::move(s).toUtf8(); })
@@ -70,7 +72,11 @@ impl Display for QByteArray {
             let c_ptr = cpp!([self as "const QByteArray*"] -> *const c_char as "const char*" {
                 return self->constData();
             });
-            f.write_str(std::ffi::CStr::from_ptr(c_ptr).to_str().map_err(|_| Default::default())?)
+            f.write_str(
+                std::ffi::CStr::from_ptr(c_ptr)
+                    .to_str()
+                    .map_err(|_| Default::default())?,
+            )
         }
     }
 }
@@ -84,7 +90,7 @@ cpp_class!(#[derive(PartialEq, PartialOrd, Eq, Ord)] pub unsafe struct QString a
 impl QString {
     pub fn to_slice(&self) -> &[u16] {
         unsafe {
-            let mut size : usize = 0;
+            let mut size: usize = 0;
             let c_ptr = cpp!([self as "const QString*", mut size as "size_t"] -> *const u16 as "const QChar*" {
                 size = self->size();
                 return self->constData();
@@ -94,7 +100,7 @@ impl QString {
     }
 }
 impl<'a> From<&'a str> for QString {
-    fn from(s : &'a str) -> QString {
+    fn from(s: &'a str) -> QString {
         let len = s.len();
         let ptr = s.as_ptr();
         unsafe { cpp!([len as "size_t", ptr as "char*"] -> QString as "QString"
@@ -102,7 +108,9 @@ impl<'a> From<&'a str> for QString {
     }
 }
 impl From<String> for QString {
-    fn from(s : String) -> QString { QString::from(&*s) }
+    fn from(s: String) -> QString {
+        QString::from(&*s)
+    }
 }
 impl Into<String> for QString {
     fn into(self) -> String {
@@ -133,37 +141,40 @@ impl QVariant {
     }
 }
 impl From<QString> for QVariant {
-    fn from(a : QString) -> QVariant {
-        unsafe {cpp!([a as "QString"] -> QVariant as "QVariant" { return QVariant(a); })}
+    fn from(a: QString) -> QVariant {
+        unsafe { cpp!([a as "QString"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
 impl From<QByteArray> for QVariant {
-    fn from(a : QByteArray) -> QVariant {
-        unsafe {cpp!([a as "QByteArray"] -> QVariant as "QVariant" { return QVariant(a); })}
+    fn from(a: QByteArray) -> QVariant {
+        unsafe { cpp!([a as "QByteArray"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
 impl From<QVariantList> for QVariant {
-    fn from(a : QVariantList) -> QVariant {
-        unsafe {cpp!([a as "QVariantList"] -> QVariant as "QVariant" { return QVariant(a); })}
+    fn from(a: QVariantList) -> QVariant {
+        unsafe { cpp!([a as "QVariantList"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
 impl From<i32> for QVariant {
-    fn from(a : i32) -> QVariant {
-        unsafe {cpp!([a as "int"] -> QVariant as "QVariant" { return QVariant(a); })}
+    fn from(a: i32) -> QVariant {
+        unsafe { cpp!([a as "int"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
 impl From<u32> for QVariant {
-    fn from(a : u32) -> QVariant {
-        unsafe {cpp!([a as "uint"] -> QVariant as "QVariant" { return QVariant(a); })}
+    fn from(a: u32) -> QVariant {
+        unsafe { cpp!([a as "uint"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
 impl From<bool> for QVariant {
-    fn from(a : bool) -> QVariant {
-        unsafe {cpp!([a as "bool"] -> QVariant as "QVariant" { return QVariant(a); })}
+    fn from(a: bool) -> QVariant {
+        unsafe { cpp!([a as "bool"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
-impl<'a, T> From<&'a T> for QVariant where T : Into<QVariant> + Clone {
-    fn from(a : &'a T) -> QVariant {
+impl<'a, T> From<&'a T> for QVariant
+where
+    T: Into<QVariant> + Clone,
+{
+    fn from(a: &'a T) -> QVariant {
         return (*a).clone().into();
     }
 }
@@ -192,7 +203,6 @@ impl QVariantList {
     }
 }
 
-
 impl Index<usize> for QVariantList {
     type Output = QVariant;
     fn index(&self, index: usize) -> &QVariant {
@@ -214,7 +224,7 @@ impl IndexMut<usize> for QVariantList {
 pub struct QVariantListIterator<'a> {
     list: &'a QVariantList,
     index: usize,
-    size: usize
+    size: usize,
 }
 
 impl<'a> Iterator for QVariantListIterator<'a> {
@@ -223,8 +233,8 @@ impl<'a> Iterator for QVariantListIterator<'a> {
         if self.index == self.size {
             None
         } else {
-            self.index+=1;
-            Some(&self.list[self.index-1])
+            self.index += 1;
+            Some(&self.list[self.index - 1])
         }
     }
 }
@@ -234,12 +244,19 @@ impl<'a> IntoIterator for &'a QVariantList {
     type IntoIter = QVariantListIterator<'a>;
 
     fn into_iter(self) -> QVariantListIterator<'a> {
-        QVariantListIterator::<'a> { list:self, index: 0, size: self.len() }
+        QVariantListIterator::<'a> {
+            list: self,
+            index: 0,
+            size: self.len(),
+        }
     }
 }
 
-impl<T> FromIterator<T> for QVariantList where T : Into<QVariant>  {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> QVariantList {
+impl<T> FromIterator<T> for QVariantList
+where
+    T: Into<QVariant>,
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> QVariantList {
         let mut l = QVariantList::default();
         for i in iter {
             l.push(i.into());
@@ -260,7 +277,7 @@ mod tests {
         assert_eq!(q[0].to_qbytearray().to_string(), "42");
         assert_eq!(q[1].to_qbytearray().to_string(), "Hello");
         assert_eq!(q[2].to_qbytearray().to_string(), "Hello");
-        let x : Vec<QByteArray> = q.into_iter().map(|x| x.to_qbytearray()).collect();
+        let x: Vec<QByteArray> = q.into_iter().map(|x| x.to_qbytearray()).collect();
         assert_eq!(x[0].to_string(), "42");
         assert_eq!(x[1].to_string(), "Hello");
         assert_eq!(x[2].to_string(), "Hello");
@@ -316,28 +333,31 @@ type qreal = f64;
 #[repr(C)]
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
 pub struct QRectF {
-    pub x : qreal,
-    pub y : qreal,
-    pub width : qreal,
-    pub height : qreal
+    pub x: qreal,
+    pub y: qreal,
+    pub width: qreal,
+    pub height: qreal,
 }
 
 impl QRectF {
-    pub fn contains(&self, pos : QPointF) -> bool {
+    pub fn contains(&self, pos: QPointF) -> bool {
         cpp!(unsafe [self as "const QRectF*", pos as "QPointF"] -> bool as "bool" {
             return self->contains(pos);
         })
     }
     pub fn top_left(&self) -> QPointF {
-        QPointF { x: self.x, y: self.y }
+        QPointF {
+            x: self.x,
+            y: self.y,
+        }
     }
 }
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
 pub struct QPointF {
-    pub x : qreal,
-    pub y : qreal,
+    pub x: qreal,
+    pub y: qreal,
 }
 impl std::ops::Add for QPointF {
     type Output = QPointF;
@@ -357,38 +377,41 @@ impl std::ops::AddAssign for QPointF {
     }
 }
 
-
 #[test]
 fn test_qpointf_qrectf() {
-    let rect = QRectF{ x: 200., y: 150., width: 60., height: 75. };
-    let pt = QPointF{ x: 12., y: 5.5 };
+    let rect = QRectF {
+        x: 200.,
+        y: 150.,
+        width: 60.,
+        height: 75.,
+    };
+    let pt = QPointF { x: 12., y: 5.5 };
     assert!(!rect.contains(pt));
     assert!(rect.contains(pt + rect.top_left()));
 }
 
-
 cpp_class!(#[derive(Default, Clone, Copy, PartialEq)] pub unsafe struct QColor as "QColor");
 impl QColor {
-    pub fn from_name(name : &str) -> Self {
+    pub fn from_name(name: &str) -> Self {
         let len = name.len();
         let ptr = name.as_ptr();
         cpp!(unsafe [len as "size_t", ptr as "char*"] -> QColor as "QColor" {
             return QColor(QLatin1String(ptr, len));
         })
     }
-    pub fn from_rgb_f(r : qreal, g :qreal, b: qreal) -> Self {
+    pub fn from_rgb_f(r: qreal, g: qreal, b: qreal) -> Self {
         cpp!(unsafe [r as "qreal", g as "qreal", b as "qreal"] -> QColor as "QColor" {
             return QColor::fromRgbF(r, g, b);
         })
     }
-    pub fn from_rgba_f(r : qreal, g :qreal, b: qreal, a: qreal) -> Self {
+    pub fn from_rgba_f(r: qreal, g: qreal, b: qreal, a: qreal) -> Self {
         cpp!(unsafe [r as "qreal", g as "qreal", b as "qreal", a as "qreal"] -> QColor as "QColor" {
             return QColor::fromRgbF(r, g, b, a);
         })
     }
 
     pub fn get_rgba(&self) -> (qreal, qreal, qreal, qreal) {
-        let res = (0.,0.,0.,0.);
+        let res = (0., 0., 0., 0.);
         let (ref r, ref g, ref b, ref a) = res;
         cpp!(unsafe [self as "const QColor*", r as "qreal*", g as "qreal*", b as "qreal*", a as "qreal*"] {
             return self->getRgbF(r, g, b, a);
@@ -397,29 +420,27 @@ impl QColor {
     }
 }
 
-
 #[test]
 fn test_qcolor() {
     let blue1 = QColor::from_name("blue");
-    let blue2 = QColor::from_rgb_f(0.,0.,1.);
-    assert_eq!(blue1.get_rgba().0 , 0.);
-    assert_eq!(blue1.get_rgba().2 , 1.);
+    let blue2 = QColor::from_rgb_f(0., 0., 1.);
+    assert_eq!(blue1.get_rgba().0, 0.);
+    assert_eq!(blue1.get_rgba().2, 1.);
     assert!(blue1 == blue2);
 
     let red1 = QColor::from_name("red");
-    let red2 = QColor::from_rgb_f(1.,0.,0.);
-    assert_eq!(red1.get_rgba().0 , 1.);
-    assert_eq!(red1.get_rgba().2 , 0.);
+    let red2 = QColor::from_rgb_f(1., 0., 0.);
+    assert_eq!(red1.get_rgba().0, 1.);
+    assert_eq!(red1.get_rgba().2, 0.);
     assert!(red1 == red2);
     assert!(blue1 != red1);
 }
 
-
 #[repr(C)]
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
 pub struct QSize {
-    pub width : u32,
-    pub height : u32,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[repr(u32)]
@@ -454,12 +475,12 @@ pub enum ImageFormat {
 }
 cpp_class!(pub unsafe struct QImage as "QImage");
 impl QImage {
-    pub fn load_from_file(filename : QString) -> Self {
+    pub fn load_from_file(filename: QString) -> Self {
         cpp!(unsafe [filename as "QString"] -> QImage as "QImage" {
             return QImage(filename);
         })
     }
-    pub fn new(size : QSize, format : ImageFormat) -> Self {
+    pub fn new(size: QSize, format: ImageFormat) -> Self {
         cpp!(unsafe [size as "QSize", format as "QImage::Format" ] -> QImage as "QImage" {
             return QImage(size, format);
         })
@@ -473,11 +494,11 @@ impl QImage {
     pub fn fill(&mut self, color: QColor) {
         cpp!(unsafe [self as "QImage*", color as "QColor"] { self->fill(color); })
     }
-    pub fn set_pixel_color(&mut self, x:u32, y: u32, color: QColor) {
+    pub fn set_pixel_color(&mut self, x: u32, y: u32, color: QColor) {
         cpp!(unsafe [self as "QImage*", x as "int", y as "int", color as "QColor"]
             { self->setPixelColor(x, y, color); })
     }
-    pub fn get_pixel_color(&mut self, x:u32, y: u32) -> QColor {
+    pub fn get_pixel_color(&mut self, x: u32, y: u32) -> QColor {
         cpp!(unsafe [self as "QImage*", x as "int", y as "int"] -> QColor as "QColor"
             { return self->pixelColor(x, y); })
     }

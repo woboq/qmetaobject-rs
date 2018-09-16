@@ -20,29 +20,28 @@ use qmetaobject::*;
 
 #[macro_use]
 extern crate lazy_static;
-use std::sync::Mutex;
 use std::ffi::CStr;
 use std::rc::Rc;
+use std::sync::Mutex;
 
 lazy_static! {
     static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
 }
 
 pub fn do_test<T: QObject + Sized>(mut obj: T, qml: &str) -> bool {
-
     let _lock = TEST_MUTEX.lock().unwrap();
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
     let mut engine = QmlEngine::new();
-    unsafe { engine.set_object_property("_obj".into(), &mut obj); }
+    unsafe {
+        engine.set_object_property("_obj".into(), &mut obj);
+    }
     engine.load_data(qml_text.into());
     engine.invoke_method("doTest".into(), &[]).to_bool()
 }
 
-
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
-
     let _lock = TEST_MUTEX.lock().unwrap();
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
@@ -55,8 +54,7 @@ pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
 
 #[test]
 fn self_test() {
-
-    #[derive(QObject,Default)]
+    #[derive(QObject, Default)]
     struct Basic {
         base: qt_base_class!(trait QObject),
         value: qt_property!(bool),
@@ -64,28 +62,35 @@ fn self_test() {
 
     let mut obj = Basic::default();
     obj.value = true;
-    assert!(do_test(obj, "Item { function doTest() { return _obj.value  } }"));
+    assert!(do_test(
+        obj,
+        "Item { function doTest() { return _obj.value  } }"
+    ));
 
     let mut obj = Basic::default();
     obj.value = false;
-    assert!(!do_test(obj, "Item { function doTest() { return _obj.value  } }"));
-
+    assert!(!do_test(
+        obj,
+        "Item { function doTest() { return _obj.value  } }"
+    ));
 }
-
 
 #[test]
 fn self_test_variant() {
-
     let obj = QVariant::from(true);
-    assert!(do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
+    assert!(do_test_variant(
+        obj,
+        "Item { function doTest() { return _obj  } }"
+    ));
 
     let obj = QVariant::from(false);
-    assert!(!do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
-
+    assert!(!do_test_variant(
+        obj,
+        "Item { function doTest() { return _obj  } }"
+    ));
 }
 
-
-#[derive(QObject,Default)]
+#[derive(QObject, Default)]
 struct MyObject {
     base: qt_base_class!(trait QObject),
     prop_x: qt_property!(u32; NOTIFY prop_x_changed),
@@ -103,7 +108,7 @@ struct MyObject {
         QString::from(&res as &str)
     }),
 
-    method_out_of_line: qt_method!(fn (&self, a: QString) -> QString),
+    method_out_of_line: qt_method!(fn(&self, a: QString) -> QString),
 }
 
 impl MyObject {
@@ -112,70 +117,88 @@ impl MyObject {
     }
 }
 
-
 #[test]
 fn property_read_write_notify() {
-
     let obj = MyObject::default();
-    assert!(do_test(obj, "Item {
+    assert!(do_test(
+        obj,
+        "Item {
         property int yo: _obj.prop_x;
         function doTest() {
             _obj.prop_x = 123;
             return yo === 123;
-        }}"));
+        }}"
+    ));
 
     let obj = MyObject::default();
-    assert!(do_test(obj, "Item {
+    assert!(do_test(
+        obj,
+        "Item {
         property string yo: _obj.prop_y + ' ' + _obj.prop_z;
         function doTest() {
             _obj.prop_y = 'hello';
             _obj.prop_z = 'world';
             return yo === 'hello world';
-        }}"));
+        }}"
+    ));
 }
 
 #[test]
 fn call_method() {
-
     let obj = MyObject::default();
-    assert!(do_test(obj, "Item {
+    assert!(do_test(
+        obj,
+        "Item {
         function doTest() {
             return _obj.multiply_and_add1(45, 76) === 45*76+1;
-        }}"));
+        }}"
+    ));
 
     let obj = MyObject::default();
-    assert!(do_test(obj, "Item {
+    assert!(do_test(
+        obj,
+        "Item {
         function doTest() {
             return _obj.concatenate_strings('abc', 'def', 'hij') == 'abcdefhij';
-        }}"));
+        }}"
+    ));
 
     let obj = MyObject::default();
-    assert!(do_test(obj, "Item {
+    assert!(do_test(
+        obj,
+        "Item {
         function doTest() {
             return _obj.concatenate_strings(123, 456, 789) == '123456789';
-        }}"));
+        }}"
+    ));
 
     let obj = MyObject::default();
-    assert!(do_test(obj, "Item {
+    assert!(do_test(
+        obj,
+        "Item {
         function doTest() {
             _obj.prop_y = '8887'
             return _obj.method_out_of_line('hello') == '8887hello';
-        }}"));
+        }}"
+    ));
 }
-
-
 
 #[test]
 fn simple_model() {
-
-    #[derive(Default,SimpleListItem)]
+    #[derive(Default, SimpleListItem)]
     struct TM {
         pub a: QString,
         pub b: u32,
     }
     // FIXME! why vec! here?
-    let model : qmetaobject::listmodel::SimpleListModel<TM> = (vec![TM{a: "hello".into(), b:1}]).into_iter().collect();
-    assert!(do_test(model, "Item {
+    let model: qmetaobject::listmodel::SimpleListModel<TM> = (vec![TM {
+        a: "hello".into(),
+        b: 1,
+    }]).into_iter()
+        .collect();
+    assert!(do_test(
+        model,
+        "Item {
             Repeater{
                 id: rep;
                 model:_obj;
@@ -186,7 +209,8 @@ fn simple_model() {
             function doTest() {
                 console.log('simple_model:', rep.count, rep.itemAt(0).text);
                 return rep.count === 1 && rep.itemAt(0).text === 'hello1';
-            }}"));
+            }}"
+    ));
 }
 
 #[derive(Default, QObject)]
@@ -194,16 +218,21 @@ struct RegisteredObj {
     base: qt_base_class!(trait QObject),
     value: qt_property!(u32),
     square: qt_method!(fn square(&self, v : u32) -> u32 { self.value * v } ),
-
 }
 
 #[test]
 fn register_type() {
-    qml_register_type::<RegisteredObj>(CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(), 1, 0,
-        CStr::from_bytes_with_nul(b"RegisteredObj\0").unwrap());
+    qml_register_type::<RegisteredObj>(
+        CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"RegisteredObj\0").unwrap(),
+    );
 
     let obj = MyObject::default(); // not used but needed for do_test
-    assert!(do_test(obj, "import TestRegister 1.0;
+    assert!(do_test(
+        obj,
+        "import TestRegister 1.0;
         Item {
             RegisteredObj {
                 id: test;
@@ -212,9 +241,9 @@ fn register_type() {
             function doTest() {
                 return test.square(66) === 55*66;
             }
-        }"));
+        }"
+    ));
 }
-
 
 #[test]
 fn simple_gadget() {
@@ -231,14 +260,16 @@ fn simple_gadget() {
     my_gadget.num_value = 33;
     my_gadget.str_value = "plop".into();
 
-    assert!(do_test_variant(my_gadget.to_qvariant(), "Item { function doTest() {
+    assert!(do_test_variant(
+        my_gadget.to_qvariant(),
+        "Item { function doTest() {
         return _obj.strValue == 'plop' && _obj.numValue == 33
             && _obj.concat(':') == 'plop:33';
-    }}"));
+    }}"
+    ));
 }
 
-
-#[derive(QObject,Default)]
+#[derive(QObject, Default)]
 struct ObjectWithObject {
     base: qt_base_class!(trait QObject),
     prop_object: qt_property!(MyObject; CONST),
@@ -246,13 +277,13 @@ struct ObjectWithObject {
     subx: qt_method!(fn subx(&self) -> u32 { self.prop_object.prop_x }),
 }
 
-
 #[test]
 fn qobject_properties() {
-
     let mut my_obj = ObjectWithObject::default();
     my_obj.prop_object.prop_x = 56;
-    assert!(do_test(my_obj, "Item {
+    assert!(do_test(
+        my_obj,
+        "Item {
         property int yo: _obj.prop_object.prop_x;
         function doTest() {
             if (yo !== 56) {
@@ -265,9 +296,9 @@ fn qobject_properties() {
                 return false;
             }
             return _obj.subx() === 4545;
-        }}"));
+        }}"
+    ));
 }
-
 
 #[test]
 fn singleshot() {
@@ -275,9 +306,10 @@ fn singleshot() {
 
     let engine = Rc::new(QmlEngine::new());
     let engine_copy = engine.clone();
-    single_shot(std::time::Duration::from_millis(0), move ||{ engine_copy.quit(); });
+    single_shot(std::time::Duration::from_millis(0), move || {
+        engine_copy.quit();
+    });
     engine.exec();
-
 }
 
 #[test]
@@ -286,15 +318,17 @@ fn test_queud_callback() {
 
     let engine = Rc::new(QmlEngine::new());
     let engine_copy = engine.clone();
-    let callback = queued_callback(move |()| {engine_copy.quit()});
-    std::thread::spawn(move || {callback(());}).join().unwrap();
+    let callback = queued_callback(move |()| engine_copy.quit());
+    std::thread::spawn(move || {
+        callback(());
+    }).join()
+        .unwrap();
     engine.exec();
 }
 
 #[test]
 fn getter() {
-
-    #[derive(QObject,Default)]
+    #[derive(QObject, Default)]
     struct ObjectWithGetter {
         base: qt_base_class!(trait QObject),
         prop_x: qt_property!(u32; READ prop_x_getter CONST),
@@ -311,17 +345,19 @@ fn getter() {
     }
 
     let my_obj = ObjectWithGetter::default();
-    assert!(do_test(my_obj, "Item {
+    assert!(do_test(
+        my_obj,
+        "Item {
         function doTest() {
             return _obj.prop_x === 85 && _obj.prop_y == 'foo'
         }
-    }"));
+    }"
+    ));
 }
 
 #[test]
 fn setter() {
-
-    #[derive(QObject,Default)]
+    #[derive(QObject, Default)]
     struct ObjectWithGetter {
         base: qt_base_class!(trait QObject),
         prop_x: qt_property!(u32; WRITE prop_x_setter NOTIFY prop_x_notify),
@@ -329,8 +365,8 @@ fn setter() {
         prop_y: qt_property!(String; NOTIFY prop_y_notify WRITE prop_y_setter),
         prop_y_notify: qt_signal!(),
 
-        prop_x_setter: qt_method!(fn (&mut self, v: u32)->()),
-        prop_y_setter: qt_method!(fn (&mut self, v: String)),
+        prop_x_setter: qt_method!(fn(&mut self, v: u32) -> ()),
+        prop_y_setter: qt_method!(fn(&mut self, v: String)),
     }
     impl ObjectWithGetter {
         fn prop_x_setter(&mut self, v: u32) {
@@ -338,14 +374,16 @@ fn setter() {
             self.prop_x_notify();
         }
 
-        fn prop_y_setter(&mut self, v : String) {
+        fn prop_y_setter(&mut self, v: String) {
             self.prop_y = v;
             self.prop_y_notify();
         }
     }
 
     let my_obj = ObjectWithGetter::default();
-    assert!(do_test(my_obj, "Item {
+    assert!(do_test(
+        my_obj,
+        "Item {
         property var test: '' + _obj.prop_x + _obj.prop_y;
         function doTest() {
             if (test != '0') {
@@ -372,32 +410,44 @@ fn setter() {
 
             return true;
         }
-    }"));
+    }"
+    ));
 }
 
 #[test]
 fn connect_rust_signal() {
     #[derive(QObject, Default)]
     struct Foo {
-        base : qt_base_class!(trait QObject),
-        my_signal : qt_signal!(xx: u32, yy: String),
-        my_signal2 : qt_signal!(yy: String),
+        base: qt_base_class!(trait QObject),
+        my_signal: qt_signal!(xx: u32, yy: String),
+        my_signal2: qt_signal!(yy: String),
     }
 
     let mut f = Foo::default();
     let obj_ptr = unsafe { f.cpp_construct() };
     let mut result = None;
     let mut result2 = None;
-    let mut con = unsafe { qmetaobject::connections::connect(obj_ptr, f.my_signal.to_cpp_representation(&f), |xx : &u32 , yy : &String| {
-        result = Some(format!("{} -> {}", xx, yy));
-    }) };
+    let mut con = unsafe {
+        qmetaobject::connections::connect(
+            obj_ptr,
+            f.my_signal.to_cpp_representation(&f),
+            |xx: &u32, yy: &String| {
+                result = Some(format!("{} -> {}", xx, yy));
+            },
+        )
+    };
     assert!(con.is_valid());
 
-    let con2 = unsafe { qmetaobject::connections::connect(obj_ptr, f.my_signal2.to_cpp_representation(&f), |yy : &String| {
-        result2 = Some(yy.clone());
-    }) };
+    let con2 = unsafe {
+        qmetaobject::connections::connect(
+            obj_ptr,
+            f.my_signal2.to_cpp_representation(&f),
+            |yy: &String| {
+                result2 = Some(yy.clone());
+            },
+        )
+    };
     assert!(con2.is_valid());
-
 
     f.my_signal(12, "goo".into());
     assert_eq!(result, Some("12 -> goo".to_string()));
@@ -411,22 +461,27 @@ fn connect_rust_signal() {
     f.my_signal2("hop".into());
     assert_eq!(result2, Some("hop".into()));
     assert_eq!(result, Some("18 -> moo".to_string())); // still the same as before as we disconnected
-
 }
 
 #[test]
 fn connect_cpp_signal() {
     #[derive(QObject, Default)]
     struct Foo {
-        base : qt_base_class!(trait QObject),
+        base: qt_base_class!(trait QObject),
     }
 
     let mut f = Foo::default();
     let obj_ptr = unsafe { f.cpp_construct() };
     let mut result = None;
-    let con = unsafe { qmetaobject::connections::connect(obj_ptr, QObject::object_name_changed_signal(), |name : &QString| {
-        result = Some(name.clone());
-    }) };
+    let con = unsafe {
+        qmetaobject::connections::connect(
+            obj_ptr,
+            QObject::object_name_changed_signal(),
+            |name: &QString| {
+                result = Some(name.clone());
+            },
+        )
+    };
     assert!(con.is_valid());
     (&f as &QObject).set_object_name("YOYO".into());
     assert_eq!(result, Some("YOYO".into()));
@@ -436,22 +491,23 @@ fn connect_cpp_signal() {
 fn with_life_time() {
     #[derive(QObject, Default)]
     struct WithLT<'a> {
-        base : qt_base_class!(trait QObject),
-        _something : Option<&'a u32>,
-        my_signal : qt_signal!(xx: u32, yy: String),
-        my_method : qt_method!(fn my_method(&self, _x: u32) {}),
-        my_property : qt_property!(u32),
-
+        base: qt_base_class!(trait QObject),
+        _something: Option<&'a u32>,
+        my_signal: qt_signal!(xx: u32, yy: String),
+        my_method: qt_method!(fn my_method(&self, _x: u32) {}),
+        my_property: qt_property!(u32),
     }
 
     #[derive(QObject, Default)]
-    struct WithWhereClose<T> where T : Clone + 'static  {
-        #[qt_base_class="QObject"] // FIXME
+    struct WithWhereClose<T>
+    where
+        T: Clone + 'static,
+    {
+        #[qt_base_class = "QObject"] // FIXME
         base: QObjectCppWrapper,
-        _something : Option<T>,
+        _something: Option<T>,
     }
 }
-
 
 #[test]
 fn qpointer() {
@@ -464,8 +520,8 @@ fn qpointer() {
         let obj /*: &mut QObject*/ = &obj;
         ptr = QPointer::from(obj);
         pt2 = ptr.clone();
-        assert_eq!(ptr.as_ref().map_or(898, |x|x.prop_x), 23);
-        assert_eq!(pt2.as_ref().map_or(898, |x|x.prop_x), 23);
+        assert_eq!(ptr.as_ref().map_or(898, |x| x.prop_x), 23);
+        assert_eq!(pt2.as_ref().map_or(898, |x| x.prop_x), 23);
     }
     assert!(ptr.as_ref().is_none());
     assert!(pt2.as_ref().is_none());
@@ -476,17 +532,21 @@ fn qpointer() {
         #[derive(Default)]
         struct XX(QString);
         impl qmetaobject::listmodel::SimpleListItem for XX {
-            fn get(&self, _idx : i32) -> QVariant { self.0.clone().into() }
-            fn names() -> Vec<QByteArray> { vec![ QByteArray::from("a") ] }
+            fn get(&self, _idx: i32) -> QVariant {
+                self.0.clone().into()
+            }
+            fn names() -> Vec<QByteArray> {
+                vec![QByteArray::from("a")]
+            }
         }
         let mut obj = qmetaobject::listmodel::SimpleListModel::<XX>::default();
         obj.push(XX("foo".into()));
         unsafe { obj.cpp_construct() };
-        let obj_ref : &qmetaobject::listmodel::QAbstractListModel = &obj;
+        let obj_ref: &qmetaobject::listmodel::QAbstractListModel = &obj;
         ptr = QPointer::<qmetaobject::listmodel::QAbstractListModel>::from(obj_ref);
         pt2 = ptr.clone();
-        assert_eq!(ptr.as_ref().map_or(898, |x|x.row_count()), 1);
-        assert_eq!(pt2.as_ref().map_or(898, |x|x.row_count()), 1);
+        assert_eq!(ptr.as_ref().map_or(898, |x| x.row_count()), 1);
+        assert_eq!(pt2.as_ref().map_or(898, |x| x.row_count()), 1);
     }
     assert!(ptr.as_ref().is_none());
     assert!(pt2.as_ref().is_none());

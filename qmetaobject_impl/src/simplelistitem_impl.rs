@@ -6,23 +6,32 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let crate_ = super::get_crate(&input);
 
     let values = if let syn::Data::Struct(ref data) = input.data {
-        data.fields.iter().filter_map(|field| {
-            if let syn::Visibility::Public(_) = field.vis {
-                field.ident.clone()
-            } else { None }
-        }).collect::<Vec<syn::Ident>>()
+        data.fields
+            .iter()
+            .filter_map(|field| {
+                if let syn::Visibility::Public(_) = field.vis {
+                    field.ident.clone()
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<syn::Ident>>()
     } else {
-       panic!("#[derive(SimpleListItem)] is only defined for structs");
+        panic!("#[derive(SimpleListItem)] is only defined for structs");
     };
 
     if values.is_empty() {
         panic!("#[derive(SimpleListItem)] only expose public named member, and there are none")
     }
 
-    let arms = values.iter().enumerate().map(|(i, ref ident)| {
-        let i = i as i32;
-        quote!{ #i => QMetaType::to_qvariant(&self.#ident), }
-    }).collect::<Vec<_>>();
+    let arms = values
+        .iter()
+        .enumerate()
+        .map(|(i, ref ident)| {
+            let i = i as i32;
+            quote!{ #i => QMetaType::to_qvariant(&self.#ident), }
+        })
+        .collect::<Vec<_>>();
 
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();

@@ -1,4 +1,3 @@
-
 cpp!{{
 Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
                                          const unsigned char *, const unsigned char *);
@@ -47,7 +46,12 @@ macro_rules! qrc {
 /// Internal function used from qrc procedural macro.
 /// Unsafe because it can crash if the data structure are not proper.
 #[doc(ignore)]
-pub unsafe fn register_resource_data(version : i32, tree : &'static [u8], names: &'static [u8], payload : &'static [u8]) {
+pub unsafe fn register_resource_data(
+    version: i32,
+    tree: &'static [u8],
+    names: &'static [u8],
+    payload: &'static [u8],
+) {
     let tree_ptr = tree.as_ptr();
     let names_ptr = names.as_ptr();
     let payload_ptr = payload.as_ptr();

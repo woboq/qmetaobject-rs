@@ -2,24 +2,25 @@
 #![allow(unused_variables)]
 #[macro_use]
 extern crate qmetaobject;
-use qmetaobject::*;
 use qmetaobject::scenegraph::*;
-#[macro_use] extern crate cstr;
-#[macro_use] extern crate cpp;
+use qmetaobject::*;
+#[macro_use]
+extern crate cstr;
+#[macro_use]
+extern crate cpp;
 
 mod nodes;
-
 
 #[derive(Default, QObject)]
 struct Graph {
     base: qt_base_class!(trait QQuickItem),
 
-    m_samples : Vec<f64>,
-    m_samplesChanged : bool,
-    m_geometryChanged : bool,
+    m_samples: Vec<f64>,
+    m_samplesChanged: bool,
+    m_geometryChanged: bool,
 
-    appendSample : qt_method!(fn(&mut self, value: f64)),
-    removeFirstSample : qt_method!(fn removeFirstSample(&mut self) {
+    appendSample: qt_method!(fn(&mut self, value: f64)),
+    removeFirstSample: qt_method!(fn removeFirstSample(&mut self) {
         self.m_samples.drain(0..1);
         self.m_samplesChanged = true;
         (self as &QQuickItem).update();
@@ -38,43 +39,49 @@ impl Graph {
     }
 }
 
-
-impl QQuickItem for Graph
-{
-    fn geometry_changed(&mut self, new_geometry : QRectF, old_geometry : QRectF) {
+impl QQuickItem for Graph {
+    fn geometry_changed(&mut self, new_geometry: QRectF, old_geometry: QRectF) {
         self.m_geometryChanged = true;
         (self as &QQuickItem).update();
     }
 
-    fn update_paint_node(&mut self, mut node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> {
+    fn update_paint_node(&mut self, mut node: SGNode<ContainerNode>) -> SGNode<ContainerNode> {
         let rect = (self as &QQuickItem).bounding_rect();
 
         node.update_static((
             |mut n| -> SGNode<nodes::NoisyNode> {
                 nodes::create_noisy_node(&mut n, self);
-                if self.m_geometryChanged { nodes::noisy_node_set_rect(&mut n, rect); }
+                if self.m_geometryChanged {
+                    nodes::noisy_node_set_rect(&mut n, rect);
+                }
                 n
             },
             |mut n| -> SGNode<nodes::GridNode> {
-                if self.m_geometryChanged { nodes::update_grid_node(&mut n, rect); }
+                if self.m_geometryChanged {
+                    nodes::update_grid_node(&mut n, rect);
+                }
                 n
             },
             |mut n| {
                 if self.m_geometryChanged || self.m_samplesChanged {
                     nodes::create_line_node(&mut n, 10., 0.5, QColor::from_name("steelblue"));
-                    nodes::update_line_node(&mut n,  rect, &self.m_samples);
+                    nodes::update_line_node(&mut n, rect, &self.m_samples);
                 }
                 n
             },
             |mut n| {
                 if self.m_geometryChanged || self.m_samplesChanged {
-                    nodes::create_line_node(&mut n, 20., 0.2, QColor::from_rgba_f(0.2,0.2,0.2, 0.4));
+                    nodes::create_line_node(
+                        &mut n,
+                        20.,
+                        0.2,
+                        QColor::from_rgba_f(0.2, 0.2, 0.2, 0.4),
+                    );
                     // Fixme! share the geometry
-                    nodes::update_line_node(&mut n,  rect, &self.m_samples);
+                    nodes::update_line_node(&mut n, rect, &self.m_samples);
                 }
                 n
-            }
-
+            },
         ));
 
         self.m_geometryChanged = false;
