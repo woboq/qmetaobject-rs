@@ -268,41 +268,45 @@ mod tests {
 
     #[test]
     fn test_qvariantlist_from_iter() {
-        let v = vec![1u32,2u32,3u32];
-        let qvl : QVariantList = v.iter().collect();
+        let v = vec![1u32, 2u32, 3u32];
+        let qvl: QVariantList = v.iter().collect();
         assert_eq!(qvl.len(), 3);
         assert_eq!(qvl[1].to_qbytearray().to_string(), "2");
-
     }
 
     #[test]
     fn test_qstring_and_qbytearrazy() {
-        let qba1 : QByteArray = (b"hello" as &[u8]).into();
-        let qba2 : QByteArray = "hello".into();
-        let s : String = "hello".into();
-        let qba3 : QByteArray = s.clone().into();
+        let qba1: QByteArray = (b"hello" as &[u8]).into();
+        let qba2: QByteArray = "hello".into();
+        let s: String = "hello".into();
+        let qba3: QByteArray = s.clone().into();
 
         assert_eq!(qba1.to_string(), "hello");
         assert_eq!(qba2.to_string(), "hello");
         assert_eq!(qba3.to_string(), "hello");
 
-        let qs1 : QString = "hello".into();
-        let qs2 : QString = s.into();
-        let qba4 : QByteArray = qs1.clone().into();
+        let qs1: QString = "hello".into();
+        let qs2: QString = s.into();
+        let qba4: QByteArray = qs1.clone().into();
 
         assert_eq!(qs1.to_string(), "hello");
         assert_eq!(qs2.to_string(), "hello");
         assert_eq!(qba4.to_string(), "hello");
-
     }
 }
 
 cpp_class!(#[derive(PartialEq, Eq)] pub unsafe struct QModelIndex as "QModelIndex");
 impl QModelIndex {
-    pub fn row(&self) -> i32 {
+    pub fn id(&self) -> usize {
         unsafe {
-            cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->row(); })
+            cpp!([self as "const QModelIndex*"] -> usize as "uintptr_t" { return self->internalId(); })
         }
+    }
+    pub fn column(&self) -> i32 {
+        unsafe { cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->column(); }) }
+    }
+    pub fn row(&self) -> i32 {
+        unsafe { cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->row(); }) }
     }
 }
 
@@ -448,7 +452,6 @@ pub enum ImageFormat {
     Alpha8,
     Grayscale8,
 }
-
 cpp_class!(pub unsafe struct QImage as "QImage");
 impl QImage {
     pub fn load_from_file(filename : QString) -> Self {
@@ -479,4 +482,3 @@ impl QImage {
             { return self->pixelColor(x, y); })
     }
 }
-
