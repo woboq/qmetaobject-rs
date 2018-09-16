@@ -277,6 +277,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let crate_ = super::get_crate(&ast);
     let mut base: syn::Ident = parse_quote!(QGadget);
     let mut base_prop: syn::Ident = parse_quote!(missing_base_class_property);
+    let mut has_base_property = false;
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
@@ -433,6 +434,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                 .parse(mac.mac.tts.clone().into())
                                 .expect("Could not parse base trait");
                             base_prop = f.ident.clone().expect("base prop needs a name");
+                            has_base_property = true;
                         }
                         "qt_plugin" => {
                             is_plugin = true;
@@ -453,6 +455,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                     base =
                                         syn::parse_str(&s.value()).expect("invalid qt_base_class");
                                     base_prop = f.ident.clone().expect("base prop needs a name");
+                                    has_base_property = true;
                                 } else {
                                     panic!("Can't parse qt_base_class");
                                 }
@@ -468,6 +471,10 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     } else {
         //Nope. This is an Enum. We cannot handle these!
         panic!("#[derive(QObject)] is only defined for structs, not for enums!");
+    }
+
+    if is_qobject && !has_base_property {
+        panic!("#[derive(QObject)] needs at least one field of type qt_base_class!");
     }
 
     // prepend the methods in the signal
