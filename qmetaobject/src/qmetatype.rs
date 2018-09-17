@@ -120,6 +120,16 @@ pub fn register_metatype_qobject<T: QObject>() -> i32 {
 }
 
 /// Implement this trait for type that should be known to the QMetaObject system
+///
+/// Once implemented for a type, it can be used as a type of a qt_property! or
+/// as a parameter of a qt_method!
+///
+/// ```
+/// # use ::qmetaobject::QMetaType;
+/// #[derive(Default, Clone)]
+/// struct MyStruct(u32, String);
+/// impl QMetaType for MyStruct {}
+/// ```
 pub trait QMetaType: Clone + Default + 'static {
     /// Registers the type.
     ///
@@ -145,6 +155,7 @@ pub trait QMetaType: Clone + Default + 'static {
         })
     }
 
+    /// Attempt to convert from a QVariant to this type.
     fn from_qvariant(mut variant: QVariant) -> Option<Self> {
         let id: i32 = Self::id();
         let var_ptr = &mut variant as *mut QVariant;
@@ -350,7 +361,7 @@ fn test_qmetatype_register_wrong_type1() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
     struct MyType {};
     impl QMetaType for MyType {};
-    // registering with the name of an existinrg type should panic
+    // registering with the name of an existing type should panic
     MyType::register(Some(&std::ffi::CString::new("QString").unwrap()));
 }
 
@@ -361,6 +372,6 @@ fn test_qmetatype_register_wrong_type2() {
     struct MyType {};
     impl QMetaType for MyType {};
     String::id();
-    // registering with the name of an existinrg type should panic
+    // registering with the name of an existing type should panic
     MyType::register(Some(&std::ffi::CString::new("String").unwrap()));
 }
