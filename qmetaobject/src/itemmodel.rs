@@ -32,16 +32,6 @@ pub trait QAbstractItemModel: QObject {
         } )
         }
     }
-    /// Required for the implementation detail of the QObject custom derive
-    unsafe fn get_rust_object<'a>(p: &'a mut c_void) -> &'a mut Self
-    where
-        Self: Sized,
-    {
-        let ptr = cpp!{[p as "RustObject<QAbstractItemModel>*"] -> *mut c_void as "void*" {
-            return p->rust_object.a;
-        }};
-        std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
-    }
 
     /// Refer to the Qt documentation of QAbstractItemModel::index
     fn index(&self, row: i32, column: i32, parent: QModelIndex) -> QModelIndex;
@@ -86,62 +76,62 @@ struct Rust_QAbstractItemModel : RustObject<QAbstractItemModel> {
     using QAbstractItemModel::createIndex;
 
     const QMetaObject *metaObject() const override {
-        return rust!(Rust_QAbstractItemModel_metaobject[rust_object : &QAbstractItemModel as "TraitObject"]
+        return rust!(Rust_QAbstractItemModel_metaobject[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject"]
                 -> *const QMetaObject as "const QMetaObject*" {
-            rust_object.meta_object()
+            rust_object.borrow().meta_object()
         });
     }
 
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
-        return rust!(Rust_QAbstractItemModel_index[rust_object : &QAbstractItemModel as "TraitObject",
+        return rust!(Rust_QAbstractItemModel_index[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                 row : i32 as "int", column : i32 as "int", parent : QModelIndex as "QModelIndex"] -> QModelIndex as "QModelIndex" {
-            rust_object.index(row, column, parent)
+            rust_object.borrow().index(row, column, parent)
         });
     }
 
     QModelIndex parent(const QModelIndex &index) const override {
-        return rust!(Rust_QAbstractItemModel_parent[rust_object : &QAbstractItemModel as "TraitObject",
+        return rust!(Rust_QAbstractItemModel_parent[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                 index : QModelIndex as "QModelIndex"] -> QModelIndex as "QModelIndex" {
-            rust_object.parent(index)
+            rust_object.borrow().parent(index)
         });
     }
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override {
-        return rust!(Rust_QAbstractItemModel_rowCount[rust_object : &QAbstractItemModel as "TraitObject",
+        return rust!(Rust_QAbstractItemModel_rowCount[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                   parent : QModelIndex as "QModelIndex"]
                 -> i32 as "int" {
-            rust_object.row_count(parent)
+            rust_object.borrow().row_count(parent)
         });
     }
 
     int columnCount(const QModelIndex &parent = QModelIndex()) const override {
-        return rust!(Rust_QAbstractItemModel_columnCount[rust_object : &QAbstractItemModel as "TraitObject",
+        return rust!(Rust_QAbstractItemModel_columnCount[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                      parent : QModelIndex as "QModelIndex"]
                 -> i32 as "int" {
-            rust_object.column_count(parent)
+            rust_object.borrow().column_count(parent)
         });
     }
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        return rust!(Rust_QAbstractItemModel_data[rust_object : &QAbstractItemModel as "TraitObject",
+        return rust!(Rust_QAbstractItemModel_data[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                 index : QModelIndex as "QModelIndex", role : i32 as "int"] -> QVariant as "QVariant" {
-            rust_object.data(index, role)
+            rust_object.borrow().data(index, role)
         });
     }
 
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
-        return rust!(Rust_QAbstractItemModel_setData[rust_object : &mut QAbstractItemModel as "TraitObject",
+        return rust!(Rust_QAbstractItemModel_setData[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                 index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
                 -> bool as "bool" {
-            rust_object.set_data(index, &value, role)
+            rust_object.borrow_mut().set_data(index, &value, role)
         });
     }
 
     QHash<int, QByteArray> roleNames() const override {
         QHash<int, QByteArray> base = QAbstractItemModel::roleNames();
-        rust!(Rust_QAbstractItemModel_roleNames[rust_object : &QAbstractItemModel as "TraitObject",
+        rust!(Rust_QAbstractItemModel_roleNames[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                 base: *mut c_void as "QHash<int, QByteArray>&"] {
-            for (key, val) in rust_object.role_names().iter() {
+            for (key, val) in rust_object.borrow().role_names().iter() {
                 add_to_hash(base, key.clone(), val.clone());
             }
         });

@@ -491,9 +491,13 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     use self::MetaObjectCall::*;
 
     let get_object = if is_qobject {
-        quote!{ <#name #ty_generics as #base>::get_rust_object(&mut *o) }
+        quote!{
+            let pinned = <#name #ty_generics as #crate_::QObject>::get_from_cpp(o);
+            // FIXME: we should probably use borrow_mut here instead, but in a way which order re-entry
+            let mut obj = &mut *pinned.as_ptr();
+        }
     } else {
-        quote!{ ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o) }
+        quote!{ let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o); }
     };
 
     let property_meta_call: Vec<_> = properties
@@ -548,11 +552,11 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 
             quote! { #i => match c {
                 #ReadProperty => unsafe {
-                    let obj : &mut #name = #get_object;
+                    #get_object
                     #getter
                 },
                 #WriteProperty => unsafe {
-                    let obj : &mut #name = #get_object;
+                    #get_object
                     #setter
                 },
                 #ResetProperty => { /* TODO */},
@@ -739,28 +743,36 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             fn get_cpp_object(&self)-> *mut ::std::os::raw::c_void {
                 self.#base_prop.get()
             }
-            unsafe fn get_from_cpp(ptr: *const ::std::os::raw::c_void) -> *const Self {
-                if ptr.is_null() { return ::std::ptr::null(); }
-                <#name #ty_generics as #base>::get_rust_object(&mut *(ptr as *mut ::std::os::raw::c_void)) as *const Self
+            unsafe fn get_from_cpp<'pinned_ref>(ptr: *mut ::std::os::raw::c_void) -> #crate_::QObjectPinned<'pinned_ref, Self> {
+                let refcell_qobject : *const ::std::cell::RefCell<#crate_::QObject> = (<#name #ty_generics as #base>::get_object_description().get_rust_refcell)(ptr);
+                // This is a bit ugly, but this is the only solution i found to downcast
+                let refcell_type : &::std::cell::RefCell<#name #ty_generics> = std::mem::transmute::<_, (&::std::cell::RefCell<#name #ty_generics>, *const())>(refcell_qobject).0;
+                return #crate_::QObjectPinned::new(refcell_type);
             }
 
-            unsafe fn cpp_construct(&mut self) -> *mut ::std::os::raw::c_void {
-                assert!(self.#base_prop.get().is_null());
-                let trait_object : *const #base = self;
-                let trait_object_ptr : *const *const #base = &trait_object;
+            unsafe fn cpp_construct(pinned : &::std::cell::RefCell<Self>) -> *mut ::std::os::raw::c_void {
+                assert!(pinned.borrow().#base_prop.get().is_null());
+                let object_ptr = #crate_::QObjectPinned::<#crate_::QObject>::new(pinned as &::std::cell::RefCell<#crate_::QObject>);
+                let object_ptr_ptr : *const #crate_::QObjectPinned<#crate_::QObject> = &object_ptr;
+                let rust_pinned = #crate_::QObjectPinned::<#base>::new(pinned as &::std::cell::RefCell<#base>);
+                let rust_pinned_ptr : *const #crate_::QObjectPinned<#base> = &rust_pinned;
                 let n = (<#name #ty_generics as #base>::get_object_description().create)
-                    (trait_object_ptr as *const ::std::os::raw::c_void);
-                self.#base_prop.set(n);
+                    (rust_pinned_ptr as *const ::std::os::raw::c_void, object_ptr_ptr as *const ::std::os::raw::c_void);
+                pinned.borrow_mut().#base_prop.set(n);
                 n
             }
 
-            unsafe fn qml_construct(&mut self, mem : *mut ::std::os::raw::c_void,
+            unsafe fn qml_construct(pinned : &::std::cell::RefCell<Self>, mem : *mut ::std::os::raw::c_void,
                                     extra_destruct : extern fn(*mut ::std::os::raw::c_void)) {
-                let trait_object : *const #base = self;
-                let trait_object_ptr : *const *const #base = &trait_object;
-                self.#base_prop.set(mem);
+
+                let object_ptr = #crate_::QObjectPinned::<#crate_::QObject>::new(pinned as &::std::cell::RefCell<#crate_::QObject>);
+                let object_ptr_ptr : *const #crate_::QObjectPinned<#crate_::QObject> = &object_ptr;
+                let rust_pinned = #crate_::QObjectPinned::<#base>::new(pinned as &::std::cell::RefCell<#base>);
+                let rust_pinned_ptr : *const #crate_::QObjectPinned<#base> = &rust_pinned;
+                pinned.borrow_mut().#base_prop.set(mem);
                 (<#name #ty_generics as #base>::get_object_description().qml_construct)(
-                    mem, trait_object_ptr as *const ::std::os::raw::c_void, extra_destruct);
+                    mem, rust_pinned_ptr as *const ::std::os::raw::c_void,
+                    object_ptr_ptr as *const ::std::os::raw::c_void, extra_destruct);
             }
 
             fn cpp_size() -> usize {
@@ -796,7 +808,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                 extern "C" fn static_metacall #impl_generics (o: *mut ::std::os::raw::c_void, c: u32, idx: u32,
                                               a: *const *mut ::std::os::raw::c_void) #where_clause {
                     if c == #InvokeMetaMethod { unsafe {
-                        let obj : &mut #name #ty_generics = #get_object;
+                        #get_object
                         match idx {
                             #(#method_meta_call)*
                             _ => { let _ = obj; }
@@ -823,27 +835,6 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
         }
 
     };
-
-    if is_qobject {
-        body = quote! { #body
-            impl #impl_generics #crate_::PropertyType for #name #ty_generics #where_clause {
-                const READ_ONLY : bool = true;
-                fn register_type(_name : &::std::ffi::CStr) -> i32 {
-                    #crate_::register_metatype_qobject::<Self>()
-                }
-                unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
-                    let r = a as *mut *const ::std::os::raw::c_void;
-                    let obj = (self as &mut #crate_::QObject).get_cpp_object();
-                    *r = if !obj.is_null() { obj }
-                        else { (self as  &mut #crate_::QObject).cpp_construct() };
-                }
-
-                unsafe fn read_from_qt(_a: *const ::std::os::raw::c_void) -> Self {
-                    panic!("Cannot write into an Object property");
-                }
-            }
-        }
-    }
 
     if is_plugin {
         use qbjs::Value;

@@ -45,10 +45,11 @@ extern "C" void RustObject_destruct(TraitObject);
 
 template <typename Base>
 struct RustObject : Base {
-    TraitObject rust_object;
+    TraitObject rust_object;  // A QObjectPinned<XXX> where XXX is the base trait
+    TraitObject ptr_qobject;  // a QObjectPinned<QObject>
     void (*extra_destruct)(QObject *);
     const QMetaObject *metaObject() const override {
-        return rust_object ? RustObject_metaObject(rust_object) : Base::metaObject();
+        return ptr_qobject ? RustObject_metaObject(ptr_qobject) : Base::metaObject();
     }
     int qt_metacall(QMetaObject::Call _c, int _id, void **_a) override {
         _id = Base::qt_metacall(_c, _id, _a);
@@ -70,18 +71,18 @@ struct RustObject : Base {
         return _id;
     }
     bool event(QEvent *event) override {
-        if (rust_object && event->type() == 513) {
+        if (ptr_qobject && event->type() == 513) {
             // "513 reserved for Qt Jambi's DeleteOnMainThread event"
             // This event is sent by rust when we are deleted.
-            rust_object = { nullptr, nullptr }; // so the destructor don't recurse
+            ptr_qobject = { nullptr, nullptr }; // so the destructor don't recurse
             delete this;
             return true;
         }
         return Base::event(event);
     }
     ~RustObject() {
-        auto r = rust_object;
-        rust_object = { nullptr, nullptr };
+        auto r = ptr_qobject;
+        ptr_qobject = { nullptr, nullptr };
         if (extra_destruct)
             extra_destruct(this);
         if (r)
@@ -92,8 +93,9 @@ struct RustObject : Base {
 struct RustObjectDescription {
     size_t size;
     const QMetaObject *baseMetaObject;
-    QObject *(*create)(const TraitObject*);
-    void (*qmlConstruct)(void*, const TraitObject*, void (*extra_destruct)(QObject *));
+    QObject *(*create)(const TraitObject*, const TraitObject*);
+    void (*qmlConstruct)(void*, const TraitObject*, const TraitObject*, void (*extra_destruct)(QObject *));
+    TraitObject (*get_rust_refcell)(QObject*); // Possible optimisation: make this an offset
 };
 
 template<typename T>
@@ -101,16 +103,20 @@ const RustObjectDescription *rustObjectDescription() {
     static RustObjectDescription desc {
         sizeof(T),
         &T::staticMetaObject,
-        [](const TraitObject *self) -> QObject* {
+        [](const TraitObject *self_pinned, const TraitObject *self_ptr) -> QObject* {
             auto q = new T();
-            q->rust_object = *self;
+            q->ptr_qobject = *self_ptr;
+            q->rust_object = *self_pinned;
             return q;
         },
-        [](void *data, const TraitObject *self, void (*extra_destruct)(QObject *)) {
+        [](void *data, const TraitObject *self_pinned, const TraitObject *self_ptr,
+                void (*extra_destruct)(QObject *)) {
             auto *q = new (data) T();
-            q->rust_object = *self;
+            q->rust_object = *self_pinned;
+            q->ptr_qobject = *self_ptr;
             q->extra_destruct = extra_destruct;
         },
+        [](QObject *q) { return static_cast<T*>(q)->ptr_qobject; }
 
     };
     return &desc;

@@ -87,12 +87,14 @@ impl QObjectCppWrapper {
 pub struct QObjectDescription {
     pub size: usize,
     pub meta_object: *const QMetaObject,
-    pub create: unsafe extern "C" fn(trait_object_ptr: *const c_void) -> *mut c_void,
+    pub create: unsafe extern "C" fn(pinned_object: *const c_void, trait_object_ptr: *const c_void) -> *mut c_void,
     pub qml_construct: unsafe extern "C" fn(
         mem: *mut c_void,
+        pinned_object: *const c_void,
         trait_object_ptr: *const c_void,
         extra_destruct: extern "C" fn(*mut c_void),
     ),
+    pub get_rust_refcell: unsafe extern "C" fn(*mut c_void) -> *const RefCell<QObject>,
 }
 
 /// Trait that is implemented by the QObject custom derive macro
@@ -116,19 +118,21 @@ pub trait QObject {
     /// Construct the C++ Object.
     ///
     /// Note, once this function is called, the object must not be moved in memory.
-    unsafe fn cpp_construct(&mut self) -> *mut c_void;
+    unsafe fn cpp_construct(pined : &RefCell<Self>) -> *mut c_void where Self: Sized;
     /// Construct the C++ Object, suitable for callbacks to construct QML objects.
     unsafe fn qml_construct(
-        &mut self,
+        pined : &RefCell<Self>,
         mem: *mut c_void,
         extra_destruct: extern "C" fn(*mut c_void),
-    );
+    )
+    where
+        Self: Sized;
     /// Return the size of the C++ object
     fn cpp_size() -> usize
     where
         Self: Sized;
-    /// Return a reference to an object, given a pointer to a C++ object
-    unsafe fn get_from_cpp<'a>(p: *const c_void) -> *const Self
+    /// Return a rust object belonging to a C++ object
+    unsafe fn get_from_cpp<'a>(p: *mut c_void) -> QObjectPinned<'a, Self>
     where
         Self: Sized;
 
@@ -140,19 +144,6 @@ pub trait QObject {
         unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<RustObject<QObject>>();
         } ) }
-    }
-    /// Implementation for get_from_cpp
-    unsafe fn get_rust_object<'a>(p: &'a mut c_void) -> &'a mut Self
-    where
-        Self: Sized,
-    {
-        // This function is not using get_object_description because we want t be extra fast.
-        // Actually, this could be done without indireciton to C++ if we could extract the offset
-        // of rust_object.a at (rust) compile time.
-        let ptr = cpp!{[p as "RustObject<QObject>*"] -> *mut c_void as "void*" {
-            return p->rust_object.a;
-        }};
-        std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
     }
 }
 impl QObject {
@@ -202,13 +193,6 @@ impl<T: QObject + ?Sized> QPointer<T> {
         })
     }
 
-    pub fn as_ptr(&self) -> *const T
-    where
-        T: Sized,
-    {
-        unsafe { T::get_from_cpp(self.cpp_ptr()) }
-    }
-
     /// Returns a reference to the opbject, or None if it was deleted
     pub fn as_ref(&self) -> Option<&T> {
         let x = self.cpp_ptr();
@@ -240,41 +224,72 @@ impl<T: QObject + ?Sized> Clone for QPointer<T> {
     }
 }
 
-/*
-// Represent a pointer owned by rust
-//
-// (Same as PinBox, but also construct the object)
-pub struct QObjectBox<T : QObject> {
-    inner: Box<T>,
+/// Same as std::cell::RefMut,  but does not allow to move from
+pub struct QObjectRefMut<'b, T : QObject + ?Sized + 'b> {
+    old_value : *mut c_void,
+    inner: std::cell::RefMut<'b, T>
 }
-impl QObjectBox<T> {
-    pub fn new(data :T) -> Self {
-        let mut inner = Box::new(data);
-        unsafe { inner.cpp_construct() }; // Now, data is pinned, we can call cpp_construct
-        QObjectBox{ inner }
+impl<'b, T: QObject + ?Sized> std::ops::Deref for QObjectRefMut<'b, T> {
+    type Target = std::cell::RefMut<'b, T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
-
-    pub fn into_leaked_cpp_ptr(self) -> *mut c_void {
-        let obj_ptr = self.inner.get_cpp_object();
-        std::boxed::Box::into_raw(b);
-        obj_ptr
+}
+impl<'b, T: QObject + ?Sized> std::ops::DerefMut for QObjectRefMut<'b, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
-
-    // add PinBox API
+}
+impl<'b, T : QObject + ?Sized + 'b> Drop for QObjectRefMut<'b, T> {
+    #[inline]
+    fn drop(&mut self) {
+        assert_eq!(self.old_value, self.get_cpp_object(), "Internal pointer changed while borrowed");
+    }
 }
 
-// Do we need this?
-pub struct QObjectRc<T : QObject> {
-    inner: Rc<T>,
+/// A reference to a RefCell<T>, where T is a QObject, which does not move in memory
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct QObjectPinned<'pin, T : QObject + ?Sized + 'pin>(&'pin RefCell<T>);
+
+impl<'pin, T : QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
+    pub fn borrow(&self) -> std::cell::Ref<T> { self.0.borrow() }
+    pub fn borrow_mut(&self) -> QObjectRefMut<T> {
+        let x = self.0.borrow_mut();
+        QObjectRefMut{old_value: x.get_cpp_object(), inner: x  }
+    }
+    pub fn as_ptr(&self) -> *mut T { self.0.as_ptr() }
+}
+impl<'pin, T : QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
+    /// Internal function used from the code generated by the QObject derive macro
+    /// unsafe because one must ensure it does not move in memory
+    pub unsafe fn new(inner: &'pin RefCell<T>) -> Self {
+        QObjectPinned(inner)
+    }
+}
+impl<'pin, T : QObject + 'pin> QObjectPinned<'pin, T> {
+    /// Get the pointer ot the C++ Object, or crate it if it was not yet created
+    pub fn get_or_create_cpp_object(&self) -> *mut c_void {
+        let r = self.0.borrow().get_cpp_object();
+        if r.is_null() { unsafe { QObject::cpp_construct(self.0) } } else { r }
+    }
 }
 
-// Wrapper around QWeakPointer<QObject>
-pub struct QObjectWatcher {}
-
-pub struct QObjectRef<'a, T : QObject> {
-    inner: &'a T,
+/// A wrapper around RefCell<T>, whose content cannot be move in memory
+pub struct QObjectBox<T: QObject + ?Sized>(Box<RefCell<T>>);
+impl<T: QObject> QObjectBox<T> {
+    pub fn new(obj : T) -> Self {
+        QObjectBox(Box::new(RefCell::new(obj)))
+    }
 }
-*/
+impl<T: QObject + ?Sized> QObjectBox<T> {
+    pub fn pinned(&self) -> QObjectPinned<T> {
+        unsafe { QObjectPinned::new(&self.0) }
+    }
+}
 
 /// Create the C++ object and return a C++ pointer to a QObject.
 ///
@@ -283,8 +298,8 @@ pub struct QObjectRef<'a, T : QObject> {
 ///
 /// Panics if the C++ object was already created.
 pub fn into_leaked_cpp_ptr<T: QObject>(obj: T) -> *mut c_void {
-    let mut b: Box<T> = Box::new(obj);
-    let obj_ptr = unsafe { b.cpp_construct() };
+    let b = Box::new(RefCell::new(obj));
+    let obj_ptr = unsafe { QObject::cpp_construct(&b) };
     std::boxed::Box::into_raw(b);
     obj_ptr
 }
@@ -303,16 +318,16 @@ pub trait QGadget {
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn RustObject_metaObject(p: *mut QObject) -> *const QMetaObject {
-    return unsafe { (*p).meta_object() };
+pub unsafe extern "C" fn RustObject_metaObject(p: *mut RefCell<QObject>) -> *const QMetaObject {
+     (*p).borrow().meta_object()
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub extern "C" fn RustObject_destruct(p: *mut QObject) {
+pub unsafe extern "C" fn RustObject_destruct(p: *mut RefCell<QObject>) {
     // We are destroyed from the C++ code, which means that the object was owned by C++ and we
     // can destroy the rust object as well
-    let _b = unsafe { Box::from_raw(p) };
+    let _b = Box::from_raw(p);
 }
 
 /// This function is called from the implementation of the signal.
@@ -325,6 +340,7 @@ pub unsafe fn invoke_signal(
 ) {
     let a = a.as_ptr();
     cpp!([object as "QObject*", meta as "const QMetaObject*", id as "int", a as "void**"] {
+        if (!object) return;
         QMetaObject::activate(object, meta, id, a);
     })
 }

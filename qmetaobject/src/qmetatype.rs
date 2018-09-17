@@ -127,9 +127,7 @@ fn register_metatype_common<T: QMetaType>(
     id
 }
 
-/// Used by the QObject custom derive to register the type as a pointer to a QObject
-#[doc(hidden)]
-pub fn register_metatype_qobject<T: QObject>() -> i32 {
+fn register_metatype_qobject<T: QObject>() -> i32 {
     let metaobject = T::static_meta_object();
     unsafe {
         cpp!([metaobject as "const QMetaObject*"] -> i32 as "int" {
@@ -218,6 +216,7 @@ where
 impl QMetaType for String {
     const CONVERSION_TO_STRING : Option<fn(&Self)->QString> = Some(|s|QString::from(&*s as &str));
     const CONVERSION_FROM_STRING : Option<fn(&QString)->Self> = Some(|s|s.to_string());
+
 }
 
 macro_rules! qdeclare_builtin_metatype {
@@ -293,6 +292,23 @@ where
         <T as QMetaType>::register(Some(name))
     }
 }
+
+impl<T> PropertyType for ::std::cell::RefCell<T> where T : QObject {
+    const READ_ONLY : bool = true;
+    fn register_type(_name : &::std::ffi::CStr) -> i32 {
+        register_metatype_qobject::<T>()
+    }
+    unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
+        let pinned = QObjectPinned::new(self);
+        let r = a as *mut *const ::std::os::raw::c_void;
+        *r = pinned.get_or_create_cpp_object()
+    }
+
+    unsafe fn read_from_qt(_a: *const ::std::os::raw::c_void) -> Self {
+        panic!("Cannot write into an Object property");
+    }
+}
+
 
 #[test]
 fn test_qmetatype() {

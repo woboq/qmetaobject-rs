@@ -23,20 +23,21 @@ extern crate lazy_static;
 use std::ffi::CStr;
 use std::rc::Rc;
 use std::sync::Mutex;
+use std::cell::RefCell;
 
 lazy_static! {
     static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
 }
 
-pub fn do_test<T: QObject + Sized>(mut obj: T, qml: &str) -> bool {
+pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
     let _lock = TEST_MUTEX.lock().unwrap();
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
+    let obj = RefCell::new(obj);
+
     let mut engine = QmlEngine::new();
-    unsafe {
-        engine.set_object_property("_obj".into(), &mut obj);
-    }
+    engine.set_object_property("_obj".into(), unsafe { QObjectPinned::new(&obj) });
     engine.load_data(qml_text.into());
     engine.invoke_method("doTest".into(), &[]).to_bool()
 }
@@ -272,15 +273,15 @@ fn simple_gadget() {
 #[derive(QObject, Default)]
 struct ObjectWithObject {
     base: qt_base_class!(trait QObject),
-    prop_object: qt_property!(MyObject; CONST),
+    prop_object: qt_property!(RefCell<MyObject>; CONST),
 
-    subx: qt_method!(fn subx(&self) -> u32 { self.prop_object.prop_x }),
+    subx: qt_method!(fn subx(&self) -> u32 { self.prop_object.borrow().prop_x }),
 }
 
 #[test]
 fn qobject_properties() {
-    let mut my_obj = ObjectWithObject::default();
-    my_obj.prop_object.prop_x = 56;
+    let my_obj = ObjectWithObject::default();
+    my_obj.prop_object.borrow_mut().prop_x = 56;
     assert!(do_test(
         my_obj,
         "Item {
@@ -423,14 +424,14 @@ fn connect_rust_signal() {
         my_signal2: qt_signal!(yy: String),
     }
 
-    let mut f = Foo::default();
-    let obj_ptr = unsafe { f.cpp_construct() };
+    let f = RefCell::new(Foo::default());
+    let obj_ptr = unsafe { QObjectPinned::new(&f).get_or_create_cpp_object() };
     let mut result = None;
     let mut result2 = None;
     let mut con = unsafe {
         qmetaobject::connections::connect(
             obj_ptr,
-            f.my_signal.to_cpp_representation(&f),
+            f.borrow().my_signal.to_cpp_representation(&*f.borrow()),
             |xx: &u32, yy: &String| {
                 result = Some(format!("{} -> {}", xx, yy));
             },
@@ -441,7 +442,7 @@ fn connect_rust_signal() {
     let con2 = unsafe {
         qmetaobject::connections::connect(
             obj_ptr,
-            f.my_signal2.to_cpp_representation(&f),
+            f.borrow().my_signal2.to_cpp_representation(&*f.borrow()),
             |yy: &String| {
                 result2 = Some(yy.clone());
             },
@@ -449,16 +450,16 @@ fn connect_rust_signal() {
     };
     assert!(con2.is_valid());
 
-    f.my_signal(12, "goo".into());
+    f.borrow().my_signal(12, "goo".into());
     assert_eq!(result, Some("12 -> goo".to_string()));
-    f.my_signal(18, "moo".into());
+    f.borrow().my_signal(18, "moo".into());
     assert_eq!(result, Some("18 -> moo".to_string()));
     con.disconnect();
-    f.my_signal(25, "foo".into());
+    f.borrow().my_signal(25, "foo".into());
     assert_eq!(result, Some("18 -> moo".to_string())); // still the same as before as we disconnected
 
     assert_eq!(result2, None);
-    f.my_signal2("hop".into());
+    f.borrow().my_signal2("hop".into());
     assert_eq!(result2, Some("hop".into()));
     assert_eq!(result, Some("18 -> moo".to_string())); // still the same as before as we disconnected
 }
@@ -470,8 +471,8 @@ fn connect_cpp_signal() {
         base: qt_base_class!(trait QObject),
     }
 
-    let mut f = Foo::default();
-    let obj_ptr = unsafe { f.cpp_construct() };
+    let f = RefCell::new(Foo::default());
+    let obj_ptr = unsafe { QObjectPinned::new(&f).get_or_create_cpp_object() };
     let mut result = None;
     let con = unsafe {
         qmetaobject::connections::connect(
@@ -483,7 +484,7 @@ fn connect_cpp_signal() {
         )
     };
     assert!(con.is_valid());
-    (&f as &QObject).set_object_name("YOYO".into());
+    (&*f.borrow() as &QObject).set_object_name("YOYO".into());
     assert_eq!(result, Some("YOYO".into()));
 }
 
@@ -514,11 +515,10 @@ fn qpointer() {
     let ptr;
     let pt2;
     {
-        let mut obj = MyObject::default();
-        obj.prop_x = 23;
-        unsafe { obj.cpp_construct() };
-        let obj /*: &mut QObject*/ = &obj;
-        ptr = QPointer::from(obj);
+        let obj = RefCell::new(MyObject::default());
+        obj.borrow_mut().prop_x = 23;
+        unsafe { QObjectPinned::new(&obj).get_or_create_cpp_object() };
+        ptr = QPointer::from(&*obj.borrow());
         pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x| x.prop_x), 23);
         assert_eq!(pt2.as_ref().map_or(898, |x| x.prop_x), 23);
@@ -541,8 +541,9 @@ fn qpointer() {
         }
         let mut obj = qmetaobject::listmodel::SimpleListModel::<XX>::default();
         obj.push(XX("foo".into()));
-        unsafe { obj.cpp_construct() };
-        let obj_ref: &qmetaobject::listmodel::QAbstractListModel = &obj;
+        let obj = RefCell::new(obj);
+        unsafe { QObjectPinned::new(&obj).get_or_create_cpp_object() };
+        let obj_ref: &qmetaobject::listmodel::QAbstractListModel = &*obj.borrow();
         ptr = QPointer::<qmetaobject::listmodel::QAbstractListModel>::from(obj_ref);
         pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x| x.row_count()), 1);

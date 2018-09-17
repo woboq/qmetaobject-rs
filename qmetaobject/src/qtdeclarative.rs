@@ -80,11 +80,10 @@ impl QmlEngine {
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     ///
-    /// Unsafe because it will call QObject::cpp_construct which require that T is no longer moved.
-    /// (TODO: Consider using std::mem::Pin)
-    pub unsafe fn set_object_property<T: QObject + Sized>(&mut self, name: QString, obj: &mut T) {
-        let obj_ptr = obj.cpp_construct();
-        cpp!([self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
+    // (TODO: consider making the lifetime the one of the engine, instead of static)
+    pub fn set_object_property<T: QObject + Sized>(&mut self, name: QString, obj: QObjectPinned<T>) {
+        let obj_ptr = obj.get_or_create_cpp_object();
+        cpp!(unsafe [self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);
         })
     }
@@ -174,10 +173,10 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     }
 
     extern "C" fn creator_fn<T: QObject + Default + Sized>(c: *mut c_void) {
-        let mut b: Box<T> = Box::new(T::default());
+        let b: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
         let ed: extern "C" fn(c: *mut c_void) = extra_destruct;
         unsafe {
-            b.qml_construct(c, ed);
+            T::qml_construct(&b, c, ed);
         }
         std::boxed::Box::into_raw(b);
     };
@@ -237,12 +236,6 @@ pub trait QQuickItem : QObject {
             return rustObjectDescription<Rust_QQuickItem>();
         } ) }
     }
-    unsafe fn get_rust_object<'a>(p: &'a mut c_void)->&'a mut Self  where Self:Sized {
-        let ptr = cpp!{[p as "Rust_QQuickItem*"] -> *mut c_void as "void*" {
-            return p->rust_object.a;
-        }};
-        std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
-    }
 
     fn class_begin(&mut self) {}
     fn component_complete(&mut self) {}
@@ -273,15 +266,15 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void itemChange(ItemChange, const ItemChangeData &);*/
     void classBegin() override {
         QQuickItem::classBegin();
-        rust!(Rust_QQuickItem_classBegin[rust_object : &mut QQuickItem as "TraitObject"] {
-            rust_object.class_begin();
+        rust!(Rust_QQuickItem_classBegin[rust_object : QObjectPinned<QQuickItem> as "TraitObject"] {
+            rust_object.borrow_mut().class_begin();
         });
     }
 
     void componentComplete() override {
         QQuickItem::componentComplete();
-        rust!(Rust_QQuickItem_componentComplete[rust_object : &mut QQuickItem as "TraitObject"] {
-            rust_object.component_complete();
+        rust!(Rust_QQuickItem_componentComplete[rust_object : QObjectPinned<QQuickItem> as "TraitObject"] {
+            rust_object.borrow_mut().component_complete();
         });
     }
 
@@ -298,10 +291,10 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 
     void handleMouseEvent(QMouseEvent *event) {
        if (!rust!(Rust_QQuickItem_mousePressEvent[
-            rust_object : &mut QQuickItem as "TraitObject",
+            rust_object : QObjectPinned<QQuickItem> as "TraitObject",
             event : QMouseEvent as "QMouseEvent*"
         ] -> bool as "bool" {
-            rust_object.mouse_event(event)
+            rust_object.borrow_mut().mouse_event(event)
         })) { event->ignore(); }
     }
 
@@ -323,17 +316,17 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void windowDeactivateEvent();*/
     virtual void geometryChanged(const QRectF &new_geometry,
                                  const QRectF &old_geometry) {
-        rust!(Rust_QQuickItem_geometryChanged[rust_object : &mut QQuickItem as "TraitObject",
+        rust!(Rust_QQuickItem_geometryChanged[rust_object : QObjectPinned<QQuickItem> as "TraitObject",
                 new_geometry : QRectF as "QRectF", old_geometry : QRectF as "QRectF"] {
-            rust_object.geometry_changed(new_geometry, old_geometry);
+            rust_object.borrow_mut().geometry_changed(new_geometry, old_geometry);
         });
         QQuickItem::geometryChanged(new_geometry, old_geometry);
     }
 
     QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
-        return rust!(Rust_QQuickItem_updatePaintNode[rust_object : &mut QQuickItem as "TraitObject",
+        return rust!(Rust_QQuickItem_updatePaintNode[rust_object : QObjectPinned<QQuickItem> as "TraitObject",
                     node : *mut c_void as "QSGNode*"] -> SGNode<ContainerNode> as "QSGNode*" {
-            return rust_object.update_paint_node(unsafe { SGNode::<ContainerNode>::from_raw(node) });
+            return rust_object.borrow_mut().update_paint_node(unsafe { SGNode::<ContainerNode>::from_raw(node) });
         });
     }
     /*
@@ -341,12 +334,6 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void updatePolish();
 */
 
-    const QMetaObject *metaObject() const override {
-        return rust!(Rust_QQuickItem_metaobject[rust_object : &QQuickItem as "TraitObject"]
-                -> *const QMetaObject as "const QMetaObject*" {
-            rust_object.meta_object()
-        });
-    }
 };
 
 }}
@@ -408,16 +395,15 @@ impl QJSValue {
         unsafe { cpp!([self as "const QJSValue*"] -> QVariant as "QVariant" { return self->toVariant(); }) }
     }
 
-    // FIXME: &mut could be usefull, but then there can be several access to this object as mutable
-    pub fn to_qobject<'a, T: QObject + 'a>(&'a self) -> Option<&'a QObject> {
+    pub fn to_qobject<'a, T: QObject + 'a>(&'a self) -> Option<QObjectPinned<'a, T>> {
         let mo = T::static_meta_object();
-        let obj = unsafe { cpp!([self as "const QJSValue*", mo as "const QMetaObject*"] -> *const c_void as "QObject*" {
+        let obj = unsafe { cpp!([self as "const QJSValue*", mo as "const QMetaObject*"] -> *mut c_void as "QObject*" {
             QObject *obj = self->toQObject();
             // FIXME! inheritence?
             return obj && obj->metaObject()->inherits(mo) ? obj : nullptr;
         }) };
         if obj.is_null() { return None; }
-        Some(unsafe { &*T::get_from_cpp(obj) })
+        Some(unsafe { T::get_from_cpp(obj) })
     }
 }
 impl From<QString> for QJSValue {
@@ -481,16 +467,6 @@ pub trait QQmlExtensionPlugin: QObject {
         } )
         }
     }
-    #[doc(hidden)] // implementation detail for the QObject custom derive
-    unsafe fn get_rust_object<'a>(p: &'a mut c_void) -> &'a mut Self
-    where
-        Self: Sized,
-    {
-        let ptr = cpp!{[p as "Rust_QQmlExtensionPlugin*"] -> *mut c_void as "void*" {
-            return p->rust_object.a;
-        }};
-        std::mem::transmute::<*mut c_void, &'a mut Self>(ptr)
-    }
 
     /// Refer to the Qt documentation of QQmlExtensionPlugin::registerTypes
     fn register_types(&mut self, uri: &std::ffi::CStr);
@@ -500,17 +476,10 @@ cpp!{{
 #include <qmetaobject_rust.hpp>
 #include <QtQml/QQmlExtensionPlugin>
 struct Rust_QQmlExtensionPlugin : RustObject<QQmlExtensionPlugin> {
-    const QMetaObject *metaObject() const override {
-        return rust!(Rust_QQmlExtensionPlugin_metaobject[rust_object : &QQmlExtensionPlugin as "TraitObject"]
-                -> *const QMetaObject as "const QMetaObject*" {
-            rust_object.meta_object()
-        });
-    }
-
     void registerTypes(const char *uri) override  {
-        rust!(Rust_QQmlExtensionPlugin_registerTypes[rust_object : &mut QQmlExtensionPlugin as "TraitObject",
+        rust!(Rust_QQmlExtensionPlugin_registerTypes[rust_object : QObjectPinned<QQmlExtensionPlugin> as "TraitObject",
                                                             uri : *const std::os::raw::c_char as "const char*"] {
-            rust_object.register_types(unsafe { std::ffi::CStr::from_ptr(uri) });
+            rust_object.borrow_mut().register_types(unsafe { std::ffi::CStr::from_ptr(uri) });
         });
     }
 };
