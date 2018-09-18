@@ -50,7 +50,7 @@
 
 #include "gridnode.h"
 
-#include "qmath.h"
+#include <QtCore/qmath.h>
 
 #define GRID_SIZE 32
 
