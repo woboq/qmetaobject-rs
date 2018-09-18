@@ -51,7 +51,7 @@
 #ifndef LINENODE_H
 #define LINENODE_H
 
-#include <QSGGeometryNode>
+#include <QtQuick/QSGGeometryNode>
 
 class LineNode : public QSGGeometryNode
 {
