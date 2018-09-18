@@ -20,7 +20,7 @@ before_script:
     - source /opt/qt510/bin/qt510-env.sh
 
 script:
-    - (cd qmetaobject && xvfb-run  cargo test)
+    - (cd qmetaobject && xvfb-run cargo test -- --test-threads=1)
     - (cd examples/todos && cargo build)
     - (cd examples/qmlextensionplugins && cargo build)
     - (cd examples/graph && cargo build)
