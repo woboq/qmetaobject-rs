@@ -42,9 +42,12 @@ mod MetaObjectCall {
     pub const RegisterMethodArgumentMetaType: u32 = 12;
 }
 
-fn builtin_type(name: &syn::Type) -> u32 {
-    match name.clone().into_token_stream().to_string().as_ref() {
-        "()" | "( )" => 43,
+fn builtin_type(ty: &syn::Type) -> u32 {
+    if let syn::Type::Tuple(ref tuple) = ty {
+        // Is it "()" aka the "void" type?
+        return if tuple.elems.is_empty() { 43 } else { 0 };
+    }
+    match ty.clone().into_token_stream().to_string().as_ref() {
         "bool" => 1,
         "i32" => 2,
         "u32" => 3,
