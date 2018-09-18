@@ -508,7 +508,7 @@ where
     let mut func_raw = Box::into_raw(func);
     let interval_ms : u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
     unsafe{ cpp!([interval_ms as "int", mut func_raw as "FnBoxWrapper"] {
-        QTimer::singleShot(std::chrono::milliseconds(interval_ms), std::move(func_raw));
+        QTimer::singleShot(interval_ms, std::move(func_raw));
     })};
 }
 
