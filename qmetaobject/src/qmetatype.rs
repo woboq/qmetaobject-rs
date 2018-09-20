@@ -17,10 +17,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 use super::*;
 
-fn register_metatype_common<T: Sized + Clone + Default + 'static>(
+fn register_metatype_common<T: QMetaType>(
     name: *const std::os::raw::c_char,
-    gadget_metaobject: *const QMetaObject,
-) -> i32 {
+    gadget_metaobject: *const QMetaObject) -> i32 {
     use std::any::TypeId;
     use std::collections::{HashMap, HashSet};
     use std::ffi::{CStr, CString};
@@ -69,7 +68,7 @@ fn register_metatype_common<T: Sized + Clone + Default + 'static>(
 
         let name = CString::new(format!("{:?}", TypeId::of::<T>())).unwrap();
         let name = name.as_ptr();
-        let id = cpp!(unsafe [name as "const char*", size as "int", deleter_fn as "QMetaType::Deleter",
+        let type_id = cpp!(unsafe [name as "const char*", size as "int", deleter_fn as "QMetaType::Deleter",
                 creator_fn as "QMetaType::Creator", destructor_fn as "QMetaType::Destructor",
                 constructor_fn as "QMetaType::Constructor", gadget_metaobject as "const QMetaObject*"] -> i32 as "int" {
             QMetaType::TypeFlags extraFlag(gadget_metaobject ? QMetaType::IsGadget : 0);
@@ -78,7 +77,32 @@ fn register_metatype_common<T: Sized + Clone + Default + 'static>(
                 QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType | extraFlag,
                 gadget_metaobject);
         });
-        (id, HashSet::new())
+
+        if T::CONVERSION_TO_STRING.is_some() {
+            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src: &T, dst : *mut QString) {
+                unsafe { std::ptr::write(dst, (T::CONVERSION_TO_STRING.unwrap())(src)) };
+            }
+            let converter_fn: extern "C" fn(*const c_void, &T, *mut QString) = converter_fn;
+            cpp!( unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
+                //NOTE: the ConverterFunctor are gonna be leaking (in Qt, they are suppoed to be allocated in static storage
+                auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
+                if (!c->registerConverter(type_id, QMetaType::QString))
+                    delete c;
+            });
+        };
+
+        if T::CONVERSION_FROM_STRING.is_some() {
+            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src : &QString, dst : *mut T) {
+                unsafe { std::ptr::write(dst, (T::CONVERSION_FROM_STRING.unwrap())(src)) };
+            }
+            let converter_fn: extern "C" fn(*const c_void, &QString, *mut T) = converter_fn;
+            cpp!(unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
+                auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
+                if (!c->registerConverter(QMetaType::QString, type_id))
+                    delete c;
+            });
+        };
+        (type_id, HashSet::new())
     });
     let id = e.0;
     if !name.is_null() && !e.1.contains(unsafe { CStr::from_ptr(name) }) {
@@ -139,7 +163,7 @@ pub trait QMetaType: Clone + Default + 'static {
     fn register(name: Option<&std::ffi::CStr>) -> i32 {
         register_metatype_common::<Self>(
             name.map_or(std::ptr::null(), |x| x.as_ptr()),
-            std::ptr::null(),
+            std::ptr::null()
         )
     }
 
@@ -170,6 +194,10 @@ pub trait QMetaType: Clone + Default + 'static {
             }
         }
     }
+
+    /// If this is set to a function, it enable the conversion to and from string
+    const CONVERSION_TO_STRING : Option<fn(&Self)->QString> = None;
+    const CONVERSION_FROM_STRING : Option<fn(&QString)->Self> = None;
 }
 
 /// QGadget are automatically QMetaType
@@ -186,70 +214,8 @@ where
 }
 
 impl QMetaType for String {
-    fn register(name: Option<&std::ffi::CStr>) -> i32 {
-        //assert!(name == "String");
-        let c_name = name.map_or(b"String\0".as_ptr() as *const std::os::raw::c_char, |x| {
-            x.as_ptr()
-        });
-        let type_id = register_metatype_common::<String>(c_name, std::ptr::null());
-        extern "C" fn converter_fn1(_: *const c_void, s: &String, ptr: *mut QByteArray) {
-            unsafe {
-                std::ptr::write(ptr, QByteArray::from(&*s as &str));
-            }
-        };
-        let converter_fn1: extern "C" fn(
-            _: *const c_void,
-            s: &String,
-            ptr: *mut QByteArray,
-        ) = converter_fn1;
-        extern "C" fn converter_fn2(_: *const c_void, s: &QByteArray, ptr: *mut String) {
-            unsafe {
-                std::ptr::write(ptr, s.to_string());
-            }
-        };
-        let converter_fn2: extern "C" fn(
-            _: *const c_void,
-            s: &QByteArray,
-            ptr: *mut String,
-        ) = converter_fn2;
-        extern "C" fn converter_fn3(_: *const c_void, s: &String, ptr: *mut QString) {
-            let s: &str = &*s;
-            unsafe {
-                std::ptr::write(ptr, QString::from(&*s as &str));
-            }
-        };
-        let converter_fn3: extern "C" fn(_: *const c_void, s: &String, ptr: *mut QString) =
-            converter_fn3;
-        extern "C" fn converter_fn4(_: *const c_void, s: &QString, ptr: *mut String) {
-            unsafe {
-                std::ptr::write(ptr, s.to_string());
-            }
-        };
-        let converter_fn4: extern "C" fn(_: *const c_void, s: &QString, ptr: *mut String) =
-            converter_fn4;
-
-
-        unsafe { cpp!([type_id as "int",
-                    converter_fn1 as "QtPrivate::AbstractConverterFunction::Converter",
-                    converter_fn2 as "QtPrivate::AbstractConverterFunction::Converter",
-                    converter_fn3 as "QtPrivate::AbstractConverterFunction::Converter",
-                    converter_fn4 as "QtPrivate::AbstractConverterFunction::Converter"] {
-            //FIXME, the ConverterFunctor are gonna be leaking
-            auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn1);
-            if (!c->registerConverter(type_id, QMetaType::QByteArray))
-                delete c;
-            c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn2);
-            if (!c->registerConverter(QMetaType::QByteArray, type_id))
-                delete c;
-            c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn3);
-            if (!c->registerConverter(type_id, QMetaType::QString))
-                delete c;
-            c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn4);
-            if (!c->registerConverter(QMetaType::QString, type_id))
-                delete c;
-        }) };
-        type_id
-    }
+    const CONVERSION_TO_STRING : Option<fn(&Self)->QString> = Some(|s|QString::from(&*s as &str));
+    const CONVERSION_FROM_STRING : Option<fn(&QString)->Self> = Some(|s|s.to_string());
 }
 
 macro_rules! qdeclare_builtin_metatype {
@@ -371,7 +337,7 @@ fn test_qmetatype_register_wrong_type2() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
     struct MyType {};
     impl QMetaType for MyType {};
-    String::id();
+    String::register(Some(&std::ffi::CString::new("String").unwrap()));
     // registering with the name of an existing type should panic
     MyType::register(Some(&std::ffi::CString::new("String").unwrap()));
 }
