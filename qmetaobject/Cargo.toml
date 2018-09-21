@@ -12,9 +12,9 @@ repository = "https://github.com/woboq/qmetaobject-rs"
 [dependencies]
 qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.0.1"}
 lazy_static = "1.0"
-cpp = "0.4"
+cpp = "0.5"
 bitflags = "1.0"
 
 [build-dependencies]
-cpp_build = "0.4"
+cpp_build = "0.5"
 
