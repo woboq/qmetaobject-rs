@@ -182,6 +182,7 @@ struct Data {
     payload: Vec<u8>,
     names: Vec<u8>,
     tree_data: Vec<u8>,
+    files: Vec<String>,
 }
 impl Data {
     fn insert_file(&mut self, filename: &str) {
@@ -189,6 +190,7 @@ impl Data {
             fs::read(filename).unwrap_or_else(|_| panic!("Canot open file {}", filename));
         push_u32_be(&mut self.payload, data.len() as u32);
         self.payload.append(&mut data);
+        self.files.push(format!("../{}", filename));
     }
 
     fn insert_directory(&mut self, contents: &BTreeMap<HashedString, TreeNode>) {
@@ -262,6 +264,7 @@ fn expand_macro(data: Data) -> TokenStream {
         payload,
         names,
         tree_data,
+        files,
     } = data;
     let q = quote!{
         fn register() {
@@ -272,6 +275,8 @@ fn expand_macro(data: Data) -> TokenStream {
                 static NAMES : &'static [u8] = & [ #(#names),* ];
                 static TREE_DATA : &'static [u8] = & [ #(#tree_data),* ];
                 unsafe { ::qmetaobject::qrc::register_resource_data(2, TREE_DATA, NAMES, PAYLOAD) };
+                // Because we want that the macro re-compiles if the contents of the file changes!
+                #({ const _X: &'static [ u8 ] = include_bytes!(#files); })*
             });
         }
     };
