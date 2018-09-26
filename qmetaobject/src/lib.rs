@@ -497,6 +497,17 @@ cpp!{{
             });
         }
     };
+
+    template<typename T>
+    static void invokeMethod(QObject *reciever, T &&func) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        QMetaObject::invokeMethod(reciever, std::forward<T>(func), Qt::QueuedConnection); // does not allow move-only
+#else
+        // We can't use QTimer::singleShot because "Timers can only be used with threads started with QThread"
+        QObject o;
+        QObject::connect(&o, &QObject::destroyed, reciever, std::forward<T>(func), Qt::QueuedConnection);
+#endif
+    }
 }}
 
 /// Call the callback once, after a given duration.
@@ -558,10 +569,10 @@ pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> identity!(imp
             if (!qApp || current_thread != qApp->thread()) {
                 QObject *reciever = new QObject();
                 reciever->moveToThread(current_thread);
-                QMetaObject::invokeMethod(reciever, std::move(func_raw), Qt::QueuedConnection); // does not allow move-only
+                invokeMethod(reciever, std::move(func_raw));
                 reciever->deleteLater();
             } else {
-                QMetaObject::invokeMethod(qApp, std::move(func_raw), Qt::QueuedConnection);
+                invokeMethod(qApp, std::move(func_raw));
             }
         })};
     }
