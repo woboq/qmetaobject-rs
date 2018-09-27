@@ -9,7 +9,7 @@ environment:
   - TARGET: i686-pc-windows-msvc
     ARCH: x86
     VS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
-    QTDIR: C:\Qt\5.9\msvc2015
+    QTDIR: C:\Qt\5.11\msvc2015
 #  - TARGET: i686-pc-windows-gnu
 #    MSYS_BITS: 32
 #    QTDIR: C:\Qt\5.10\mingw53_32

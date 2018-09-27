@@ -79,10 +79,11 @@ fn register_metatype_common<T: QMetaType>(
         });
 
         if T::CONVERSION_TO_STRING.is_some() {
-            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src: &T, dst : *mut QString) {
+            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src: &T, dst : *mut QString) -> bool {
                 unsafe { std::ptr::write(dst, (T::CONVERSION_TO_STRING.unwrap())(src)) };
+                true
             }
-            let converter_fn: extern "C" fn(*const c_void, &T, *mut QString) = converter_fn;
+            let converter_fn: extern "C" fn(*const c_void, &T, *mut QString) -> bool = converter_fn;
             cpp!( unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
                 //NOTE: the ConverterFunctor are gonna be leaking (in Qt, they are suppoed to be allocated in static storage
                 auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
@@ -92,10 +93,11 @@ fn register_metatype_common<T: QMetaType>(
         };
 
         if T::CONVERSION_FROM_STRING.is_some() {
-            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src : &QString, dst : *mut T) {
+            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src : &QString, dst : *mut T) -> bool {
                 unsafe { std::ptr::write(dst, (T::CONVERSION_FROM_STRING.unwrap())(src)) };
+                true
             }
-            let converter_fn: extern "C" fn(*const c_void, &QString, *mut T) = converter_fn;
+            let converter_fn: extern "C" fn(*const c_void, &QString, *mut T) -> bool = converter_fn;
             cpp!(unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
                 auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
                 if (!c->registerConverter(QMetaType::QString, type_id))
