@@ -1,23 +1,29 @@
 language: rust
-rust:
-    - stable
-    - nightly
-
 addons:
     apt:
         sources:
             - ubuntu-toolchain-r-test
 
+matrix:
+    include:
+        - env: QT_VERSION=58 QT_SOURCE=58
+          rust: stable
+        - env: QT_VERSION=59 QT_SOURCE=593
+          rust: beta
+        - env: QT_VERSION=510 QT_SOURCE=-5.10.1
+          rust: nightly
+
+
 before_install:
-    - sudo add-apt-repository -y ppa:beineri/opt-qt-5.10.1-trusty;
+    - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_SOURCE}-trusty;
     - sudo apt-get update
 
 install:
-    - sudo apt-get install -y -qq qt510base qt510declarative g++-7
+    - sudo apt-get install -y -qq qt${QT_VERSION}base qt${QT_VERSION}declarative g++-7
     - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 90;
 
 before_script:
-    - source /opt/qt510/bin/qt510-env.sh
+    - source /opt/qt${QT_VERSION}/bin/qt${QT_VERSION}-env.sh
     - export RUST_TEST_THREADS=1
 
 script:
