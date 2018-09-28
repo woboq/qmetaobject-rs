@@ -751,7 +751,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             unsafe fn get_from_cpp<'pinned_ref>(ptr: *mut ::std::os::raw::c_void) -> #crate_::QObjectPinned<'pinned_ref, Self> {
                 let refcell_qobject : *const ::std::cell::RefCell<#crate_::QObject> = (<#name #ty_generics as #base>::get_object_description().get_rust_refcell)(ptr);
                 // This is a bit ugly, but this is the only solution i found to downcast
-                let refcell_type : &::std::cell::RefCell<#name #ty_generics> = std::mem::transmute::<_, (&::std::cell::RefCell<#name #ty_generics>, *const())>(refcell_qobject).0;
+                let refcell_type : &::std::cell::RefCell<#name #ty_generics> = ::std::mem::transmute::<_, (&::std::cell::RefCell<#name #ty_generics>, *const())>(refcell_qobject).0;
                 return #crate_::QObjectPinned::new(refcell_type);
             }
 
