@@ -319,7 +319,7 @@ pub trait QGadget {
 #[doc(hidden)]
 #[no_mangle]
 pub unsafe extern "C" fn RustObject_metaObject(p: *mut RefCell<QObject>) -> *const QMetaObject {
-     (*p).borrow().meta_object()
+     (*(*p).as_ptr()).meta_object()
 }
 
 #[doc(hidden)]
