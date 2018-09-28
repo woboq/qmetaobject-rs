@@ -112,12 +112,13 @@ impl MetaObject {
         #[cfg(target_pointer_width = "64")]
         let sizeof_qbytearraydata = 24;
         #[cfg(target_pointer_width = "32")]
-        let sizeof_qbytearraydata = 20;
+        let sizeof_qbytearraydata = 16;
         let mut ofs = sizeof_qbytearraydata * self.string_data.len() as i32;
         for ref s in &self.string_data {
             result.extend_from_slice(&write_u32(-1)); // ref (-1)
             result.extend_from_slice(&write_u32(s.len() as i32)); // size
             result.extend_from_slice(&write_u32(0)); // alloc / capacityReserved
+            #[cfg(target_pointer_width = "64")]
             result.extend_from_slice(&write_u32(0)); // padding
             result.extend_from_slice(&write_u32(ofs)); // offset (LSB)
             #[cfg(target_pointer_width = "64")]
