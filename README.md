@@ -5,7 +5,6 @@ The qmetaobject crate is a crate which is used to expose rust object to Qt and Q
 [![Travis Build Status](https://travis-ci.org/woboq/qmetaobject-rs.svg?branch=master)](https://travis-ci.org/woboq/qmetaobject-rs)
 [![Appveyor Build status](https://ci.appveyor.com/api/projects/status/8l5te3wlj2ie4njc/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/qmetaobject-rs/branch/master)
 
-
 ## Objectives
 
  - Rust procedural macro (custom derive) to generate a QMetaObject at compile time.
@@ -53,3 +52,6 @@ Window {
  - Export Qt properties, signals, methods, ...
  - Also support `#[derive(QGadget)]` (same as Q_GADGET)
  - Create Qt plugin (see examples/qmlextensionplugins)
+ - Partial scene graph support
+
+Requires Qt >= 5.8
