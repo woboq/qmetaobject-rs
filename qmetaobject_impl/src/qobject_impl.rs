@@ -109,7 +109,10 @@ struct MetaObject {
 impl MetaObject {
     fn build_string_data(&self) -> Vec<u8> {
         let mut result: Vec<u8> = Vec::new();
+        #[cfg(target_pointer_width = "64")]
         let sizeof_qbytearraydata = 24;
+        #[cfg(target_pointer_width = "32")]
+        let sizeof_qbytearraydata = 20;
         let mut ofs = sizeof_qbytearraydata * self.string_data.len() as i32;
         for ref s in &self.string_data {
             result.extend_from_slice(&write_u32(-1)); // ref (-1)
@@ -117,6 +120,7 @@ impl MetaObject {
             result.extend_from_slice(&write_u32(0)); // alloc / capacityReserved
             result.extend_from_slice(&write_u32(0)); // padding
             result.extend_from_slice(&write_u32(ofs)); // offset (LSB)
+            #[cfg(target_pointer_width = "64")]
             result.extend_from_slice(&write_u32(0)); // offset (MSB)
 
             ofs += s.len() as i32 + 1; // +1 for the '\0'

@@ -256,9 +256,16 @@ impl QMetaType for QVariant {
     }
 }
 
-// FIXME!  32 bit!
-qdeclare_builtin_metatype!{isize  => 32}
-qdeclare_builtin_metatype!{usize  => 35}
+#[cfg(target_pointer_width = "32")]
+qdeclare_builtin_metatype!{isize  => 32} // That's QMetaType::Long
+#[cfg(target_pointer_width = "32")]
+qdeclare_builtin_metatype!{usize  => 35} // That's QMetaType::ULong
+// long on 64bit windows is still 32bit, so use LongLong
+#[cfg(target_pointer_width = "64")]
+qdeclare_builtin_metatype!{isize  => 4}
+#[cfg(target_pointer_width = "64")]
+qdeclare_builtin_metatype!{usize  => 5}
+
 
 /// Internal trait used to pass or read the type in a Q_PROPERTY
 ///
