@@ -50,7 +50,9 @@
 
 #include "noisynode.h"
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
 #include <QtCore/QRandomGenerator>
+#endif
 #include <QtQuick/QSGSimpleMaterialShader>
 #include <QtQuick/QSGTexture>
 #include <QtQuick/QQuickWindow>
@@ -114,7 +116,11 @@ NoisyNode::NoisyNode(QQuickWindow *window)
     QImage image(NOISE_SIZE, NOISE_SIZE, QImage::Format_RGB32);
     uint *data = (uint *) image.bits();
     for (int i=0; i<NOISE_SIZE * NOISE_SIZE; ++i) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
         uint g = QRandomGenerator::global()->bounded(0xff);
+#else
+        uint g = qrand() % 0xff;
+#endif
         data[i] = 0xff000000 | (g << 16) | (g << 8) | g;
     }
 
