@@ -186,9 +186,9 @@ cpp_class!(unsafe struct QPointerImpl as "QPointer<QObject>");
 // (we only need a *const T to support the !Sized case. (Maybe there is a better way)
 pub struct QPointer<T: QObject + ?Sized>(QPointerImpl, *const T);
 impl<T: QObject + ?Sized> QPointer<T> {
-    pub fn cpp_ptr(&self) -> *const c_void {
+    pub fn cpp_ptr(&self) -> *mut c_void {
         let x = &self.0;
-        cpp!(unsafe [x as "QPointer<QObject>*"] -> *const c_void as "QObject*" {
+        cpp!(unsafe [x as "QPointer<QObject>*"] -> *mut c_void as "QObject*" {
             return x->data();
         })
     }
@@ -202,7 +202,23 @@ impl<T: QObject + ?Sized> QPointer<T> {
             unsafe { Some(&*self.1) }
         }
     }
+
+    pub fn is_null(&self) -> bool {
+        self.cpp_ptr().is_null()
+    }
 }
+impl<T: QObject> QPointer<T> {
+    /// Returns a pinned reference to the opbject, or None if it was deleted
+    pub fn as_pinned<'a>(&'a self) -> Option<QObjectPinned<'a , T>> {
+        let x = self.cpp_ptr();
+        if x.is_null() {
+            None
+        } else {
+            Some(unsafe { T::get_from_cpp(x) })
+        }
+    }
+}
+
 impl<'a, T: QObject + ?Sized> From<&'a T> for QPointer<T> {
     fn from(obj: &'a T) -> Self {
         let cpp_obj = obj.get_cpp_object();

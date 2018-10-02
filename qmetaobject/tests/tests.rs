@@ -522,6 +522,8 @@ fn qpointer() {
         pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x| x.prop_x), 23);
         assert_eq!(pt2.as_ref().map_or(898, |x| x.prop_x), 23);
+        assert_eq!(ptr.as_pinned().map_or(989, |x| { let old = x.borrow().prop_x; x.borrow_mut().prop_x = 42; old } ), 23);
+        assert_eq!(pt2.as_ref().map_or(898, |x| x.prop_x), 42);
     }
     assert!(ptr.as_ref().is_none());
     assert!(pt2.as_ref().is_none());
