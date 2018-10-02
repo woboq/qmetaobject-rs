@@ -325,6 +325,9 @@ impl QModelIndex {
     pub fn row(&self) -> i32 {
         unsafe { cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->row(); }) }
     }
+    pub fn is_valid(&self) -> bool {
+        unsafe { cpp!([self as "const QModelIndex*"] -> bool as "bool" { return self->isValid(); }) }
+    }
 }
 
 #[allow(non_camel_case_types)]

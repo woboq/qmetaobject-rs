@@ -42,6 +42,7 @@ pub trait QAbstractListModel : QObject {
     fn role_names(&self) -> HashMap<i32, QByteArray> { HashMap::new() }
 }
 
+// FIXME! code duplication with impl QAbstractItemModel
 impl QAbstractListModel {
     /// Refer to the Qt documentation of QAbstractListModel::beginInsertRows
     pub fn begin_insert_rows(&mut self, first : i32, last: i32) {

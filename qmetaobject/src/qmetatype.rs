@@ -241,6 +241,7 @@ qdeclare_builtin_metatype!{u16  => 36}
 qdeclare_builtin_metatype!{u8   => 37}
 qdeclare_builtin_metatype!{f32  => 38}
 //qdeclare_builtin_metatype!{"*c_void" => 31,
+qdeclare_builtin_metatype!{QVariantList  => 9}
 qdeclare_builtin_metatype!{QString => 10}
 qdeclare_builtin_metatype!{QByteArray => 12}
 //qdeclare_builtin_metatype!{QVariant => 41}
@@ -255,6 +256,7 @@ impl QMetaType for QVariant {
         Some(variant)
     }
 }
+qdeclare_builtin_metatype!{QModelIndex => 42}
 
 #[cfg(target_pointer_width = "32")]
 qdeclare_builtin_metatype!{isize  => 32} // That's QMetaType::Long

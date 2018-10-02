@@ -54,14 +54,104 @@ pub trait QAbstractItemModel: QObject {
 }
 
 impl QAbstractItemModel {
+
+  /// Refer to the Qt documentation of QAbstractListModel::beginInsertRows
+    pub fn begin_insert_rows(&self, parent: QModelIndex, first : i32, last: i32) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", parent as "QModelIndex", first as "int", last as "int"]{
+            if(obj) obj->beginInsertRows(parent, first, last);
+        })
+    }
+    /// Refer to the Qt documentation of QAbstractListModel::endInsertRows
+    pub fn end_insert_rows(&self) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+            if(obj) obj->endInsertRows();
+        })
+    }
+    /// Refer to the Qt documentation of QAbstractListModel::beginRemoveRows
+    pub fn begin_remove_rows(&self, parent: QModelIndex, first : i32, last: i32) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", parent as "QModelIndex", first as "int", last as "int"]{
+            if(obj) obj->beginRemoveRows(parent, first, last);
+        })
+    }
+    /// Refer to the Qt documentation of QAbstractListModel::endRemoveRows
+    pub fn end_remove_rows(&self) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+            if(obj) obj->endRemoveRows();
+        })
+    }
+    /// Refer to the Qt documentation of QAbstractListModel::beginResetModel
+    pub fn begin_reset_model(&self) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+            if(obj) obj->beginResetModel();
+        })
+    }
+    /// Refer to the Qt documentation of QAbstractListModel::endResetModel
+    pub fn end_reset_model(&self) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+            if(obj) obj->endResetModel();
+        })
+    }
+
+    /// Refer to the Qt documentation of QAbstractListModel::layoutAboutToBeChanged
+    ///
+    /// update_model_indexes need to be called between layout_about_to_be_changed and layout_changed
+    pub fn layout_about_to_be_changed(&self) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"] {
+            if (obj) obj->layoutAboutToBeChanged();
+        })
+    }
+
+    /// Refer to the Qt documentation of QAbstractListModel::layoutAboutToBeChanged
+    ///
+    /// update_model_indexes need to be called between layout_about_to_be_changed and layout_changed
+    pub fn update_model_indexes<F>(&self, mut f: F) where F : FnMut(QModelIndex)->QModelIndex {
+        let f : &mut FnMut(QModelIndex)->QModelIndex = &mut f;
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", f as "TraitObject"] {
+            if (!obj) return;
+            const auto list1 = obj->persistentIndexList();
+            auto list2 = list1;
+            for (QModelIndex &idx : list2) {
+                rust!(update_model_indexes [f : &mut FnMut(QModelIndex)->QModelIndex as "TraitObject", idx : &mut QModelIndex as "QModelIndex&"] {
+                    *idx = f(idx.clone());
+                });
+            }
+            obj->changePersistentIndexList(list1, list2);
+        })
+    }
+
+    /// Refer to the Qt documentation of QAbstractListModel::layoutChanged
+    ///
+    /// update_model_indexes need to be called between layout_about_to_be_changed and layout_changed
+    pub fn layout_changed(&self) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"] {
+            if (obj) obj->layoutChanged();
+        })
+    }
+
+    /// Refer to the Qt documentation of QAbstractListModel::dataChanged
+    pub fn data_changed(&self, top_left : QModelIndex, bottom_right : QModelIndex) {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
+            if(obj) obj->dataChanged(top_left, bottom_right);
+        })
+    }
+
+
     /// Refer to the Qt documentation of QAbstractItemModel::createIndex
     pub fn create_index(&self, row: i32, column: i32, id: usize) -> QModelIndex {
         let obj = self.get_cpp_object();
-        unsafe {
-            cpp!([obj as "Rust_QAbstractItemModel*", row as "int", column as "int", id as "uintptr_t"] -> QModelIndex as "QModelIndex" {
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", row as "int", column as "int", id as "uintptr_t"] -> QModelIndex as "QModelIndex" {
             return obj ? obj->createIndex(row, column, id) : QModelIndex();
         })
-        }
     }
 }
 
@@ -73,14 +163,16 @@ cpp!{{
 cpp!{{
 struct Rust_QAbstractItemModel : RustObject<QAbstractItemModel> {
 
+    using QAbstractItemModel::beginInsertRows;
+    using QAbstractItemModel::endInsertRows;
+    using QAbstractItemModel::beginRemoveRows;
+    using QAbstractItemModel::endRemoveRows;
+    using QAbstractItemModel::beginResetModel;
+    using QAbstractItemModel::endResetModel;
     using QAbstractItemModel::createIndex;
-
-    const QMetaObject *metaObject() const override {
-        return rust!(Rust_QAbstractItemModel_metaobject[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject"]
-                -> *const QMetaObject as "const QMetaObject*" {
-            rust_object.borrow().meta_object()
-        });
-    }
+    using QAbstractItemModel::createIndex;
+    using QAbstractItemModel::changePersistentIndexList;
+    using QAbstractItemModel::persistentIndexList;
 
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
         return rust!(Rust_QAbstractItemModel_index[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
