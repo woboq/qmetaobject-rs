@@ -457,7 +457,7 @@ macro_rules! qt_property {
 /// ```
 #[macro_export]
 macro_rules! qt_method {
-    ($($t:tt)*) => { std::marker::PhantomData<()> };
+    ($($t:tt)*) => { ::std::marker::PhantomData<()> };
 }
 
 /// Declares a signal
@@ -555,7 +555,6 @@ where
     })};
 }
 
-macro_rules! identity{ ($x:ty) => { $x } } // workaround old version of syn
 /// Returns a callback that can be called in any thread. Calling the callback will then call the
 ///
 /// given closure in the current Qt thread.
@@ -568,7 +567,7 @@ macro_rules! identity{ ($x:ty) => { $x } } // workaround old version of syn
 /// let callback = queued_callback(|()| println!("hello from main thread"));
 /// std::thread::spawn(move || {callback(());}).join();
 /// ```
-pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> identity!(impl Fn(T) + Send) {
+pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + Send {
     let current_thread = cpp!(unsafe [] -> QPointerImpl as "QPointer<QThread>" {
         return QThread::currentThread();
     });
