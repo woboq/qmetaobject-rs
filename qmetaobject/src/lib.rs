@@ -272,7 +272,10 @@ impl<'b, T : QObject + ?Sized + 'b> Drop for QObjectRefMut<'b, T> {
 pub struct QObjectPinned<'pin, T : QObject + ?Sized + 'pin>(&'pin RefCell<T>);
 
 impl<'pin, T : QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
-    pub fn borrow(&self) -> std::cell::Ref<T> { self.0.borrow() }
+    /// Borrow the object
+    // FIXME: there are too many case for which we want re-entrency after borrowing
+    //pub fn borrow(&self) -> std::cell::Ref<T> { self.0.borrow() }
+    pub fn borrow(&self) -> &T { unsafe { &*self.0.as_ptr() } }
     pub fn borrow_mut(&self) -> QObjectRefMut<T> {
         let x = self.0.borrow_mut();
         QObjectRefMut{old_value: x.get_cpp_object(), inner: x  }
@@ -289,7 +292,7 @@ impl<'pin, T : QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
 impl<'pin, T : QObject + 'pin> QObjectPinned<'pin, T> {
     /// Get the pointer ot the C++ Object, or crate it if it was not yet created
     pub fn get_or_create_cpp_object(&self) -> *mut c_void {
-        let r = self.0.borrow().get_cpp_object();
+        let r = unsafe { &*self.0.as_ptr() }.get_cpp_object();
         if r.is_null() { unsafe { QObject::cpp_construct(self.0) } } else { r }
     }
 }
