@@ -22,36 +22,10 @@ use qmetaobject::*;
 extern crate lazy_static;
 use std::ffi::CStr;
 use std::rc::Rc;
-use std::sync::Mutex;
 use std::cell::RefCell;
 
-lazy_static! {
-    static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
-}
-
-pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
-    let _lock = TEST_MUTEX.lock().unwrap();
-
-    let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
-
-    let obj = RefCell::new(obj);
-
-    let mut engine = QmlEngine::new();
-    engine.set_object_property("_obj".into(), unsafe { QObjectPinned::new(&obj) });
-    engine.load_data(qml_text.into());
-    engine.invoke_method("doTest".into(), &[]).to_bool()
-}
-
-pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
-    let _lock = TEST_MUTEX.lock().unwrap();
-
-    let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
-
-    let mut engine = QmlEngine::new();
-    engine.set_property("_obj".into(), obj);
-    engine.load_data(qml_text.into());
-    engine.invoke_method("doTest".into(), &[]).to_bool()
-}
+mod common;
+use common::*;
 
 #[test]
 fn self_test() {
@@ -181,36 +155,6 @@ fn call_method() {
             _obj.prop_y = '8887'
             return _obj.method_out_of_line('hello') == '8887hello';
         }}"
-    ));
-}
-
-#[test]
-fn simple_model() {
-    #[derive(Default, SimpleListItem)]
-    struct TM {
-        pub a: QString,
-        pub b: u32,
-    }
-    // FIXME! why vec! here?
-    let model: qmetaobject::listmodel::SimpleListModel<TM> = (vec![TM {
-        a: "hello".into(),
-        b: 1,
-    }]).into_iter()
-        .collect();
-    assert!(do_test(
-        model,
-        "Item {
-            Repeater{
-                id: rep;
-                model:_obj;
-                Text {
-                    text: a + b;
-                }
-            }
-            function doTest() {
-                console.log('simple_model:', rep.count, rep.itemAt(0).text);
-                return rep.count === 1 && rep.itemAt(0).text === 'hello1';
-            }}"
     ));
 }
 
