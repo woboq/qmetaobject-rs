@@ -170,7 +170,6 @@ struct Rust_QAbstractItemModel : RustObject<QAbstractItemModel> {
     using QAbstractItemModel::beginResetModel;
     using QAbstractItemModel::endResetModel;
     using QAbstractItemModel::createIndex;
-    using QAbstractItemModel::createIndex;
     using QAbstractItemModel::changePersistentIndexList;
     using QAbstractItemModel::persistentIndexList;
 
