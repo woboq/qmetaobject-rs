@@ -247,7 +247,7 @@ fn qobject_properties() {
 
 #[test]
 fn singleshot() {
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let engine = Rc::new(QmlEngine::new());
     let engine_copy = engine.clone();
@@ -259,7 +259,7 @@ fn singleshot() {
 
 #[test]
 fn test_queud_callback() {
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let engine = Rc::new(QmlEngine::new());
     let engine_copy = engine.clone();
@@ -498,3 +498,41 @@ fn qpointer() {
     assert!(ptr.as_ref().is_none());
     assert!(pt2.as_ref().is_none());
 }
+
+#[derive(QObject, Default)]
+struct StupidObject {
+    base: qt_base_class!(trait QObject),
+    prop_x: qt_property!(u32; READ prop_x_getter CONST),
+    prop_y: qt_property!(u32; WRITE prop_y_setter),
+    method: qt_method!(fn method(&mut self) { *self = StupidObject::default(); })
+}
+impl StupidObject{
+    fn prop_x_getter(&mut self) -> u32 {
+        *self = StupidObject::default();
+        0
+    }
+    fn prop_y_setter(&mut self, _: u32)  {
+        *self = StupidObject::default();
+    }
+}
+
+#[test]
+#[should_panic(expected = "Internal pointer changed")]
+fn panic_when_moved_method() {
+    let my_obj = StupidObject::default();
+    do_test( my_obj, "Item { x: _obj.method(); }" );
+}
+#[test]
+#[should_panic(expected = "Internal pointer changed")]
+fn panic_when_moved_getter() {
+    let my_obj = StupidObject::default();
+    do_test( my_obj, "Item { x: _obj.prop_x; }" );
+}
+#[test]
+#[should_panic(expected = "Internal pointer changed")]
+fn panic_when_moved_setter() {
+    let my_obj = StupidObject::default();
+    do_test( my_obj, "Item { function doTest() { _obj.prop_y = 45; } }" );
+}
+
+

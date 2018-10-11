@@ -349,7 +349,7 @@ fn test_qmetatype() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Attempt to register the same type with different name")]
 fn test_qmetatype_register_wrong_type1() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
     struct MyType {};
@@ -359,7 +359,7 @@ fn test_qmetatype_register_wrong_type1() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Attempt to register the same type with different name")]
 fn test_qmetatype_register_wrong_type2() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
     struct MyType {};

@@ -27,7 +27,7 @@ lazy_static! {
 }
 
 pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
@@ -40,7 +40,7 @@ pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
 }
 
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
-    let _lock = TEST_MUTEX.lock().unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 

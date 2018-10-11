@@ -494,12 +494,18 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let int_data = mo.int_data;
 
     use self::MetaObjectCall::*;
-
     let get_object = if is_qobject {
         quote!{
             let pinned = <#name #ty_generics as #crate_::QObject>::get_from_cpp(o);
             // FIXME: we should probably use borrow_mut here instead, but in a way which order re-entry
             let mut obj = &mut *pinned.as_ptr();
+
+            assert_eq!(o, obj.get_cpp_object(), "Internal pointer invalid");
+            struct Check<'check>(*mut ::std::os::raw::c_void, *const (#crate_::QObject + 'check));
+            impl<'check> ::std::ops::Drop for Check<'check> {
+                fn drop(&mut self) { assert_eq!(self.0, unsafe {&*self.1}.get_cpp_object(), "Internal pointer changed while borrowed"); }
+            }
+            let _check = Check(o, obj as *const #crate_::QObject);
         }
     } else {
         quote!{ let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o); }
