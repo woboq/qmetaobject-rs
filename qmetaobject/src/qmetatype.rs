@@ -195,7 +195,7 @@ pub trait QMetaType: Clone + Default + 'static {
         }
     }
 
-    /// If this is set to a function, it enable the conversion to and from string
+    /// If this is set to a function, it enable the conversion to and from QString
     const CONVERSION_TO_STRING : Option<fn(&Self)->QString> = None;
     const CONVERSION_FROM_STRING : Option<fn(&QString)->Self> = None;
 }
@@ -216,7 +216,6 @@ where
 impl QMetaType for String {
     const CONVERSION_TO_STRING : Option<fn(&Self)->QString> = Some(|s|QString::from(&*s as &str));
     const CONVERSION_FROM_STRING : Option<fn(&QString)->Self> = Some(|s|s.to_string());
-
 }
 
 macro_rules! qdeclare_builtin_metatype {

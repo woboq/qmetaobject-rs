@@ -18,3 +18,5 @@ bitflags = "1.0"
 [build-dependencies]
 cpp_build = "0.5"
 
+[dev-dependencies]
+cstr = "0.1"

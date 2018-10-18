@@ -118,7 +118,7 @@ impl QmlEngine {
     }
 }
 
-/// Wrap a QQuickView
+/// Bindings to a QQuickView
 pub struct QQuickView {
     engine: QmlEngine,
 }
@@ -455,6 +455,24 @@ mod qjsvalue_tests {
 /// A QObject-like trait to inherit from QQmlExtensionPlugin.
 ///
 /// Refer to the Qt documentation of QQmlExtensionPlugin
+///
+/// See also the 'qmlextensionplugins' example.
+///
+/// ```
+/// # extern crate qmetaobject; use qmetaobject::*;
+/// #[derive(Default, QObject)]
+/// struct QExampleQmlPlugin {
+///     base: qt_base_class!(trait QQmlExtensionPlugin),
+///     plugin: qt_plugin!("org.qt-project.Qt.QQmlExtensionInterface/1.0"),
+/// }
+///
+/// impl QQmlExtensionPlugin for QExampleQmlPlugin {
+///     fn register_types(&mut self, uri: &std::ffi::CStr) {
+///         // call `qml_register_type` here
+///     }
+/// }
+/// ```
+
 pub trait QQmlExtensionPlugin: QObject {
     #[doc(hidden)] // implementation detail for the QObject custom derive
     fn get_object_description() -> &'static QObjectDescription

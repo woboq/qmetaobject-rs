@@ -16,6 +16,50 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+/*! This crate implements binding to the Qt API.
+
+    Example:
+
+    ```
+    extern crate qmetaobject;
+    use qmetaobject::*;
+    #[macro_use] extern crate cstr;
+
+    #[derive(QObject,Default)]
+    struct Greeter {
+        base : qt_base_class!(trait QObject),
+        name : qt_property!(QString; NOTIFY name_changed),
+        name_changed : qt_signal!(),
+        compute_greetings : qt_method!(fn compute_greetings(&self, verb : String) -> QString {
+            return (verb + " " + &self.name.to_string()).into()
+        })
+    }
+
+    fn main() {
+        qml_register_type::<Greeter>(cstr!("Greeter"), 1, 0, cstr!("Greeter"));
+        let mut engine = QmlEngine::new();
+        engine.load_data(r#"
+            import QtQuick 2.6;
+            import QtQuick.Window 2.0;
+            import Greeter 1.0
+            Window {
+                visible: true;
+                Greeter {
+                    id: greeter;
+                    name: 'World';
+                }
+                Text {
+                    anchors.centerIn: parent;
+                    text: greeter.compute_greetings('hello');
+                }
+    #           Component.onCompleted: Qt.callLater(Qt.quit); // We don't want a modal dialog in a test
+            }"#.into());
+        engine.exec();
+    }
+    ```
+*/
+
+
 #![recursion_limit = "10240"]
 
 #[macro_use]
@@ -151,7 +195,8 @@ impl QObject {
     ///
     /// The cpp_construct function must already have been called.
     ///
-    /// FIXME: should probably not be used
+    /// FIXME: should probably not be used. Prefer using a QmlEngine::new_qobject.
+    /// QVariant is unsafe as it does not manage life time
     pub unsafe fn as_qvariant(&self) -> QVariant {
         let self_ = self.get_cpp_object();
         cpp!{[self_ as "QObject*"] -> QVariant as "QVariant"  {
@@ -160,19 +205,22 @@ impl QObject {
     }
 
 
+    /// See Qt documentation for QObject::destroyed
     pub fn destroyed_signal() -> CppSignal<fn()> {
         unsafe { CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
             return &QObject::destroyed;
         }))}
     }
 
-    /// FIXME. take self by special reference?  panic if cpp_object does not exist?
+    /// See Qt documentation for QObject::setObjectName
+    // FIXME. take self by special reference?  panic if cpp_object does not exist?
     pub fn set_object_name(&self, name: QString) {
         let self_ = self.get_cpp_object();
         unsafe {cpp!([self_ as "QObject*", name as "QString"] {
             if (self_) self_->setObjectName(std::move(name));
         })}
     }
+    /// See Qt documentation for QObject::objectNameChanged
     pub fn object_name_changed_signal() -> CppSignal<fn(QString)> {
         unsafe {CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
             return &QObject::objectNameChanged;
@@ -186,6 +234,8 @@ cpp_class!(unsafe struct QPointerImpl as "QPointer<QObject>");
 // (we only need a *const T to support the !Sized case. (Maybe there is a better way)
 pub struct QPointer<T: QObject + ?Sized>(QPointerImpl, *const T);
 impl<T: QObject + ?Sized> QPointer<T> {
+
+    /// Returns a pointer to the cpp object (null if it was deleted)
     pub fn cpp_ptr(&self) -> *mut c_void {
         let x = &self.0;
         cpp!(unsafe [x as "QPointer<QObject>*"] -> *mut c_void as "QObject*" {
@@ -203,6 +253,8 @@ impl<T: QObject + ?Sized> QPointer<T> {
         }
     }
 
+    /// Returns true if the object was default constructed or constructed with an object which
+    /// is now deleted
     pub fn is_null(&self) -> bool {
         self.cpp_ptr().is_null()
     }
@@ -220,6 +272,8 @@ impl<T: QObject> QPointer<T> {
 }
 
 impl<'a, T: QObject + ?Sized> From<&'a T> for QPointer<T> {
+    /// Creates a QPointer from a reference to a QObject.
+    /// The corresponding C++ object must have already been created.
     fn from(obj: &'a T) -> Self {
         let cpp_obj = obj.get_cpp_object();
         QPointer(cpp!(unsafe [cpp_obj as "QObject *"] -> QPointerImpl  as "QPointer<QObject>" {

@@ -55,3 +55,27 @@ Window {
  - Partial scene graph support
 
 Requires Qt >= 5.8
+
+## What if a binding for the Qt C++ API you want to use is missing?
+
+It is quite likely that you would like to call a particular Qt function wich is not wrapped by
+this crate.
+
+In this case, it is always possible to access C++ directly from your rust code using the cpp! macro.
+
+Example: from examples/graph/src/main.rs, the struct Graph is a QObject deriving from QQuickItem,
+QQuickItem::setFlag is currently not exposed in the API but we wish to call it anyway.
+
+```rust
+impl Graph {
+    fn appendSample(&mut self, value: f64) {
+        // ...
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "QQuickItem*"] { obj->setFlag(QQuickItem::ItemHasContents); });
+        // ...
+    }
+}
+```
+
+But ideally, we should wrap as much as possible so this would not be needed. You can request API
+as a github issue, or contribute via a pull request.
