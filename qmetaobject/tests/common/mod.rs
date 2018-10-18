@@ -26,8 +26,14 @@ lazy_static! {
     pub static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
 }
 
+extern "C" fn log_capture(msg_type : QtMsgType, context: &QMessageLogContext, message : &QString) {
+    println!("{}:{} [{:?} {} {}] {}", context.file(), context.line(), msg_type, context.category(), context.function(), message);
+}
+
 pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+
+    install_message_handler(log_capture);
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
@@ -41,6 +47,8 @@ pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
 
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+
+    install_message_handler(log_capture);
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 

@@ -86,7 +86,7 @@ macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 //extern crate bitflags;
 
 use std::cell::RefCell;
-use std::os::raw::c_void;
+use std::os::raw::{c_void, c_char};
 
 pub mod qttypes;
 pub use qttypes::*;
@@ -677,6 +677,55 @@ fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
 
 /// Refer to the documentation of Qt::UserRole
 pub const USER_ROLE: i32 = 0x0100;
+
+cpp_class!(
+/// Wrapper for Qt's QMessageLogContext
+pub unsafe struct QMessageLogContext as "QMessageLogContext");
+impl QMessageLogContext {
+    // Return QMessageLogContext::line
+    pub fn line(&self) -> i32 { cpp!(unsafe [self as "QMessageLogContext*"] -> i32 as "int" { return self->line; }) }
+    // Return QMessageLogContext::file
+    pub fn file(&self) -> &str {
+        unsafe {
+            let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
+                return self->file;
+            });
+            if x.is_null() { return ""; }
+            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+        }
+    }
+    // Return QMessageLogContext::function
+    pub fn function(&self) -> &str {
+        unsafe {
+            let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
+                return self->function;
+            });
+            if x.is_null() { return ""; }
+            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+        }
+    }
+    // Return QMessageLogContext::category
+    pub fn category(&self) -> &str {
+        unsafe {
+            let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
+                return self->category;
+            });
+            if x.is_null() { return ""; }
+            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+        }
+    }
+}
+
+/// Wrap Qt's QtMsgType enum
+#[repr(C)]
+#[derive(Debug)]
+pub enum QtMsgType { QtDebugMsg, QtWarningMsg, QtCriticalMsg, QtFatalMsg, QtInfoMsg }
+
+/// Wrap qt's qInstallMessageHandler.
+/// Useful in order to forward the log to a rust logging framework
+pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogContext, &QString)) {
+    cpp!(unsafe [logger as "QtMessageHandler"] { qInstallMessageHandler(logger); })
+}
 
 pub mod itemmodel;
 pub use itemmodel::*;
