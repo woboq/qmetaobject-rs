@@ -71,7 +71,8 @@ pub fn qresource_impl(input: TokenStream) -> TokenStream {
     let src = input.to_string();
     let beg = src
         .find("stringify!(")
-        .expect("Internal error: no strignify in QResource_internal contents") + 11;
+        .expect("Internal error: no strignify in QResource_internal contents")
+        + 11;
     let end = src
         .rfind("))")
         .expect("Internal error: no '))' in QResource_internal contents");

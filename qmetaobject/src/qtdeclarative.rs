@@ -57,14 +57,16 @@ impl QmlEngine {
 
     /// Loads qml data (See QQmlApplicationEngine::loadData)
     pub fn load_data(&mut self, data: QByteArray) {
-        unsafe { cpp!([self as "QmlEngineHolder*", data as "QByteArray"] {
+        unsafe {
+            cpp!([self as "QmlEngineHolder*", data as "QByteArray"] {
             self->engine->loadData(data);
-        })}
+        })
+        }
     }
 
     /// Launches the application
     pub fn exec(&self) {
-        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->exec(); })}
+        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->exec(); }) }
     }
     /// Closes the application
     pub fn quit(&self) {
@@ -73,15 +75,21 @@ impl QmlEngine {
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     pub fn set_property(&mut self, name: QString, value: QVariant) {
-        unsafe { cpp!([self as "QmlEngineHolder*", name as "QString", value as "QVariant"] {
+        unsafe {
+            cpp!([self as "QmlEngineHolder*", name as "QString", value as "QVariant"] {
             self->engine->rootContext()->setContextProperty(name, value);
-        })}
+        })
+        }
     }
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     ///
     // (TODO: consider making the lifetime the one of the engine, instead of static)
-    pub fn set_object_property<T: QObject + Sized>(&mut self, name: QString, obj: QObjectPinned<T>) {
+    pub fn set_object_property<T: QObject + Sized>(
+        &mut self,
+        name: QString,
+        obj: QObjectPinned<T>,
+    ) {
         let obj_ptr = obj.get_or_create_cpp_object();
         cpp!(unsafe [self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);

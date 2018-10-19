@@ -242,8 +242,7 @@ fn map_method_parameters(
                 typ: cap.ty.clone(),
             }),
             _ => None,
-        })
-        .collect()
+        }).collect()
 }
 
 fn map_method_parameters2(
@@ -263,8 +262,7 @@ fn map_method_parameters2(
             } else {
                 None
             }
-        })
-        .collect()
+        }).collect()
 }
 
 pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
@@ -332,8 +330,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                                     r.push(input.parse()?)
                                                 }
                                                 Ok(r)
-                                            })
-                                            .unwrap_or(Ok(Default::default()))?,
+                                            }).unwrap_or(Ok(Default::default()))?,
                                     ))
                                 };
 
@@ -593,8 +590,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                     quote! {
                         (*(*(a.offset(#i + 1)) as *const #ty)).clone()
                     }
-                })
-                .collect();
+                }).collect();
 
             fn is_void(ret_type: &syn::Type) -> bool {
                 if let syn::Type::Tuple(ref tuple) = ret_type {
@@ -616,8 +612,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                     }
                 }
             }
-        })
-        .collect();
+        }).collect();
 
     let register_arguments: Vec<_> = methods
         .iter()

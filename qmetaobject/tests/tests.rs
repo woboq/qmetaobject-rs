@@ -20,9 +20,9 @@ use qmetaobject::*;
 
 #[macro_use]
 extern crate lazy_static;
+use std::cell::RefCell;
 use std::ffi::CStr;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 mod common;
 use common::*;
@@ -267,7 +267,7 @@ fn test_queud_callback() {
     std::thread::spawn(move || {
         callback(());
     }).join()
-        .unwrap();
+    .unwrap();
     engine.exec();
 }
 
@@ -466,7 +466,14 @@ fn qpointer() {
         pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x| x.prop_x), 23);
         assert_eq!(pt2.as_ref().map_or(898, |x| x.prop_x), 23);
-        assert_eq!(ptr.as_pinned().map_or(989, |x| { let old = x.borrow().prop_x; x.borrow_mut().prop_x = 42; old } ), 23);
+        assert_eq!(
+            ptr.as_pinned().map_or(989, |x| {
+                let old = x.borrow().prop_x;
+                x.borrow_mut().prop_x = 42;
+                old
+            }),
+            23
+        );
         assert_eq!(pt2.as_ref().map_or(898, |x| x.prop_x), 42);
     }
     assert!(ptr.as_ref().is_none());
@@ -504,14 +511,14 @@ struct StupidObject {
     base: qt_base_class!(trait QObject),
     prop_x: qt_property!(u32; READ prop_x_getter CONST),
     prop_y: qt_property!(u32; WRITE prop_y_setter),
-    method: qt_method!(fn method(&mut self) { *self = StupidObject::default(); })
+    method: qt_method!(fn method(&mut self) { *self = StupidObject::default(); }),
 }
-impl StupidObject{
+impl StupidObject {
     fn prop_x_getter(&mut self) -> u32 {
         *self = StupidObject::default();
         0
     }
-    fn prop_y_setter(&mut self, _: u32)  {
+    fn prop_y_setter(&mut self, _: u32) {
         *self = StupidObject::default();
     }
 }
@@ -520,19 +527,17 @@ impl StupidObject{
 #[should_panic(expected = "Internal pointer changed")]
 fn panic_when_moved_method() {
     let my_obj = StupidObject::default();
-    do_test( my_obj, "Item { x: _obj.method(); }" );
+    do_test(my_obj, "Item { x: _obj.method(); }");
 }
 #[test]
 #[should_panic(expected = "Internal pointer changed")]
 fn panic_when_moved_getter() {
     let my_obj = StupidObject::default();
-    do_test( my_obj, "Item { x: _obj.prop_x; }" );
+    do_test(my_obj, "Item { x: _obj.prop_x; }");
 }
 #[test]
 #[should_panic(expected = "Internal pointer changed")]
 fn panic_when_moved_setter() {
     let my_obj = StupidObject::default();
-    do_test( my_obj, "Item { function doTest() { _obj.prop_y = 45; } }" );
+    do_test(my_obj, "Item { function doTest() { _obj.prop_y = 45; } }");
 }
-
-

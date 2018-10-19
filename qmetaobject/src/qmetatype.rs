@@ -19,7 +19,8 @@ use super::*;
 
 fn register_metatype_common<T: QMetaType>(
     name: *const std::os::raw::c_char,
-    gadget_metaobject: *const QMetaObject) -> i32 {
+    gadget_metaobject: *const QMetaObject,
+) -> i32 {
     use std::any::TypeId;
     use std::collections::{HashMap, HashSet};
     use std::ffi::{CStr, CString};
@@ -163,7 +164,7 @@ pub trait QMetaType: Clone + Default + 'static {
     fn register(name: Option<&std::ffi::CStr>) -> i32 {
         register_metatype_common::<Self>(
             name.map_or(std::ptr::null(), |x| x.as_ptr()),
-            std::ptr::null()
+            std::ptr::null(),
         )
     }
 
@@ -196,8 +197,8 @@ pub trait QMetaType: Clone + Default + 'static {
     }
 
     /// If this is set to a function, it enable the conversion to and from QString
-    const CONVERSION_TO_STRING : Option<fn(&Self)->QString> = None;
-    const CONVERSION_FROM_STRING : Option<fn(&QString)->Self> = None;
+    const CONVERSION_TO_STRING: Option<fn(&Self) -> QString> = None;
+    const CONVERSION_FROM_STRING: Option<fn(&QString) -> Self> = None;
 }
 
 /// QGadget are automatically QMetaType
@@ -214,8 +215,8 @@ where
 }
 
 impl QMetaType for String {
-    const CONVERSION_TO_STRING : Option<fn(&Self)->QString> = Some(|s|QString::from(&*s as &str));
-    const CONVERSION_FROM_STRING : Option<fn(&QString)->Self> = Some(|s|s.to_string());
+    const CONVERSION_TO_STRING: Option<fn(&Self) -> QString> = Some(|s| QString::from(&*s as &str));
+    const CONVERSION_FROM_STRING: Option<fn(&QString) -> Self> = Some(|s| s.to_string());
 }
 
 macro_rules! qdeclare_builtin_metatype {
@@ -301,9 +302,12 @@ where
     }
 }
 
-impl<T> PropertyType for ::std::cell::RefCell<T> where T : QObject {
-    const READ_ONLY : bool = true;
-    fn register_type(_name : &::std::ffi::CStr) -> i32 {
+impl<T> PropertyType for ::std::cell::RefCell<T>
+where
+    T: QObject,
+{
+    const READ_ONLY: bool = true;
+    fn register_type(_name: &::std::ffi::CStr) -> i32 {
         register_metatype_qobject::<T>()
     }
     unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
@@ -316,7 +320,6 @@ impl<T> PropertyType for ::std::cell::RefCell<T> where T : QObject {
         panic!("Cannot write into an Object property");
     }
 }
-
 
 #[test]
 fn test_qmetatype() {

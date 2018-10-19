@@ -22,8 +22,7 @@ use std::iter::FromIterator;
 use std::ops::Index;
 
 /// This trait allow to override a Qt QAbstractListModel
-pub trait QAbstractListModel : QObject {
-
+pub trait QAbstractListModel: QObject {
     /// Required for the implementation detail of the QObject custom derive
     fn get_object_description() -> &'static QObjectDescription where Self:Sized {
         unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
@@ -31,21 +30,24 @@ pub trait QAbstractListModel : QObject {
         } ) }
     }
 
-
     /// Refer to the Qt documentation of QAbstractListModel::rowCount
     fn row_count(&self) -> i32;
     /// Refer to the Qt documentation of QAbstractListModel::data
-    fn data(&self, index: QModelIndex, role:i32) -> QVariant;
+    fn data(&self, index: QModelIndex, role: i32) -> QVariant;
     /// Refer to the Qt documentation of QAbstractListModel::setData
-    fn set_data(&mut self, _index: QModelIndex, _value: &QVariant, _role: i32) -> bool { false }
+    fn set_data(&mut self, _index: QModelIndex, _value: &QVariant, _role: i32) -> bool {
+        false
+    }
     /// Refer to the Qt documentation of QAbstractListModel::roleNames
-    fn role_names(&self) -> HashMap<i32, QByteArray> { HashMap::new() }
+    fn role_names(&self) -> HashMap<i32, QByteArray> {
+        HashMap::new()
+    }
 }
 
 // FIXME! code duplication with impl QAbstractItemModel
 impl QAbstractListModel {
     /// Refer to the Qt documentation of QAbstractListModel::beginInsertRows
-    pub fn begin_insert_rows(&mut self, first : i32, last: i32) {
+    pub fn begin_insert_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
@@ -90,7 +92,7 @@ impl QAbstractListModel {
     }
 
     /// Refer to the Qt documentation of QAbstractListModel::dataChanged
-    pub fn data_changed(&mut self, top_left : QModelIndex, bottom_right : QModelIndex) {
+    pub fn data_changed(&mut self, top_left: QModelIndex, bottom_right: QModelIndex) {
         let obj = self.get_cpp_object();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
             if(obj) obj->dataChanged(top_left, bottom_right);
@@ -98,7 +100,7 @@ impl QAbstractListModel {
     }
 
     /// Returns a QModelIndex for the given row (in the first column)
-    pub fn row_index(&self, i : i32) -> QModelIndex {
+    pub fn row_index(&self, i: i32) -> QModelIndex {
         let obj = self.get_cpp_object();
         unsafe { cpp!([obj as "Rust_QAbstractListModel*", i as "int"] -> QModelIndex as "QModelIndex" {
             return obj ? obj->index(i) : QModelIndex();

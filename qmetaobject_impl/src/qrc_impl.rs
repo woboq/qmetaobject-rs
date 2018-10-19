@@ -19,9 +19,9 @@ use proc_macro::TokenStream;
 
 use std::collections::BTreeMap;
 use std::fs;
+use std::iter::FromIterator;
 use syn::parse::{Parse, ParseStream, Parser, Result};
 use syn::LitStr;
-use std::iter::FromIterator;
 
 #[derive(Debug)]
 struct Resource {
@@ -271,7 +271,7 @@ fn expand_macro(data: Data) -> TokenStream {
     // Workaround performence issue with proc_macro2 and Rust 1.29:
     // quote!(#(#payload),*) uses proc_macro2::TokenStream::extend, which is O(n²) with rust 1.29
     // since the payload array can be quite large, this is completely unacceptable.
-    let payload = ::proc_macro2::TokenStream::from_iter(payload.iter().map(|x| quote!(#x,) ) );
+    let payload = ::proc_macro2::TokenStream::from_iter(payload.iter().map(|x| quote!(#x,)));
 
     let q = quote!{
         fn register() {

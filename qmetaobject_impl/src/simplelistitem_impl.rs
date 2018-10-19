@@ -31,8 +31,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 } else {
                     None
                 }
-            })
-            .collect::<Vec<syn::Ident>>()
+            }).collect::<Vec<syn::Ident>>()
     } else {
         panic!("#[derive(SimpleListItem)] is only defined for structs");
     };
@@ -47,8 +46,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .map(|(i, ref ident)| {
             let i = i as i32;
             quote!{ #i => QMetaType::to_qvariant(&self.#ident), }
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();

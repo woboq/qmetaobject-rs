@@ -22,7 +22,6 @@ use qmetaobject::*;
 mod common;
 use common::*;
 
-
 #[test]
 fn simple_model() {
     #[derive(Default, SimpleListItem)]
@@ -35,7 +34,7 @@ fn simple_model() {
         a: "hello".into(),
         b: 1,
     }]).into_iter()
-        .collect();
+    .collect();
     assert!(do_test(
         model,
         "Item {

@@ -119,26 +119,39 @@ impl<Args> CppSignal<Args> {
 /// Args represents the type of the arguments, similar to the CppSignal ones
 pub struct RustSignal<Args> {
     phantom: std::marker::PhantomData<Args>,
-    _u : bool, // Actually but a field so it has a size;
+    _u: bool, // Actually but a field so it has a size;
 }
 impl<Args> Default for RustSignal<Args> {
-    fn default() -> Self { RustSignal{ phantom: Default::default(), _u: false } }
+    fn default() -> Self {
+        RustSignal {
+            phantom: Default::default(),
+            _u: false,
+        }
+    }
 }
 impl<Args> RustSignal<Args> {
     /// return a CppSignal corresponding to this signal.
     ///
     /// The container object must be passed.
-    pub fn to_cpp_representation<O : QObject + Sized>(&self, obj : &O) -> CppSignal<Args> {
-        let o = obj as *const O as  isize;
+    pub fn to_cpp_representation<O: QObject + Sized>(&self, obj: &O) -> CppSignal<Args> {
+        let o = obj as *const O as isize;
         let r = self as *const RustSignal<Args> as isize;
         let diff = r - o;
-        assert!(diff >= 0 && diff < std::mem::size_of::<O>() as isize, "Signal not part of the Object");
-        let inner = unsafe { cpp!([diff as "qintptr"] -> SignalCppRepresentation as "SignalCppRepresentation" {
+        assert!(
+            diff >= 0 && diff < std::mem::size_of::<O>() as isize,
+            "Signal not part of the Object"
+        );
+        let inner = unsafe {
+            cpp!([diff as "qintptr"] -> SignalCppRepresentation as "SignalCppRepresentation" {
             SignalCppRepresentation u;
             u.rust_signal = diff;
             return u;
-        })};
-        CppSignal{ inner,  phantom: Default::default() }
+        })
+        };
+        CppSignal {
+            inner,
+            phantom: Default::default(),
+        }
     }
 }
 
