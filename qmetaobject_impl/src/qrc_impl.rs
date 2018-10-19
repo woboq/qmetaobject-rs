@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use syn::parse::{Parse, ParseStream, Parser, Result};
 use syn::LitStr;
+use std::iter::FromIterator;
 
 #[derive(Debug)]
 struct Resource {
@@ -266,12 +267,18 @@ fn expand_macro(data: Data) -> TokenStream {
         tree_data,
         files,
     } = data;
+
+    // Workaround performence issue with proc_macro2 and Rust 1.29:
+    // quote!(#(#payload),*) uses proc_macro2::TokenStream::extend, which is O(n²) with rust 1.29
+    // since the payload array can be quite large, this is completely unacceptable.
+    let payload = ::proc_macro2::TokenStream::from_iter(payload.iter().map(|x| quote!(#x,) ) );
+
     let q = quote!{
         fn register() {
             use ::std::sync::{Once, ONCE_INIT};
             static INIT_RESOURCES: Once = ONCE_INIT;
             INIT_RESOURCES.call_once(|| {
-                static PAYLOAD : &'static [u8] = & [ #(#payload),* ];
+                static PAYLOAD : &'static [u8] = & [ #payload ];
                 static NAMES : &'static [u8] = & [ #(#names),* ];
                 static TREE_DATA : &'static [u8] = & [ #(#tree_data),* ];
                 unsafe { ::qmetaobject::qrc::register_resource_data(2, TREE_DATA, NAMES, PAYLOAD) };
