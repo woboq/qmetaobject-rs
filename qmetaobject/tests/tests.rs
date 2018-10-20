@@ -506,6 +506,7 @@ fn qpointer() {
     assert!(pt2.as_ref().is_none());
 }
 
+/* Panic test are a bad idea as the sception has to cross the C++ boundaries which does not work every time
 #[derive(QObject, Default)]
 struct StupidObject {
     base: qt_base_class!(trait QObject),
@@ -541,3 +542,4 @@ fn panic_when_moved_setter() {
     let my_obj = StupidObject::default();
     do_test(my_obj, "Item { function doTest() { _obj.prop_y = 45; } }");
 }
+*/
