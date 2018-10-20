@@ -21,7 +21,7 @@ use std::process::Command;
 fn qmake_query(var: &str) -> String {
     String::from_utf8(
         Command::new("qmake")
-            .args(&["-query", var])
+            .args(&["-qt5", "-query", var])
             .output()
             .expect("Failed to execute qmake. Make sure 'qmake' is in your path")
             .stdout,
