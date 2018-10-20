@@ -63,7 +63,7 @@ this crate.
 
 In this case, it is always possible to access C++ directly from your rust code using the cpp! macro.
 
-Example: from examples/graph/src/main.rs, the struct Graph is a QObject deriving from QQuickItem,
+Example: from [`examples/graph/src/main.rs`](https://github.com/woboq/qmetaobject-rs/blob/a5b7456bdd22b856dfae49d513c06ecddd6499fc/examples/graph/src/main.rs#L37), the struct Graph is a QObject deriving from QQuickItem,
 QQuickItem::setFlag is currently not exposed in the API but we wish to call it anyway.
 
 ```rust
