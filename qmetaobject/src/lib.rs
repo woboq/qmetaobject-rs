@@ -52,8 +52,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     anchors.centerIn: parent;
                     text: greeter.compute_greetings('hello');
                 }
-    #           Component.onCompleted: Qt.callLater(Qt.quit); // We don't want a modal dialog in a test
             }"#.into());
+    #   #[cfg(any())] // We don't want a modal dialog in a test
         engine.exec();
     }
     ```
