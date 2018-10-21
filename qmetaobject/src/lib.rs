@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     fn main() {
         qml_register_type::<Greeter>(cstr!("Greeter"), 1, 0, cstr!("Greeter"));
         let mut engine = QmlEngine::new();
+    # return; // We can't create a window in the CI
         engine.load_data(r#"
             import QtQuick 2.6;
             import QtQuick.Window 2.0;
@@ -53,7 +54,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     text: greeter.compute_greetings('hello');
                 }
             }"#.into());
-    #   #[cfg(any())] // We don't want a modal dialog in a test
         engine.exec();
     }
     ```
