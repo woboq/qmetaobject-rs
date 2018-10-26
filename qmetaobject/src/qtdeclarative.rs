@@ -37,6 +37,23 @@ cpp!{{
     };
 }}
 
+#[cfg(feature = "webengine")]
+cpp!{{
+    #include <QtWebEngine/QtWebEngine>
+}}
+
+
+#[cfg(feature = "webengine")]
+pub struct QtWebEngine;
+#[cfg(feature = "webengine")]
+impl QtWebEngine {
+    pub fn initialize() {
+        cpp!(unsafe [] {
+            QtWebEngine::initialize();
+        });
+    }
+}
+
 /// Wrap a Qt Application and a QmlEngine
 cpp_class!(pub unsafe struct QmlEngine as "QmlEngineHolder");
 impl QmlEngine {
