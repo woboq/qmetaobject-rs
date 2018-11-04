@@ -75,7 +75,7 @@ struct ContainerNode : QSGNode {
 // Don't reimplement
 pub trait UpdateNodeFnTuple<T> {
     fn len(&self) -> u64;
-    unsafe fn update_fn(&self, i: u64, *mut c_void) -> *mut c_void;
+    unsafe fn update_fn(&self, i: u64, _: *mut c_void) -> *mut c_void;
 }
 
 // Implementation for tuple of different sizes
