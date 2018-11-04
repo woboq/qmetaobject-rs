@@ -72,7 +72,6 @@ pub use qmetaobject_impl::*;
 
 /* In order to be able to use the lazy_static macro from the QObject custom derive, we re-export
    it under a new name qmetaobject_lazy_static */
-#[macro_use]
 extern crate lazy_static;
 #[allow(unused_imports)]
 #[doc(hidden)]

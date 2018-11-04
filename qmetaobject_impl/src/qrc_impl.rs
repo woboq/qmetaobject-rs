@@ -20,7 +20,7 @@ use proc_macro::TokenStream;
 use std::collections::BTreeMap;
 use std::fs;
 use std::iter::FromIterator;
-use syn::parse::{Parse, ParseStream, Parser, Result};
+use syn::parse::{Parse, ParseStream, Result};
 use syn::LitStr;
 
 #[derive(Debug)]
@@ -64,14 +64,25 @@ impl Parse for File {
     }
 }
 
-fn parse_qrc(source: &str) -> Vec<Resource> {
-    fn parser(input: ParseStream) -> Result<Vec<Resource>> {
-        Ok(input
-            .parse_terminated::<Resource, Token![,]>(Resource::parse)?
-            .into_iter()
-            .collect())
+
+struct QrcMacro {
+    func: syn::Ident,
+    data: Vec<Resource>,
+}
+
+impl Parse for QrcMacro {
+    fn parse(input: ParseStream) -> Result<Self> {
+        Ok(QrcMacro {
+            func: input.parse()?,
+            data: {
+                input.parse::<Option<Token![,]>>()?;
+                input
+                    .parse_terminated::<Resource, Token![,]>(Resource::parse)?
+                    .into_iter()
+                    .collect()
+            }
+        })
     }
-    parser.parse_str(source).expect("Cannot parse qrc macro")
 }
 
 fn qt_hash(key: &str) -> u32 {
@@ -260,7 +271,7 @@ fn generate_data(root: &TreeNode) -> Data {
     d
 }
 
-fn expand_macro(data: Data) -> TokenStream {
+fn expand_macro(func: &syn::Ident, data: Data) -> TokenStream {
     let Data {
         payload,
         names,
@@ -274,7 +285,7 @@ fn expand_macro(data: Data) -> TokenStream {
     let payload = ::proc_macro2::TokenStream::from_iter(payload.iter().map(|x| quote!(#x,)));
 
     let q = quote!{
-        fn register() {
+        fn #func() {
             use ::std::sync::{Once, ONCE_INIT};
             static INIT_RESOURCES: Once = ONCE_INIT;
             INIT_RESOURCES.call_once(|| {
@@ -291,10 +302,10 @@ fn expand_macro(data: Data) -> TokenStream {
     q.into()
 }
 
-pub fn process_qrc(source: &str) -> TokenStream {
-    let parsed = parse_qrc(source);
-    let mut tree = build_tree(parsed);
+pub fn process_qrc(source: TokenStream) -> TokenStream {
+    let parsed = parse_macro_input!(source as QrcMacro);
+    let mut tree = build_tree(parsed.data);
     tree.compute_offsets(1);
     let d = generate_data(&tree);
-    expand_macro(d)
+    expand_macro(&parsed.func, d)
 }

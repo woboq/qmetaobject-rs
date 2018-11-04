@@ -262,18 +262,16 @@ qdeclare_builtin_metatype!{QModelIndex => 42}
 qdeclare_builtin_metatype!{isize  => 32} // That's QMetaType::Long
 #[cfg(target_pointer_width = "32")]
 qdeclare_builtin_metatype!{usize  => 35} // That's QMetaType::ULong
-// long on 64bit windows is still 32bit, so use LongLong
+                                         // long on 64bit windows is still 32bit, so use LongLong
 #[cfg(target_pointer_width = "64")]
 qdeclare_builtin_metatype!{isize  => 4}
 #[cfg(target_pointer_width = "64")]
 qdeclare_builtin_metatype!{usize  => 5}
 
-
 /// Internal trait used to pass or read the type in a Q_PROPERTY
 ///
 /// Don't implement this trait, implement the QMetaType trait.
 pub trait PropertyType {
-    const READ_ONLY: bool;
     fn register_type(name: &std::ffi::CStr) -> i32;
     // Note: this is &mut self becauser of the lazy initialization of the QObject* for the QObject impl
     unsafe fn pass_to_qt(&mut self, a: *mut c_void);
@@ -284,7 +282,6 @@ impl<T: QMetaType> PropertyType for T
 where
     T: QMetaType,
 {
-    const READ_ONLY: bool = false;
     unsafe fn pass_to_qt(&mut self, a: *mut c_void) {
         let r = a as *mut Self;
         if !r.is_null() {
@@ -306,7 +303,6 @@ impl<T> PropertyType for ::std::cell::RefCell<T>
 where
     T: QObject,
 {
-    const READ_ONLY: bool = true;
     fn register_type(_name: &::std::ffi::CStr) -> i32 {
         register_metatype_qobject::<T>()
     }

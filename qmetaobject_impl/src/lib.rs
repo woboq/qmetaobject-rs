@@ -59,29 +59,25 @@ fn get_crate(input: &syn::DeriveInput) -> impl quote::ToTokens {
     quote!(::qmetaobject)
 }
 
+/// Implementation of #[derice(QObject)]
 #[proc_macro_derive(QObject, attributes(QMetaObjectCrate, qt_base_class))]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
     qobject_impl::generate(input, true)
 }
 
+/// Implementation of #[derice(QGadget)]
 #[proc_macro_derive(QGadget, attributes(QMetaObjectCrate))]
 pub fn qgadget_impl(input: TokenStream) -> TokenStream {
     qobject_impl::generate(input, false)
 }
 
-#[proc_macro_derive(QResource_internal, attributes(qrc))]
-pub fn qresource_impl(input: TokenStream) -> TokenStream {
-    let src = input.to_string();
-    let beg = src
-        .find("stringify!(")
-        .expect("Internal error: no strignify in QResource_internal contents")
-        + 11;
-    let end = src
-        .rfind("))")
-        .expect("Internal error: no '))' in QResource_internal contents");
-    qrc_impl::process_qrc(&src[beg..end])
+/// Implementation of the qmetaobject::qrc! macro
+#[proc_macro]
+pub fn qrc_internal(input: TokenStream) -> TokenStream {
+    qrc_impl::process_qrc(input)
 }
 
+/// Implementation of #[derice(SimpleListItem)]
 #[proc_macro_derive(SimpleListItem, attributes(QMetaObjectCrate))]
 pub fn simplelistitem(input: TokenStream) -> TokenStream {
     simplelistitem_impl::derive(input)

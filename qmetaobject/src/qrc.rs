@@ -50,14 +50,9 @@ Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
 /// The macro creates a function that needs to be run in order to register the
 /// resource. Calling the function more than once has no effect.
 #[macro_export]
-macro_rules! qrc {
-    ($name:ident, $($rest:tt)* ) => {
-        fn $name() {
-            #[allow(unused)]
-            #[derive(QResource_internal)]
-            enum RC { Input = (0, stringify!($($rest)*)).0 }
-            register();
-        }
+macro_rules! qrc { // This is just a forwarding marco so it is documented
+    ($fn_name:ident, $($tokens:tt)* ) => {
+        qrc_internal!($fn_name, $($tokens)*);
     }
 }
 
