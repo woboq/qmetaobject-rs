@@ -627,9 +627,11 @@ where
     })};
 }
 
-/// Returns a callback that can be called in any thread. Calling the callback will then call the
+/// Create a callback to invoke a queued callback in the current thread.
 ///
+/// Returns a callback that can be called in any thread. Calling the callback will then call the
 /// given closure in the current Qt thread.
+///
 /// If the current thread does no longer have an event loop when the callback is sent, the
 /// callback will not be recieved.
 ///
@@ -639,7 +641,7 @@ where
 /// let callback = queued_callback(|()| println!("hello from main thread"));
 /// std::thread::spawn(move || {callback(());}).join();
 /// ```
-pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + Send {
+pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + Send + Sync + Clone {
     let current_thread = cpp!(unsafe [] -> QPointerImpl as "QPointer<QThread>" {
         return QThread::currentThread();
     });
