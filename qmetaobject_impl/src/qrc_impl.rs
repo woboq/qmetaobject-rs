@@ -131,6 +131,15 @@ impl TreeNode {
             _ => panic!("root not a dir?"),
         };
 
+        if rel_path == "" {
+            // insert into iteself
+            contents.extend(match node {
+                TreeNode::Directory(contents, _) => contents,
+                _ => panic!("merge file and direcotry?"),
+            });
+            return;
+        }
+
         match rel_path.find('/') {
             Some(idx) => {
                 let (name, rest) = rel_path.split_at(idx);
@@ -161,6 +170,24 @@ impl TreeNode {
     }
 }
 
+
+// remove duplicate, or leading '/'
+fn simplify_prefix(mut s : String) -> String {
+    let mut last_slash = true; // so we remove the first '/'
+    s.retain(|x| { let r = last_slash && x == '/'; last_slash = x == '/'; !r });
+    if last_slash { s.pop(); }
+    s
+
+}
+
+#[test]
+fn simplify_prefix_test()  {
+    assert_eq!(simplify_prefix("/".into()), "");
+    assert_eq!(simplify_prefix("///".into()), "");
+    assert_eq!(simplify_prefix("/foo//bar/d".into()), "foo/bar/d");
+    assert_eq!(simplify_prefix("hello/".into()), "hello");
+}
+
 fn build_tree(resources: Vec<Resource>) -> TreeNode {
     let mut root = TreeNode::new_dir();
     for r in resources {
@@ -171,7 +198,7 @@ fn build_tree(resources: Vec<Resource>) -> TreeNode {
                 TreeNode::new_file(f.file.clone()),
             );
         }
-        root.insert_node(&r.prefix, node);
+        root.insert_node(&simplify_prefix(r.prefix), node);
     }
     root
 }
