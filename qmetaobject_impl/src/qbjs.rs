@@ -50,17 +50,17 @@ fn write_string(result: &mut Vec<u8>, str: &str) {
 }
 
 fn string_size(str: &str) -> u32 {
-    return ((2 + str.len() + 3) & !3) as u32;
+    ((2 + str.len() + 3) & !3) as u32
 }
 
 fn write_value(result: &mut Vec<u8>, v: &Value) {
     match v {
-        &Value::String(ref s) => {
+        Value::String(ref s) => {
             write_string(result, &s);
         }
-        &Value::Double(d) => {
-            let bits = unsafe { std::mem::transmute::<f64, u64>(d) };
-            result.extend_from_slice(&write_u32((bits & 0xffffffff) as u32));
+        Value::Double(d) => {
+            let bits = unsafe { std::mem::transmute::<f64, u64>(*d) };
+            result.extend_from_slice(&write_u32((bits & 0xffff_ffff) as u32));
             result.extend_from_slice(&write_u32((bits >> 32) as u32));
         }
     }
@@ -68,15 +68,15 @@ fn write_value(result: &mut Vec<u8>, v: &Value) {
 
 fn compute_header(v: &Value, off: u32) -> u32 {
     (match v {
-        &Value::String(_) => 3 | (1 << 3), // FIXME: Assume ascii (as does all the code)
-        &Value::Double(_) => 2,
+        Value::String(_) => 3 | (1 << 3), // FIXME: Assume ascii (as does all the code)
+        Value::Double(_) => 2,
     }) | (off << 5)
 }
 
 fn compute_size(v: &Value) -> u32 {
     match v {
-        &Value::String(ref s) => string_size(&s),
-        &Value::Double(_) => 8,
+        Value::String(ref s) => string_size(&s),
+        Value::Double(_) => 8,
     }
 }
 
@@ -97,7 +97,7 @@ pub fn serialize(obj: &[(&'static str, Value)]) -> Vec<u8> {
         table.push(off);
         off += 4 + string_size(e.0);
         let mut h = compute_header(&e.1, off);
-        h = h | 1 << 4;
+        h |= 1 << 4;
         result.extend_from_slice(&write_u32(h));
         write_string(&mut result, e.0);
         write_value(&mut result, &e.1);

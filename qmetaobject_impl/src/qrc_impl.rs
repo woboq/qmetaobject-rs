@@ -87,7 +87,7 @@ fn qt_hash(key: &str) -> u32 {
         h ^= (h & 0xf0000000) >> 23;
         h &= 0x0fffffff;
     }
-    return h;
+    h
 }
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone)]
@@ -126,7 +126,7 @@ impl TreeNode {
                 let hashed = HashedString::new(name.into());
                 contents
                     .entry(hashed)
-                    .or_insert_with(|| TreeNode::new_dir())
+                    .or_insert_with(TreeNode::new_dir)
                     .insert_node(&rest[1..], node);
             }
             None => {
@@ -142,11 +142,11 @@ impl TreeNode {
         if let TreeNode::Directory(ref mut dir, ref mut o) = self {
             *o = offset;
             offset += dir.len() as u32;
-            for (_, ref mut node) in dir {
+            for node in dir.values_mut() {
                 offset = node.compute_offsets(offset);
             }
         }
-        return offset;
+        offset
     }
 }
 
@@ -170,12 +170,12 @@ fn push_u32_be(v: &mut Vec<u8>, val: u32) {
         ((val >> 24) & 0xff) as u8,
         ((val >> 16) & 0xff) as u8,
         ((val >> 8) & 0xff) as u8,
-        ((val >> 0) & 0xff) as u8,
+        (val & 0xff) as u8,
     ]);
 }
 
 fn push_u16_be(v: &mut Vec<u8>, val: u16) {
-    v.extend_from_slice(&[((val >> 8) & 0xff) as u8, ((val >> 0) & 0xff) as u8]);
+    v.extend_from_slice(&[((val >> 8) & 0xff) as u8, (val & 0xff) as u8]);
 }
 
 #[derive(Default, Debug)]
@@ -217,7 +217,7 @@ impl Data {
             push_u32_be(&mut self.tree_data, 0);
             push_u32_be(&mut self.tree_data, 0);
         }
-        for (_, ref val) in contents {
+        for val in contents.values() {
             if let TreeNode::Directory(ref c, _) = val {
                 self.insert_directory(c)
             }
