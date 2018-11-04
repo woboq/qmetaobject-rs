@@ -22,6 +22,15 @@ use std::iter::Iterator;
 use syn;
 use syn::parse::{Parse, ParseStream, Parser, Result};
 
+macro_rules! unwrap_parse_error(
+    ($e:expr) => {
+        match $e {
+            Ok(x) => x,
+            Err(e) => { return e.to_compile_error().into() }
+        }
+    }
+);
+
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
 #[allow(dead_code)]
@@ -334,10 +343,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                     ))
                                 };
 
-                            let parsed = property_parser
-                                .parse(mac.mac.tts.clone().into())
-                                .expect("Could not parse property");
-
+                            let parsed = unwrap_parse_error!(property_parser.parse(mac.mac.tts.clone().into()));
                             let mut notify_signal = None;
                             let mut getter = None;
                             let mut setter = None;
@@ -414,9 +420,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                         }
                         "qt_signal" => {
                             let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_terminated;
-                            let args_list = parser
-                                .parse(mac.mac.tts.clone().into())
-                                .expect("Could not parse signal");
+                            let args_list = unwrap_parse_error!(parser.parse(mac.mac.tts.clone().into()));
                             let args = map_method_parameters(&args_list);
                             signals.push(MetaMethod {
                                 name: f.ident.clone().expect("Signal does not have a name"),
@@ -430,16 +434,13 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                 input.parse::<Token![trait]>()?;
                                 input.parse()
                             };
-                            base = parser
-                                .parse(mac.mac.tts.clone().into())
-                                .expect("Could not parse base trait");
+                            base = unwrap_parse_error!(parser.parse(mac.mac.tts.clone().into()));
                             base_prop = f.ident.clone().expect("base prop needs a name");
                             has_base_property = true;
                         }
                         "qt_plugin" => {
                             is_plugin = true;
-                            let iid: syn::LitStr = syn::parse(mac.mac.tts.clone().into())
-                                .expect("Could not parse q_plugin iid");
+                            let iid: syn::LitStr = unwrap_parse_error!(syn::parse(mac.mac.tts.clone().into()));
                             plugin_iid = Some(iid);
                         }
                         _ => {}
@@ -452,8 +453,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                         "qt_base_class" => {
                             if let syn::Meta::NameValue(mnv) = x {
                                 if let syn::Lit::Str(s) = mnv.lit {
-                                    base =
-                                        syn::parse_str(&s.value()).expect("invalid qt_base_class");
+                                    base = unwrap_parse_error!(syn::parse_str(&s.value()));
                                     base_prop = f.ident.clone().expect("base prop needs a name");
                                     has_base_property = true;
                                 } else {
