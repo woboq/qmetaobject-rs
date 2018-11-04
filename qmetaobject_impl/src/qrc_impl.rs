@@ -64,7 +64,6 @@ impl Parse for File {
     }
 }
 
-
 struct QrcMacro {
     func: syn::Ident,
     data: Vec<Resource>,
@@ -80,7 +79,7 @@ impl Parse for QrcMacro {
                     .parse_terminated::<Resource, Token![,]>(Resource::parse)?
                     .into_iter()
                     .collect()
-            }
+            },
         })
     }
 }
@@ -170,18 +169,22 @@ impl TreeNode {
     }
 }
 
-
 // remove duplicate, or leading '/'
-fn simplify_prefix(mut s : String) -> String {
+fn simplify_prefix(mut s: String) -> String {
     let mut last_slash = true; // so we remove the first '/'
-    s.retain(|x| { let r = last_slash && x == '/'; last_slash = x == '/'; !r });
-    if last_slash { s.pop(); }
+    s.retain(|x| {
+        let r = last_slash && x == '/';
+        last_slash = x == '/';
+        !r
+    });
+    if last_slash {
+        s.pop();
+    }
     s
-
 }
 
 #[test]
-fn simplify_prefix_test()  {
+fn simplify_prefix_test() {
     assert_eq!(simplify_prefix("/".into()), "");
     assert_eq!(simplify_prefix("///".into()), "");
     assert_eq!(simplify_prefix("/foo//bar/d".into()), "foo/bar/d");

@@ -339,11 +339,13 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                                     r.push(input.parse()?)
                                                 }
                                                 Ok(r)
-                                            }).unwrap_or_else(||Ok(Default::default()))?,
+                                            }).unwrap_or_else(|| Ok(Default::default()))?,
                                     ))
                                 };
 
-                            let parsed = unwrap_parse_error!(property_parser.parse(mac.mac.tts.clone().into()));
+                            let parsed = unwrap_parse_error!(
+                                property_parser.parse(mac.mac.tts.clone().into())
+                            );
                             let mut notify_signal = None;
                             let mut getter = None;
                             let mut setter = None;
@@ -399,7 +401,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                 let args = map_method_parameters(&method_ast.decl.inputs);
                                 (method_ast.decl.output, args)
                             } else if let Ok(method_decl) =
-                                    syn::parse::<syn::TypeBareFn>(mac.mac.tts.clone().into())
+                                syn::parse::<syn::TypeBareFn>(mac.mac.tts.clone().into())
                             {
                                 let args = map_method_parameters2(&method_decl.inputs);
                                 (method_decl.output, args)
@@ -420,7 +422,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                         }
                         "qt_signal" => {
                             let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_terminated;
-                            let args_list = unwrap_parse_error!(parser.parse(mac.mac.tts.clone().into()));
+                            let args_list =
+                                unwrap_parse_error!(parser.parse(mac.mac.tts.clone().into()));
                             let args = map_method_parameters(&args_list);
                             signals.push(MetaMethod {
                                 name: f.ident.clone().expect("Signal does not have a name"),
@@ -440,7 +443,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                         }
                         "qt_plugin" => {
                             is_plugin = true;
-                            let iid: syn::LitStr = unwrap_parse_error!(syn::parse(mac.mac.tts.clone().into()));
+                            let iid: syn::LitStr =
+                                unwrap_parse_error!(syn::parse(mac.mac.tts.clone().into()));
                             plugin_iid = Some(iid);
                         }
                         _ => {}
