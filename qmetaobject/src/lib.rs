@@ -60,6 +60,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #![recursion_limit = "10240"]
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))] // Too many of that for qt types. (FIXME)
+#![cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
 
 #[macro_use]
 extern crate cpp;
@@ -185,7 +187,7 @@ pub trait QObject {
 
     /// Returns a QObjectDescription for this type
     fn get_object_description() -> &'static QObjectDescription where Self:Sized {
-        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+        unsafe { &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<RustObject<QObject>>();
         } ) }
     }
@@ -260,7 +262,7 @@ impl<T: QObject + ?Sized> QPointer<T> {
 }
 impl<T: QObject> QPointer<T> {
     /// Returns a pinned reference to the opbject, or None if it was deleted
-    pub fn as_pinned<'a>(&'a self) -> Option<QObjectPinned<'a, T>> {
+    pub fn as_pinned(&self) -> Option<QObjectPinned<T>> {
         let x = self.cpp_ptr();
         if x.is_null() {
             None
@@ -332,6 +334,7 @@ impl<'pin, T: QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
     /// Borrow the object
     // FIXME: there are too many case for which we want re-entrency after borrowing
     //pub fn borrow(&self) -> std::cell::Ref<T> { self.0.borrow() }
+    #[cfg_attr(feature = "cargo-clippy", allow(should_implement_trait))]
     pub fn borrow(&self) -> &T {
         unsafe { &*self.0.as_ptr() }
     }
@@ -663,9 +666,9 @@ pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + 
             // the borrow_mut could panic if the function was called recursively. This could happen
             // if the event-loop re-enter.
             let f = &mut (*(func.0).borrow_mut());
-            x.take().map(move |x| {
+            if let Some(x) = x.take() {
                 f(x);
-            });
+            };
         });
         let mut func_raw = Box::into_raw(func);
         unsafe{ cpp!([mut func_raw as "FnBoxWrapper", current_thread as "QPointer<QThread>"] {

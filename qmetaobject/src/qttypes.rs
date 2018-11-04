@@ -55,7 +55,7 @@ impl<'a> From<&'a [u8]> for QByteArray {
 impl<'a> From<&'a str> for QByteArray {
     /// Constructs a QByteArray from a &str. (Copy the string.)
     fn from(s: &'a str) -> QByteArray {
-        return s.as_bytes().into();
+        s.as_bytes().into()
     }
 }
 
@@ -192,7 +192,7 @@ where
     T: Into<QVariant> + Clone,
 {
     fn from(a: &'a T) -> QVariant {
-        return (*a).clone().into();
+        (*a).clone().into()
     }
 }
 
@@ -201,24 +201,27 @@ cpp_class!(
 pub unsafe struct QVariantList as "QVariantList");
 impl QVariantList {
     pub fn push(&mut self, value: QVariant) {
-        unsafe {cpp!([self as "QVariantList*", value as "QVariant"]
-            { self->append(value); }
-        )}
+        cpp!(unsafe [self as "QVariantList*", value as "QVariant"]
+            { self->append(std::move(value)); }
+        )
     }
     pub fn insert(&mut self, index: usize, element: QVariant) {
-        unsafe {cpp!([self as "QVariantList*", index as "size_t", element as "QVariant"]
-            { self->insert(index, element); }
-        )}
+        cpp!(unsafe [self as "QVariantList*", index as "size_t", element as "QVariant"]
+            { self->insert(index, std::move(element)); }
+        )
     }
     pub fn remove(&mut self, index: usize) -> QVariant {
-        unsafe {cpp!([self as "QVariantList*", index as "size_t"] -> QVariant as "QVariant"
+        cpp!(unsafe [self as "QVariantList*", index as "size_t"] -> QVariant as "QVariant"
             { return self->takeAt(index); }
-        )}
+        )
     }
     pub fn len(&self) -> usize {
         unsafe {cpp!([self as "QVariantList*"] -> usize as "size_t"
             { return self->size(); }
         )}
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -226,7 +229,7 @@ impl Index<usize> for QVariantList {
     type Output = QVariant;
     fn index(&self, index: usize) -> &QVariant {
         assert!(index < self.len());
-        unsafe {cpp!([self as "QVariantList*", index as "size_t"] -> &QVariant as "const QVariant*"
+        unsafe { &*cpp!([self as "QVariantList*", index as "size_t"] -> *const QVariant as "const QVariant*"
             { return &self->at(index); }
         )}
     }
@@ -234,7 +237,7 @@ impl Index<usize> for QVariantList {
 impl IndexMut<usize> for QVariantList {
     fn index_mut(&mut self, index: usize) -> &mut QVariant {
         assert!(index < self.len());
-        unsafe {cpp!([self as "QVariantList*", index as "size_t"] -> &mut QVariant as "QVariant*"
+        unsafe { &mut *cpp!([self as "QVariantList*", index as "size_t"] -> *mut QVariant as "QVariant*"
             { return &(*self)[index]; }
         )}
     }
@@ -281,7 +284,7 @@ where
         for i in iter {
             l.push(i.into());
         }
-        return l;
+        l
     }
 }
 

@@ -138,7 +138,7 @@ impl QQuickView {
             engine.view = std::unique_ptr<QQuickView>(new QQuickView(engine.engine.get(), nullptr));
             engine.view->setResizeMode(QQuickView::SizeRootObjectToView);
         } ) };
-        QQuickView { engine: engine }
+        QQuickView { engine }
     }
 
     /// Returns the wrapper to the engine
@@ -161,6 +161,10 @@ impl QQuickView {
             engine->view->setSource(url);
         } ) };
     }
+}
+
+impl Default for QQuickView {
+    fn default() -> Self { Self::new() }
 }
 
 /// Register the given type as a QML type
@@ -240,7 +244,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 /// Work in progress
 pub trait QQuickItem : QObject {
     fn get_object_description() -> &'static QObjectDescription where Self:Sized {
-        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+        unsafe { &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<Rust_QQuickItem>();
         } ) }
     }
@@ -256,7 +260,7 @@ pub trait QQuickItem : QObject {
     fn geometry_changed(&mut self, _new_geometry: QRectF, _old_geometry: QRectF) {}
 
     fn update_paint_node(&mut self, node: SGNode<ContainerNode>) -> SGNode<ContainerNode> {
-        return node;
+        node
     }
 }
 
@@ -334,7 +338,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
         return rust!(Rust_QQuickItem_updatePaintNode[rust_object : QObjectPinned<QQuickItem> as "TraitObject",
                     node : *mut c_void as "QSGNode*"] -> SGNode<ContainerNode> as "QSGNode*" {
-            return rust_object.borrow_mut().update_paint_node(unsafe { SGNode::<ContainerNode>::from_raw(node) });
+            rust_object.borrow_mut().update_paint_node(unsafe { SGNode::<ContainerNode>::from_raw(node) })
         });
     }
     /*
@@ -488,7 +492,7 @@ pub trait QQmlExtensionPlugin: QObject {
         Self: Sized,
     {
         unsafe {
-            cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<Rust_QQmlExtensionPlugin>();
         } )
         }

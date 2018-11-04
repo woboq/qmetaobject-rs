@@ -27,7 +27,7 @@ pub trait QAbstractItemModel: QObject {
         Self: Sized,
     {
         unsafe {
-            cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
+            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<Rust_QAbstractItemModel>();
         } )
         }
@@ -122,7 +122,7 @@ impl QAbstractItemModel {
             auto list2 = list1;
             for (QModelIndex &idx : list2) {
                 rust!(update_model_indexes [f : &mut FnMut(QModelIndex)->QModelIndex as "TraitObject", idx : &mut QModelIndex as "QModelIndex&"] {
-                    *idx = f(idx.clone());
+                    *idx = f(*idx);
                 });
             }
             obj->changePersistentIndexList(list1, list2);
@@ -224,7 +224,7 @@ struct Rust_QAbstractItemModel : RustObject<QAbstractItemModel> {
         rust!(Rust_QAbstractItemModel_roleNames[rust_object : QObjectPinned<QAbstractItemModel> as "TraitObject",
                 base: *mut c_void as "QHash<int, QByteArray>&"] {
             for (key, val) in rust_object.borrow().role_names().iter() {
-                add_to_hash(base, key.clone(), val.clone());
+                add_to_hash(base, *key, val.clone());
             }
         });
         return base;

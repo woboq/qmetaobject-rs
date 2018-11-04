@@ -24,10 +24,15 @@ use std::ops::Index;
 /// This trait allow to override a Qt QAbstractListModel
 pub trait QAbstractListModel: QObject {
     /// Required for the implementation detail of the QObject custom derive
-    fn get_object_description() -> &'static QObjectDescription where Self:Sized {
-        unsafe { cpp!([]-> &'static QObjectDescription as "RustObjectDescription const*" {
-            return rustObjectDescription<Rust_QAbstractListModel>();
-        } ) }
+    fn get_object_description() -> &'static QObjectDescription
+    where
+        Self: Sized,
+    {
+        unsafe {
+            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
+                return rustObjectDescription<Rust_QAbstractListModel>();
+            })
+        }
     }
 
     /// Refer to the Qt documentation of QAbstractListModel::rowCount
@@ -50,61 +55,77 @@ impl QAbstractListModel {
     pub fn begin_insert_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
             if(obj) obj->beginInsertRows(p, first, last);
-        })}
+        })
+        }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endInsertRows
     pub fn end_insert_rows(&mut self) {
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*"]{
             if(obj) obj->endInsertRows();
-        })}
+        })
+        }
     }
     /// Refer to the Qt documentation of QAbstractListModel::beginRemoveRows
-    pub fn begin_remove_rows(&mut self, first : i32, last: i32) {
+    pub fn begin_remove_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
             if(obj) obj->beginRemoveRows(p, first, last);
-        })}
+        })
+        }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endRemoveRows
     pub fn end_remove_rows(&mut self) {
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*"]{
             if(obj) obj->endRemoveRows();
-        })}
+        })
+        }
     }
     /// Refer to the Qt documentation of QAbstractListModel::beginResetModel
     pub fn begin_reset_model(&mut self) {
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*"]{
             if(obj) obj->beginResetModel();
-        })}
+        })
+        }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endResetModel
     pub fn end_reset_model(&mut self) {
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*"]{
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*"]{
             if(obj) obj->endResetModel();
-        })}
+        })
+        }
     }
 
     /// Refer to the Qt documentation of QAbstractListModel::dataChanged
     pub fn data_changed(&mut self, top_left: QModelIndex, bottom_right: QModelIndex) {
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
             if(obj) obj->dataChanged(top_left, bottom_right);
-        })}
+        })
+        }
     }
 
     /// Returns a QModelIndex for the given row (in the first column)
     pub fn row_index(&self, i: i32) -> QModelIndex {
         let obj = self.get_cpp_object();
-        unsafe { cpp!([obj as "Rust_QAbstractListModel*", i as "int"] -> QModelIndex as "QModelIndex" {
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*", i as "int"] -> QModelIndex as "QModelIndex" {
             return obj ? obj->index(i) : QModelIndex();
-        })}
+        })
+        }
     }
 }
 
@@ -156,7 +177,7 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
         rust!(Rust_QAbstractListModel_roleNames[rust_object : QObjectPinned<QAbstractListModel> as "TraitObject",
                 base: *mut c_void as "QHash<int, QByteArray>&"] {
             for (key, val) in rust_object.borrow().role_names().iter() {
-                add_to_hash(base, key.clone(), val.clone());
+                add_to_hash(base, *key, val.clone());
             }
         });
         return base;
@@ -231,7 +252,7 @@ impl<T: SimpleListItem> SimpleListModel<T> {
     pub fn change_line(&mut self, index: usize, value: T) {
         self.values[index] = value;
         let idx = (self as &mut QAbstractListModel).row_index(index as i32);
-        (self as &mut QAbstractListModel).data_changed(idx.clone(), idx);
+        (self as &mut QAbstractListModel).data_changed(idx, idx);
     }
     pub fn reset_data(&mut self, data: Vec<T>) {
         (self as &mut QAbstractListModel).begin_reset_model();

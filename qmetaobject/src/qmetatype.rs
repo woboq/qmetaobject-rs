@@ -35,17 +35,17 @@ fn register_metatype_common<T: QMetaType>(
     let e = h.entry(TypeId::of::<T>()).or_insert_with(|| {
         let size = std::mem::size_of::<T>() as u32;
 
-        extern "C" fn deleter_fn<T>(_v: Box<T>) {};
-        let deleter_fn: extern "C" fn(_v: Box<T>) = deleter_fn;
+        extern "C" fn deleter_fn<T>(v: *mut T) { unsafe { Box::from_raw(v); } };
+        let deleter_fn: extern "C" fn(v: *mut T) = deleter_fn;
 
-        extern "C" fn creator_fn<T: Default + Clone>(c: *const T) -> Box<T> {
+        extern "C" fn creator_fn<T: Default + Clone>(c: *const T) -> *const T {
             if c.is_null() {
-                Box::new(Default::default())
+                Box::into_raw(Box::new(Default::default()))
             } else {
-                Box::new(unsafe { (*c).clone() })
+                Box::into_raw(Box::new(unsafe { (*c).clone() }))
             }
         };
-        let creator_fn: extern "C" fn(c: *const T) -> Box<T> = creator_fn;
+        let creator_fn: extern "C" fn(c: *const T) -> *const T = creator_fn;
 
         extern "C" fn destructor_fn<T>(ptr: *mut T) {
             unsafe {
