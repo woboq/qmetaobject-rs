@@ -197,7 +197,7 @@ where
 }
 
 cpp_class!(
-/// Wrapper around QVarntList
+/// Wrapper around QVariantList
 pub unsafe struct QVariantList as "QVariantList");
 impl QVariantList {
     pub fn push(&mut self, value: QVariant) {

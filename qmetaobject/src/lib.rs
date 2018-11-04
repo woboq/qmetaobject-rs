@@ -327,8 +327,11 @@ impl<'b, T: QObject + ?Sized + 'b> Drop for QObjectRefMut<'b, T> {
 
 /// A reference to a RefCell<T>, where T is a QObject, which does not move in memory
 #[repr(transparent)]
-#[derive(Clone, Copy)]
 pub struct QObjectPinned<'pin, T: QObject + ?Sized + 'pin>(&'pin RefCell<T>);
+impl<'pin, T: QObject + ?Sized + 'pin> Clone for QObjectPinned<'pin, T> {
+    fn clone(&self) -> Self { *self }
+}
+impl<'pin, T: QObject + ?Sized + 'pin> Copy for QObjectPinned<'pin, T> {}
 
 impl<'pin, T: QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
     /// Borrow the object
@@ -358,7 +361,7 @@ impl<'pin, T: QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
 }
 impl<'pin, T: QObject + 'pin> QObjectPinned<'pin, T> {
     /// Get the pointer ot the C++ Object, or crate it if it was not yet created
-    pub fn get_or_create_cpp_object(&self) -> *mut c_void {
+    pub fn get_or_create_cpp_object(self) -> *mut c_void {
         let r = unsafe { &*self.0.as_ptr() }.get_cpp_object();
         if r.is_null() {
             unsafe { QObject::cpp_construct(self.0) }

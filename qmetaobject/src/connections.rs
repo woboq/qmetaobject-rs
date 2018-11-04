@@ -111,6 +111,11 @@ impl<Args> CppSignal<Args> {
         }
     }
 }
+impl<Args> Clone for CppSignal<Args> {
+    fn clone(&self) -> Self { *self }
+}
+impl<Args> Copy for CppSignal<Args> {}
+
 
 /// Types of signals constructed with the qt_signal! macro.
 ///
@@ -188,16 +193,22 @@ macro_rules! declare_SlotTraits {
 }
 declare_SlotTraits![A9:9 A8:8 A7:7 A6:6 A5:5 A4:4 A3:3 A2:2 A1:1 A0:0];
 
-
 // FIXME:
 // - should not need to be unsafe: we should not take a *const c_void, but a wrapper to a QObject or something similar
-pub unsafe fn connect<Args, F : Slot<Args>>(sender: *const c_void, signal : CppSignal<Args>, mut slot : F)-> ConnectionHandle {
+pub unsafe fn connect<Args, F: Slot<Args>>(
+    sender: *const c_void,
+    signal: CppSignal<Args>,
+    mut slot: F,
+) -> ConnectionHandle {
     let mut cpp_signal = signal.inner;
     let apply_closure = move |a: *const *const c_void| slot.apply(a);
-    let b : Box<FnMut(*const *const c_void)> = Box::new(apply_closure);
+    let b: Box<FnMut(*const *const c_void)> = Box::new(apply_closure);
     let slot_raw = Box::into_raw(b);
-    /*unsafe*/{ cpp!([sender as "const QObject*", mut cpp_signal as "SignalCppRepresentation", slot_raw as "TraitObject"] -> ConnectionHandle as "QMetaObject::Connection" {
+    /*unsafe*/
+    {
+        cpp!([sender as "const QObject*", mut cpp_signal as "SignalCppRepresentation", slot_raw as "TraitObject"] -> ConnectionHandle as "QMetaObject::Connection" {
         return QObjectPrivate::rust_connectImpl(sender, reinterpret_cast<void **>(&cpp_signal), sender, nullptr,
                     new RustSlotOject(slot_raw), Qt::DirectConnection, nullptr, sender->metaObject());
-    })}
+    })
+    }
 }
