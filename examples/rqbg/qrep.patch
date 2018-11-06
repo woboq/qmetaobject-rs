@@ -1,0 +1,415 @@
+From 08efd994a322c7d8778cf6de9dda261a620a8c4e Mon Sep 17 00:00:00 2001
+From: Olivier Goffart <ogoffart@woboq.com>
+Date: Mon, 5 Nov 2018 10:34:23 +0100
+Subject: [PATCH] Port to qmetaobject-rs
+
+---
+ Cargo.toml            |   6 +--
+ bindings.json         |  35 ------------
+ build.rs              |  11 ----
+ qml.qrc               |   5 --
+ src/implementation.rs | 121 +++++++++++++++++++++---------------------
+ src/main.cpp          |  17 ------
+ src/main.rs           |  23 ++++----
+ 7 files changed, 72 insertions(+), 146 deletions(-)
+ delete mode 100644 bindings.json
+ delete mode 100644 build.rs
+ delete mode 100644 qml.qrc
+ delete mode 100644 src/main.cpp
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 494d96a..27c07ee 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -5,8 +5,6 @@ authors = ["Jos van den Oever <jos@vandenoever.info>"]
+ description = "A proof-of-concept QML GUI for ripgrep"
+ license = "AGPL-3.0-or-later"
+ repository = "https://anongit.kde.org/scratch/vandenoever/qrep"
+-build = "build.rs"
+-links = "qrep"
+ 
+ [dependencies]
+ grep-matcher = "0.1.1"
+@@ -16,6 +14,6 @@ htmlescape = "0.3.1"
+ libc = "0.2"
+ spmc = "0.2.2"
+ walkdir = "2"
++qmetaobject = "0.0.4"
++cstr = "0.1"
+ 
+-[build-dependencies]
+-rust_qt_binding_generator = "0.2"
+diff --git a/bindings.json b/bindings.json
+deleted file mode 100644
+index 35b8c65..0000000
+--- a/bindings.json
++++ /dev/null
+@@ -1,35 +0,0 @@
+-{
+-    "cppFile": "Bindings.cpp",
+-    "rust": {
+-        "dir": "",
+-        "interfaceModule": "interface",
+-        "implementationModule": "implementation"
+-    },
+-    "objects": {
+-        "Grep": {
+-            "type": "List",
+-            "properties": {
+-                "query": {
+-                    "type": "QString",
+-                    "write": true
+-                },
+-                "busy": {
+-                    "type": "bool"
+-                }
+-            },
+-            "itemProperties": {
+-                "name": {
+-                    "type": "QString",
+-                    "rustByValue": true
+-                },
+-                "path": {
+-                    "type": "QString",
+-                    "rustByValue": true
+-                },
+-                "line": {
+-                    "type": "QString"
+-                }
+-            }
+-        }
+-    }
+-}
+diff --git a/build.rs b/build.rs
+deleted file mode 100644
+index a284ee6..0000000
+--- a/build.rs
++++ /dev/null
+@@ -1,11 +0,0 @@
+-extern crate rust_qt_binding_generator;
+-
+-fn main() {
+-    let out_dir = ::std::env::var("OUT_DIR").unwrap();
+-    rust_qt_binding_generator::build::require_qt_version(5, 11, 0);
+-    rust_qt_binding_generator::build::Build::new(&out_dir)
+-        .bindings("bindings.json")
+-        .qrc("qml.qrc")
+-        .cpp("src/main.cpp")
+-        .compile("qrep");
+-}
+diff --git a/qml.qrc b/qml.qrc
+deleted file mode 100644
+index 5f6483a..0000000
+--- a/qml.qrc
++++ /dev/null
+@@ -1,5 +0,0 @@
+-<RCC>
+-    <qresource prefix="/">
+-        <file>main.qml</file>
+-    </qresource>
+-</RCC>
+diff --git a/src/implementation.rs b/src/implementation.rs
+index 2fa333d..8330769 100644
+--- a/src/implementation.rs
++++ b/src/implementation.rs
+@@ -3,7 +3,6 @@ use grep_regex::RegexMatcher;
+ use grep_searcher::Searcher;
+ use grep_searcher::sinks::UTF8;
+ use htmlescape::encode_minimal;
+-use interface::*;
+ use spmc;
+ use std::fmt::Display;
+ use std::path::PathBuf;
+@@ -11,13 +10,14 @@ use std::sync::{Mutex, Arc, mpsc};
+ use std::thread;
+ use std::time::{SystemTime, Duration, UNIX_EPOCH};
+ use walkdir::{DirEntry, WalkDir};
++use qmetaobject::*;
+ 
+ struct Grepper {
+     receiver: mpsc::Receiver<GrepItem>,
+     active: Arc<Mutex<bool>>,
+ }
+ 
+-fn list(mut emit: GrepEmitter, sender: mpsc::Sender<GrepItem>, active: Arc<Mutex<bool>>) {
++fn list(emit: &Fn(), sender: mpsc::Sender<GrepItem>, active: Arc<Mutex<bool>>) {
+     for entry in WalkDir::new(::std::env::current_dir().unwrap())
+         .into_iter()
+         .filter_map(|entry| entry.ok())
+@@ -33,10 +33,10 @@ fn list(mut emit: GrepEmitter, sender: mpsc::Sender<GrepItem>, active: Arc<Mutex
+         if let Err(_) = sender.send(item) {
+             return;
+         }
+-        emit.new_data_ready();
++        emit();
+     }
+     // signal processing is done
+-    emit.new_data_ready();
++    emit();
+ }
+ 
+ /// Prepare fragment for display in GUI
+@@ -71,7 +71,7 @@ where
+ 
+ fn search_thread(
+     query: &str,
+-    emit: &mut GrepEmitter,
++    emit: &Fn(),
+     sender: mpsc::Sender<GrepItem>,
+     active: Arc<Mutex<bool>>,
+     receiver: spmc::Receiver<DirEntry>,
+@@ -95,7 +95,7 @@ fn search_thread(
+                                 e,
+                             ));
+                         }
+-                        emit.new_data_ready();
++                        emit();
+                         Ok(false)
+                     }),
+                 );
+@@ -108,7 +108,7 @@ fn search_thread(
+             }
+             Err(_) => {
+                 // signal that all files (in this thread) have been processed
+-                emit.new_data_ready();
++                emit();
+                 return;
+             }
+         }
+@@ -117,12 +117,12 @@ fn search_thread(
+ 
+ fn grep(
+     query: &str,
+-    mut emit: GrepEmitter,
++    emit: impl Fn() + Send + Sync + Clone + 'static,
+     item_sender: mpsc::Sender<GrepItem>,
+     active: Arc<Mutex<bool>>,
+ ) {
+     if query.is_empty() {
+-        return list(emit, item_sender, active);
++        return list(&emit, item_sender, active);
+     }
+     let (sender, receiver) = spmc::channel();
+     let mut threads = Vec::new();
+@@ -130,10 +130,10 @@ fn grep(
+         let sender = item_sender.clone();
+         let active = active.clone();
+         let receiver = receiver.clone();
+-        let mut emit = emit.clone();
++        let emit = emit.clone();
+         let query = query.to_string();
+         threads.push(thread::spawn(move || {
+-            search_thread(&query, &mut emit, sender, active, receiver);
++            search_thread(&query, &emit, sender, active, receiver);
+         }));
+     }
+     for entry in WalkDir::new(::std::env::current_dir().unwrap())
+@@ -152,11 +152,11 @@ fn grep(
+     for thread in threads {
+         let _ = thread.join();
+     }
+-    emit.new_data_ready();
++    emit();
+ }
+ 
+ impl Grepper {
+-    fn new(emit: GrepEmitter, query: String) -> Grepper {
++    fn new(emit: impl Fn() + Send + Sync + Clone + 'static, query: String) -> Grepper {
+         let active = Arc::new(Mutex::new(true));
+         let a = active.clone();
+         let (tx, rx) = mpsc::channel();
+@@ -179,62 +179,63 @@ struct GrepItem {
+     line: String,
+ }
+ 
++#[derive(QObject, Default)]
+ pub struct Grep {
+-    emit: GrepEmitter,
+-    list: GrepList,
+-    query: String,
++    base: qt_base_class!(trait QAbstractListModel),
++    query: qt_property!(String; WRITE set_query),
++    busy: qt_property!(bool; READ busy NOTIFY busy_changed),
++    busy_changed: qt_signal!(),
+     items: Vec<GrepItem>,
+     new_items: Vec<GrepItem>,
+     grepper: Option<Grepper>,
+-    last_signal: SystemTime,
++    last_signal: Option<SystemTime>,
+ }
+ 
+-impl GrepTrait for Grep {
+-    fn new(emit: GrepEmitter, list: GrepList) -> Grep {
+-        Grep {
+-            emit,
+-            list,
+-            query: String::new(),
+-            items: Vec::new(),
+-            new_items: Vec::new(),
+-            grepper: None,
+-            last_signal: UNIX_EPOCH,
++impl QAbstractListModel for Grep {
++    fn row_count(&self) -> i32 {
++        self.items.len() as i32
++    }
++
++    fn data(&self, index: QModelIndex, role: i32) -> QVariant {
++        let index = index.row() as usize;
++        if role == USER_ROLE {
++            self.items[index].path.display().to_string().to_qvariant()
++        } else if role == USER_ROLE + 1 {
++            self.items[index].path.display().to_string().to_qvariant()
++        } else if role == USER_ROLE + 2 {
++            self.items[index].line.to_qvariant()
++        } else {
++            Default::default()
+         }
+     }
+-    fn emit(&mut self) -> &mut GrepEmitter {
+-        &mut self.emit
+-    }
+-    fn row_count(&self) -> usize {
+-        self.items.len()
+-    }
+-    fn query(&self) -> &str {
+-        &self.query
++    fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
++        let mut map = std::collections::HashMap::new();
++        map.insert(USER_ROLE, "name".into());
++        map.insert(USER_ROLE + 1, "path".into());
++        map.insert(USER_ROLE + 2, "line".into());
++        map
+     }
++}
++
++impl Grep {
+     fn busy(&self) -> bool {
+         self.grepper.is_some()
+     }
+     fn set_query(&mut self, query: String) {
+         self.query = query;
+-        self.list.begin_reset_model();
++        QAbstractListModel::begin_reset_model(self);
+         self.items.clear();
+         self.new_items.clear();
+-        self.last_signal = UNIX_EPOCH;
+-        self.list.end_reset_model();
+-        self.grepper = Some(Grepper::new(self.emit.clone(), self.query.clone()));
+-        self.emit.busy_changed();
+-    }
+-    fn name(&self, index: usize) -> String {
+-        self.items[index].path.display().to_string()
+-    }
+-    fn path(&self, index: usize) -> String {
+-        self.items[index].path.display().to_string()
+-    }
+-    fn line(&self, index: usize) -> &str {
+-        &self.items[index].line
+-    }
+-    fn can_fetch_more(&self) -> bool {
+-        self.busy() || !self.new_items.is_empty()
+-    }
++        self.last_signal = Some(UNIX_EPOCH);
++        QAbstractListModel::end_reset_model(self);
++        let ptr = QPointer::from(&*self);
++        let callback = queued_callback(move |_:()| {
++                ptr.as_pinned().map(|x| x.borrow_mut().fetch_more());
++        });
++        self.grepper = Some(Grepper::new(move || callback(()), self.query.clone()));
++        self.busy_changed();
++    }
++
+     fn fetch_more(&mut self) {
+         let mut done = false;
+         if let Some(ref mut grepper) = self.grepper {
+@@ -251,20 +252,18 @@ impl GrepTrait for Grep {
+         }
+         if done {
+             self.grepper = None;
+-            self.emit.busy_changed();
++            self.busy_changed();
+         }
+         // do not fetch too frequently
+         if self.new_items.is_empty() ||
+-            self.last_signal.elapsed().unwrap() < Duration::new(0, 100_000_000)
++            self.last_signal.unwrap().elapsed().unwrap() < Duration::new(0, 100_000_000)
+         {
+             return;
+         }
+-        self.last_signal = SystemTime::now();
+-        self.list.begin_insert_rows(
+-            self.items.len(),
+-            self.items.len() + self.new_items.len() - 1,
+-        );
++        self.last_signal = Some(SystemTime::now());
++        let (start, end) = (self.items.len() as i32, (self.items.len() + self.new_items.len() - 1) as i32);
++        QAbstractListModel::begin_insert_rows(self, start, end);
+         self.items.append(&mut self.new_items);
+-        self.list.end_insert_rows();
++        QAbstractListModel::end_insert_rows(self);
+     }
+ }
+diff --git a/src/main.cpp b/src/main.cpp
+deleted file mode 100644
+index 556133e..0000000
+--- a/src/main.cpp
++++ /dev/null
+@@ -1,17 +0,0 @@
+-#include "Bindings.h"
+-#include <QtGui/QGuiApplication>
+-#include <QtQml/QQmlApplicationEngine>
+-
+-extern "C" {
+-    int main_cpp(const char* appPath);
+-}
+-
+-int main_cpp(const char* appPath) {
+-    int argc = 1;
+-    char* argv[1] = { (char*)appPath };
+-    QGuiApplication app(argc, argv);
+-    qmlRegisterType<Grep>("RustCode", 1, 0, "Grep");
+-    QQmlApplicationEngine engine;
+-    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+-    return app.exec();
+-}
+diff --git a/src/main.rs b/src/main.rs
+index bad7364..2073183 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -5,23 +5,20 @@ extern crate htmlescape;
+ extern crate libc;
+ extern crate walkdir;
+ extern crate spmc;
++extern crate qmetaobject;
++#[macro_use]
++extern crate cstr;
+ 
+ mod implementation;
+ 
+-pub mod interface {
+-    include!(concat!(env!("OUT_DIR"), "/src/interface.rs"));
+-}
++use qmetaobject::*;
+ 
+-use std::os::raw::{c_char, c_int};
+-extern "C" {
+-    fn main_cpp(app: *const c_char) -> c_int;
+-}
++qrc!(qml_resource, "/" { "main.qml", } );
+ 
+ fn main() {
+-    use std::ffi::CString;
+-    let mut args = ::std::env::args();
+-    let app = CString::new(args.next().unwrap()).unwrap();
+-    unsafe {
+-        main_cpp(app.as_ptr());
+-    }
++    qml_resource();
++    qml_register_type::<implementation::Grep>(cstr!("RustCode"), 1, 0, cstr!("Grep"));
++    let mut engine = QmlEngine::new();
++    engine.load_file("qrc:/main.qml".into());
++    engine.exec();
+ }
+-- 
+2.19.1
+

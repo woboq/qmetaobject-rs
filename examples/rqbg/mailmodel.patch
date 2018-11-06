@@ -1,0 +1,1485 @@
+From 7d4ba1d66dba71d347cf064c13e22cc818acaf02 Mon Sep 17 00:00:00 2001
+From: Olivier Goffart <ogoffart@woboq.com>
+Date: Thu, 18 Oct 2018 16:54:53 +0200
+Subject: [PATCH] Port to qmetaobject-rs
+
+---
+ Cargo.toml                                |   7 +-
+ Email.qml                                 |   2 +-
+ bindings.json                             | 142 ----------
+ build.rs                                  |  11 -
+ cpp/main.cpp                              |  63 -----
+ qml.qrc                                   |   7 -
+ src/implementation/attachments.rs         |  85 ++----
+ src/implementation/email.rs               | 136 ++++------
+ src/implementation/folder_tree_listing.rs | 307 +++++++++++++++-------
+ src/implementation/mail_folders.rs        | 160 +++++------
+ src/implementation/mail_model.rs          | 142 +++++-----
+ src/main.rs                               |  55 +++-
+ 12 files changed, 451 insertions(+), 666 deletions(-)
+ delete mode 100644 bindings.json
+ delete mode 100644 build.rs
+ delete mode 100644 cpp/main.cpp
+ delete mode 100644 qml.qrc
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 0a20dd8..6351dea 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,8 +1,6 @@
+ [package]
+ name = "mailmodel"
+ version = "0.1.5"
+-build = "build.rs"
+-links = "mailmodel"
+ authors = ["Jos van den Oever <jos@vandenoever.info>"]
+ description = "A proof-of-concept mail viewer writting with Qt using QML"
+ license = "AGPL-3.0-or-later"
+@@ -26,9 +24,8 @@ serde = "1.0"
+ serde_derive = "1.0"
+ serde_json = "1.0"
+ walkdir = "2"
+-
+-[build-dependencies]
+-rust_qt_binding_generator = "0.2"
++qmetaobject = "0.0.4"
++cstr = "0.1"
+ 
+ [profile.release]
+ debug = true
+diff --git a/Email.qml b/Email.qml
+index ae1d98e..d584357 100644
+--- a/Email.qml
++++ b/Email.qml
+@@ -120,7 +120,7 @@ Item {
+                                 selectMultiple: false
+                                 folder: shortcuts.home
+                                 onAccepted: {
+-                                    var r = mailmodel.email.attachments.saveToFolder(index, save_dialog.fileUrl);
++                                    var r = modelData.save_to_folder(save_dialog.fileUrl);
+                                     if (r) {
+                                         save_error.title = r;
+                                         save_error_text.text = qsTr("Could not save file ") + mailmodel.email.attachments.name(index) + qsTr(" to ") + save_dialog.fileUrl + ":\n" + r;
+diff --git a/bindings.json b/bindings.json
+deleted file mode 100644
+index 0da286c..0000000
+--- a/bindings.json
++++ /dev/null
+@@ -1,142 +0,0 @@
+-{
+-    "cppFile": "Bindings.cpp",
+-    "rust": {
+-        "dir": "",
+-        "interfaceModule": "interface",
+-        "implementationModule": "implementation"
+-    },
+-    "objects": {
+-        "MailModel": {
+-            "properties": {
+-                "folders": {
+-                    "type": "MailFolders"
+-                },
+-                "folder_threads": {
+-                    "type": "FolderTreeListing"
+-                },
+-                "currentFolder": {
+-                    "type": "QString",
+-                    "write": true
+-                },
+-                "email": {
+-                    "type": "Email"
+-                },
+-                "configFile": {
+-                    "type": "QString",
+-                    "write": true,
+-                    "optional": true
+-                }
+-            },
+-            "functions": {
+-                "setEmail": {
+-                    "return": "void",
+-                    "mut": true,
+-                    "arguments": [{
+-                        "name": "uid",
+-                        "type": "quint64"
+-                    }]
+-                }
+-            }
+-        },
+-        "MailFolders": {
+-            "type": "Tree",
+-            "itemProperties": {
+-                "name": {
+-                    "type": "QString"
+-                },
+-                "delimiter": {
+-                    "type": "QString"
+-                }
+-            }
+-        },
+-        "FolderTreeListing": {
+-            "type": "Tree",
+-            "itemProperties": {
+-                "uid": {
+-                    "type": "quint64"
+-                },
+-                "date": {
+-                    "type": "QString",
+-                    "optional": true,
+-                    "rustByValue": true
+-                },
+-                "section": {
+-                    "type": "QString",
+-                    "rustByValue": true
+-                },
+-                "from": {
+-                    "type": "QString",
+-                    "optional": true
+-                },
+-                "subject": {
+-                    "type": "QString",
+-                    "optional": true
+-                },
+-                "seen": {
+-                    "type": "bool"
+-                }
+-            },
+-            "functions": {
+-                "setFilter": {
+-                    "return": "void",
+-                    "mut": true,
+-                    "arguments": [{
+-                        "name": "filter",
+-                        "type": "QString"
+-                    }]
+-                }
+-            }
+-        },
+-        "Email": {
+-            "type": "Object",
+-            "properties": {
+-                "date": {
+-                    "type": "QString",
+-                    "rustByFunction": true
+-                },
+-                "from": {
+-                    "type": "QString",
+-                    "rustByFunction": true
+-                },
+-                "subject": {
+-                    "type": "QString",
+-                    "rustByFunction": true
+-                },
+-                "body": {
+-                    "type": "QString",
+-                    "rustByFunction": true
+-                },
+-                "html": {
+-                    "type": "QString",
+-                    "rustByFunction": true
+-                },
+-                "attachments": {
+-                    "type": "Attachments"
+-                }
+-            }
+-        },
+-        "Attachments": {
+-            "type": "List",
+-            "itemProperties": {
+-                "name": {
+-                    "type": "QString"
+-                },
+-                "bytes": {
+-                    "type": "QByteArray"
+-                }
+-            },
+-            "functions": {
+-                "saveToFolder": {
+-                    "return": "QString",
+-                    "arguments": [{
+-                        "name": "index",
+-                        "type": "quint32"
+-                    }, {
+-                        "name": "folder",
+-                        "type": "QString"
+-                    }]
+-                }
+-            }
+-        }
+-    }
+-}
+diff --git a/build.rs b/build.rs
+deleted file mode 100644
+index 9d1966f..0000000
+--- a/build.rs
++++ /dev/null
+@@ -1,11 +0,0 @@
+-extern crate rust_qt_binding_generator;
+-
+-fn main() {
+-    let out_dir = ::std::env::var("OUT_DIR").unwrap();
+-    rust_qt_binding_generator::build::require_qt_version(5, 11, 0);
+-    rust_qt_binding_generator::build::Build::new(&out_dir)
+-        .bindings("bindings.json")
+-        .qrc("qml.qrc")
+-        .cpp("cpp/main.cpp")
+-        .compile("mailmodel");
+-}
+diff --git a/cpp/main.cpp b/cpp/main.cpp
+deleted file mode 100644
+index 32906c6..0000000
+--- a/cpp/main.cpp
++++ /dev/null
+@@ -1,63 +0,0 @@
+-/*
+- *   Copyright 2018  Jos van den Oever <jos@vandenoever.info>
+- *
+- *   This program is free software; you can redistribute it and/or
+- *   modify it under the terms of the GNU General Public License as
+- *   published by the Free Software Foundation; either version 2 of
+- *   the License or (at your option) version 3 or any later version
+- *   accepted by the membership of KDE e.V. (or its successor approved
+- *   by the membership of KDE e.V.), which shall act as a proxy
+- *   defined in Section 14 of version 3 of the license.
+- *
+- *   This program is distributed in the hope that it will be useful,
+- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- *   GNU General Public License for more details.
+- *
+- *   You should have received a copy of the GNU General Public License
+- *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#include "Bindings.h"
+-
+-#include <QtGui/QGuiApplication>
+-#include <QtQml/QQmlApplicationEngine>
+-#include <QtQml/QQmlContext>
+-#include <QtQml/qqml.h>
+-
+-#include <QtNetwork/QNetworkAccessManager>
+-#include <QtQml/QQmlNetworkAccessManagerFactory>
+-
+-class NoNetworkAccessManagerFactory : public QQmlNetworkAccessManagerFactory
+-{
+-public:
+-    QNetworkAccessManager *create(QObject * /*parent*/) override {
+-        auto n = new QNetworkAccessManager();
+-        n->setNetworkAccessible(QNetworkAccessManager::NotAccessible);
+-        return n;
+-    }
+-};
+-
+-extern "C" {
+-    int main_cpp(const char* app, const char* rawConfigFile);
+-}
+-
+-int main_cpp(const char* appPath, const char* rawConfigFile)
+-{
+-    QString configFile = QString::fromUtf8(rawConfigFile);
+-    int argc = 1;
+-    char* argv[1] = { (char*)appPath };
+-    QGuiApplication app(argc, argv);
+-    qmlRegisterType<MailModel>("RustCode", 1, 0, "MailModel");
+-
+-    NoNetworkAccessManagerFactory networkManagerFactory;
+-    QQmlApplicationEngine engine;
+-    engine.setNetworkAccessManagerFactory(&networkManagerFactory);
+-    QQmlContext* context = engine.rootContext();
+-    context->setContextProperty("mailConfigFile", configFile);
+-    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+-    if (engine.rootObjects().isEmpty())
+-        return -1;
+-
+-    return app.exec();
+-}
+diff --git a/qml.qrc b/qml.qrc
+deleted file mode 100644
+index 50425d5..0000000
+--- a/qml.qrc
++++ /dev/null
+@@ -1,7 +0,0 @@
+-<RCC>
+-    <qresource prefix="/">
+-        <file>main.qml</file>
+-        <file>ThreadsView.qml</file>
+-        <file>Email.qml</file>
+-    </qresource>
+-</RCC>
+diff --git a/src/implementation/attachments.rs b/src/implementation/attachments.rs
+index 6ff82e5..df21cb6 100644
+--- a/src/implementation/attachments.rs
++++ b/src/implementation/attachments.rs
+@@ -1,93 +1,30 @@
+-use implementation::email::EmailData;
+-use interface::{AttachmentsEmitter, AttachmentsList, AttachmentsTrait};
+ use mailparse::{parse_mail, ParsedMail};
+ use message::Message;
+ use std::path::PathBuf;
+-use std::sync::{Arc, Mutex};
+ 
+-#[derive(Debug)]
++#[derive(Debug, Default, QGadget, Clone)]
+ pub struct Attachment {
+-    pub name: String,
++    pub name: qt_property!(String),
+     pub data: Vec<u8>,
+-}
+-
+-pub struct Attachments {
+-    emit: AttachmentsEmitter,
+-    model: AttachmentsList,
+-    attachments: Vec<Attachment>,
+-    email_data: Option<Arc<Mutex<EmailData>>>,
+-    current_email: Option<Arc<Message>>,
+-}
+ 
+-impl Attachments {
+-    pub fn set_email_data(&mut self, email_data: Arc<Mutex<EmailData>>) {
+-        self.email_data = Some(email_data);
+-    }
+-    fn set_attachments(&mut self, attachments: Vec<Attachment>) {
+-        self.model.begin_reset_model();
+-        self.attachments = attachments;
+-        self.model.end_reset_model();
+-    }
++    save_to_folder: qt_method!(fn(&self, folder: String) -> String),
+ }
+ 
+-impl AttachmentsTrait for Attachments {
+-    fn new(emit: AttachmentsEmitter, model: AttachmentsList) -> Attachments {
+-        Attachments {
+-            emit,
+-            model,
+-            attachments: Vec::new(),
+-            email_data: None,
+-            current_email: None,
+-        }
+-    }
+-    fn emit(&mut self) -> &mut AttachmentsEmitter {
+-        &mut self.emit
+-    }
+-    fn row_count(&self) -> usize {
+-        self.attachments.len()
+-    }
+-    fn name(&self, index: usize) -> &str {
+-        &self.attachments[index].name
+-    }
+-    fn bytes(&self, index: usize) -> &[u8] {
+-        &self.attachments[index].data
+-    }
+-    fn can_fetch_more(&self) -> bool {
+-        if let Some(email_data) = &self.email_data {
+-            if email_data.lock().unwrap().email != self.current_email {
+-                return true;
+-            }
+-        }
+-        false
+-    }
+-    fn fetch_more(&mut self) {
+-        if !self.can_fetch_more() {
+-            return;
+-        }
+-        let mut attachments = Vec::new();
+-        if let Some(email_data) = &self.email_data {
+-            if let Some(email) = &email_data.lock().unwrap().email {
+-                self.current_email = Some(Arc::clone(&email));
+-                let email = parse_mail(&email.data).unwrap();
+-                get_attachments(&mut attachments, &email);
+-            }
+-        }
+-        self.set_attachments(attachments);
+-    }
++impl Attachment {
+     // save attachment to a file
+     // if there is an error, send a string of length > 1
+-    fn save_to_folder(&self, index: u32, folder: String) -> String {
++    fn save_to_folder(&self, folder: String) -> String {
+         let mut path = PathBuf::new();
+         if folder.starts_with("file://") {
+             path.push(&folder[7..]);
+         } else {
+             path.push(folder);
+         }
+-        path.push(&self.attachments[index as usize].name);
++        path.push(&self.name);
+         if path.exists() {
+             return format!("File {} already exists.", path.to_string_lossy());
+         }
+-        if let Err(e) = ::std::fs::write(path, &self.attachments[index as usize].data) {
++        if let Err(e) = ::std::fs::write(path, &self.data) {
+             format!("{}", e)
+         } else {
+             String::new()
+@@ -95,12 +32,20 @@ impl AttachmentsTrait for Attachments {
+     }
+ }
+ 
++pub fn parse_attachments(email: &Message) -> Vec<Attachment> {
++    let email = parse_mail(&email.data).unwrap();
++    let mut attachments = Vec::new();
++    get_attachments(&mut attachments, &email);
++    attachments
++}
++
+ fn get_attachments(a: &mut Vec<Attachment>, part: &ParsedMail) {
+     let name = part.ctype.params.get("name");
+     if let (Some(name), Ok(data)) = (name, part.get_body_raw()) {
+         a.push(Attachment {
+             name: name.clone(),
+             data,
++            save_to_folder: Default::default(),
+         });
+     }
+     for part in &part.subparts {
+diff --git a/src/implementation/email.rs b/src/implementation/email.rs
+index a4612c4..ef2f813 100644
+--- a/src/implementation/email.rs
++++ b/src/implementation/email.rs
+@@ -1,43 +1,29 @@
+-use implementation::attachments::Attachments;
+-use interface::{AttachmentsEmitter, AttachmentsTrait, EmailEmitter, EmailTrait};
+ use mailparse::{parse_mail, ParsedMail};
+ use message::Message;
+-use std::sync::{Arc, Mutex};
++use qmetaobject::{QMetaType, QString, QVariantList};
++use std::sync::Arc;
+ 
+-pub struct EmailData {
+-    emit: EmailEmitter,
+-    attachments_emit: AttachmentsEmitter,
++#[derive(Default, QGadget, Clone)]
++pub struct Email {
+     pub email: Option<Arc<Message>>,
++    pub date: qt_property!(QString; READ date),
++    pub from: qt_property!(QString; READ from),
++    pub subject: qt_property!(QString; READ subject),
++    pub body: qt_property!(QString; READ body),
++    pub html: qt_property!(QString; READ html),
++    pub attachments: qt_property!(QVariantList; READ attachments),
+ }
+ 
+-impl EmailData {
++impl Email {
+     pub fn set_email(&mut self, message: Option<Arc<Message>>) {
+         if self.email != message {
+             self.email = message;
+-            self.emit.subject_changed();
+-            self.emit.from_changed();
+-            self.emit.date_changed();
+-            self.emit.body_changed();
+-            self.emit.html_changed();
+-            self.attachments_emit.new_data_ready();
+         }
+     }
+-}
+ 
+-pub struct Email {
+-    emit: EmailEmitter,
+-    data: Arc<Mutex<EmailData>>,
+-    attachments: Attachments,
+-}
+-
+-impl Email {
+-    pub fn data(&self) -> Arc<Mutex<EmailData>> {
+-        self.data.clone()
+-    }
+-    fn get_alternative(&self, mimetype: &str) -> String {
+-        let mut body = String::new();
+-        let data = self.data.lock().unwrap();
+-        if let Some(email) = &data.email {
++    fn get_alternative(&self, mimetype: &str) -> QString {
++        let mut body = QString::default();
++        if let Some(email) = &self.email {
+             let email = parse_mail(&email.data).unwrap();
+             let mut email = &email;
+             //            print_structure(email);
+@@ -46,79 +32,49 @@ impl Email {
+             }
+             let alternative = find_part(mimetype, email);
+             if let Some(alternative) = alternative {
+-                body = alternative.get_body().ok().unwrap_or_default();
++                body = alternative.get_body().ok().unwrap_or_default().into();
+             }
+         }
+         body
+     }
+-}
+ 
+-impl EmailTrait for Email {
+-    fn new(mut emit: EmailEmitter, mut attachments: Attachments) -> Email {
+-        let data = Arc::new(Mutex::new(EmailData {
+-            emit: emit.clone(),
+-            email: None,
+-            attachments_emit: attachments.emit().clone(),
+-        }));
+-        attachments.set_email_data(Arc::clone(&data));
+-        Email {
+-            emit,
+-            data,
+-            attachments,
+-        }
+-    }
+-    fn emit(&mut self) -> &mut EmailEmitter {
+-        &mut self.emit
+-    }
+-    fn date<F>(&self, f: F)
+-    where
+-        F: FnOnce(&str),
+-    {
+-        if let Some(email) = &self.data.lock().unwrap().email {
+-            f(&email.date.to_rfc2822());
++    fn date(&self) -> QString {
++        if let Some(email) = &self.email {
++            email.date.to_rfc2822().into()
+         } else {
+-            f("");
++            Default::default()
+         }
+     }
+-    fn from<F>(&self, f: F)
+-    where
+-        F: FnOnce(&str),
+-    {
+-        if let Some(email) = &self.data.lock().unwrap().email {
+-            f(&email.from);
++
++    fn from(&self) -> QString {
++        if let Some(email) = &self.email {
++            email.from.clone().into()
+         } else {
+-            f("");
++            Default::default()
+         }
+     }
+-    fn subject<F>(&self, f: F)
+-    where
+-        F: FnOnce(&str),
+-    {
+-        if let Some(email) = &self.data.lock().unwrap().email {
+-            f(&email.subject);
++    fn subject(&self) -> QString {
++        if let Some(email) = &self.email {
++            email.subject.clone().into()
+         } else {
+-            f("");
++            Default::default()
+         }
+     }
+-    fn body<F>(&self, f: F)
+-    where
+-        F: FnOnce(&str),
+-    {
+-        let plain = self.get_alternative("text/plain");
+-        f(&plain);
+-    }
+-    fn html<F>(&self, f: F)
+-    where
+-        F: FnOnce(&str),
+-    {
+-        let html = self.get_alternative("text/html");
+-        f(&html);
+-    }
+-    fn attachments(&self) -> &Attachments {
+-        &self.attachments
+-    }
+-    fn attachments_mut(&mut self) -> &mut Attachments {
+-        &mut self.attachments
++    fn body(&self) -> QString {
++        self.get_alternative("text/plain")
++    }
++    fn html(&self) -> QString {
++        self.get_alternative("text/html")
++    }
++    fn attachments(&self) -> QVariantList {
++        self.email
++            .as_ref()
++            .map(|x| {
++                super::attachments::parse_attachments(&*x)
++                    .iter()
++                    .map(|a| a.to_qvariant())
++                    .collect()
++            }).unwrap_or_default()
+     }
+ }
+ 
+@@ -126,7 +82,7 @@ fn find_part<'a>(mimetype: &str, mail: &'a ParsedMail<'a>) -> Option<&'a ParsedM
+     if mail.ctype.mimetype == mimetype {
+         return Some(mail);
+     }
+-    mail.subparts.iter().find(
+-        |mail| mail.ctype.mimetype == mimetype,
+-    )
++    mail.subparts
++        .iter()
++        .find(|mail| mail.ctype.mimetype == mimetype)
+ }
+diff --git a/src/implementation/folder_tree_listing.rs b/src/implementation/folder_tree_listing.rs
+index b97c768..4cf8811 100644
+--- a/src/implementation/folder_tree_listing.rs
++++ b/src/implementation/folder_tree_listing.rs
+@@ -1,100 +1,147 @@
+-use interface::{FolderTreeListingEmitter, FolderTreeListingTrait, FolderTreeListingTree};
+-use job_processor::FolderReceiver;
+ use message::Message;
++use qmetaobject::*;
+ use sorted_filtered_tree::SortedFilteredSyncedTree;
++use std::cell::{Ref, RefCell};
+ use std::cmp::Ordering;
+-use std::sync::{Arc, Mutex};
++use std::collections::hash_map::HashMap;
++use std::rc::Rc;
++use std::sync::Arc;
+ use sync_tree::{TreeChange, TreeListener};
+ 
+-pub struct FolderTreeListingData {
+-    emit: FolderTreeListingEmitter,
+-    changes: Vec<TreeChange<Arc<Message>>>,
+-}
+-
+-impl FolderReceiver for Arc<Mutex<FolderTreeListingData>> {
+-    fn add_changes(&mut self, changes: Vec<TreeChange<Arc<Message>>>) {
+-        if let Ok(mut s) = self.lock() {
+-            for change in changes {
+-                s.changes.push(change);
+-            }
+-            s.emit.new_data_ready(None);
+-        }
+-    }
+-}
+-
++#[allow(non_snake_case)]
++#[derive(QObject)]
+ pub struct FolderTreeListing {
+-    emit: FolderTreeListingEmitter,
+-    data: Arc<Mutex<FolderTreeListingData>>,
++    base: qt_base_class!(trait QAbstractItemModel),
+     tree: SortedFilteredSyncedTree<Arc<Message>, Listener>,
+-    model: FolderTreeListingTree,
+-}
++    tree_listener: Rc<RefCell<QPointer<FolderTreeListing>>>,
+ 
+-impl FolderTreeListing {
+-    pub fn data(&self) -> Arc<Mutex<FolderTreeListingData>> {
+-        self.data.clone()
+-    }
++    uid: qt_method!(fn(&self, index: QModelIndex) -> u64),
++    date: qt_method!(fn(&self, index: QModelIndex) -> String),
++    section: qt_method!(fn(&self, index: QModelIndex) -> QString),
++    from: qt_method!(fn(&self, index: QModelIndex) -> String),
++    subject: qt_method!(fn(&self, index: QModelIndex) -> String),
++    seen: qt_method!(fn(&self, index: QModelIndex) -> bool),
++
++    setFilter: qt_method!(fn(&mut self, filter: String)),
+ }
+ 
+-struct Listener {
+-    model: FolderTreeListingTree,
++struct Listener(Rc<RefCell<QPointer<FolderTreeListing>>>);
++
++impl Listener {
++    fn as_ref(&self) -> Option<Ref<FolderTreeListing>> {
++        if self.0.borrow().as_ref().is_none() {
++            return None;
++        }
++        Some(Ref::map(self.0.borrow(), |x| x.as_ref().unwrap()))
++    }
++    fn get_index(&self, i: usize) -> QModelIndex {
++        if i == 0 {
++            return Default::default();
++        }
++        self.as_ref()
++            .map(|x| QAbstractItemModel::create_index(&*x, x.tree.row(i) as i32, 0, i))
++            .unwrap_or_default()
++    }
+ }
+ 
+ impl TreeListener for Listener {
+     fn layout_about_to_be_changed(&mut self) {
+-        self.model.layout_about_to_be_changed()
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::layout_about_to_be_changed(&*self.as_ref().unwrap())
+     }
+     fn layout_changed(&mut self) {
+-        self.model.layout_changed()
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::update_model_indexes(&*self.as_ref().unwrap(), |idx: QModelIndex| {
++            // This does not seem right, but that's what the previous code was doing if i'm not mistaken
++            self.get_index(
++                self.as_ref()
++                    .unwrap()
++                    .tree
++                    .check_row(idx.id(), idx.row() as usize)
++                    .unwrap_or(0),
++            )
++        });
++        QAbstractItemModel::layout_changed(&*self.as_ref().unwrap())
+     }
+     fn data_changed(&mut self, first: usize, last: usize) {
+-        self.model.data_changed(first, last)
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::data_changed(
++            &*self.as_ref().unwrap(),
++            self.get_index(first),
++            self.get_index(last),
++        )
+     }
+     fn begin_reset_model(&mut self) {
+-        self.model.begin_reset_model()
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::begin_reset_model(&*self.as_ref().unwrap())
+     }
+     fn end_reset_model(&mut self) {
+-        self.model.end_reset_model()
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::end_reset_model(&*self.as_ref().unwrap())
+     }
+     fn begin_insert_rows(&mut self, index: Option<usize>, first: usize, last: usize) {
+-        self.model.begin_insert_rows(index, first, last)
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::begin_insert_rows(
++            &*self.as_ref().unwrap(),
++            self.get_index(index.unwrap_or(0)),
++            first as i32,
++            last as i32,
++        )
+     }
+     fn end_insert_rows(&mut self) {
+-        self.model.end_insert_rows()
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::end_insert_rows(&*self.as_ref().unwrap())
+     }
+     fn begin_move_rows(
+         &mut self,
+-        index: Option<usize>,
+-        first: usize,
+-        last: usize,
+-        dest: Option<usize>,
+-        destination: usize,
++        _index: Option<usize>,
++        _first: usize,
++        _last: usize,
++        _dest: Option<usize>,
++        _destination: usize,
+     ) {
+-        self.model.begin_move_rows(
+-            index,
+-            first,
+-            last,
+-            dest,
+-            destination,
+-        )
++        panic!("Not implemented");
+     }
+     fn end_move_rows(&mut self) {
+-        self.model.end_move_rows()
++        panic!("Not implemented");
+     }
+     fn begin_remove_rows(&mut self, index: Option<usize>, first: usize, last: usize) {
+-        self.model.begin_remove_rows(index, first, last)
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::begin_remove_rows(
++            &*self.as_ref().unwrap(),
++            self.get_index(index.unwrap_or(0)),
++            first as i32,
++            last as i32,
++        )
+     }
+     fn end_remove_rows(&mut self) {
+-        self.model.end_remove_rows()
++        if self.0.borrow().as_ref().is_none() {
++            return;
++        }
++        QAbstractItemModel::end_remove_rows(&*self.as_ref().unwrap())
+     }
+ }
+ 
+-impl FolderTreeListingTrait for FolderTreeListing {
+-    fn new(mut emit: FolderTreeListingEmitter, model: FolderTreeListingTree) -> FolderTreeListing {
+-        let data = FolderTreeListingData {
+-            emit: emit.clone(),
+-            changes: Vec::new(),
+-        };
+-        let listener = Listener { model: model.clone() };
++impl Default for FolderTreeListing {
++    fn default() -> Self {
++        let tree_listener: Rc<RefCell<QPointer<FolderTreeListing>>> = Default::default();
++        let listener = Listener(tree_listener.clone());
+         let mut tree = SortedFilteredSyncedTree::new(listener);
+         tree.set_sorter(Box::new(
+             |depth: usize, a: &Arc<Message>, b: &Arc<Message>| {
+@@ -110,68 +157,125 @@ impl FolderTreeListingTrait for FolderTreeListing {
+             },
+         ));
+         FolderTreeListing {
+-            emit,
+-            data: Arc::new(Mutex::new(data)),
++            base: Default::default(),
+             tree,
+-            model,
++            tree_listener,
++            uid: Default::default(),
++            date: Default::default(),
++            section: Default::default(),
++            from: Default::default(),
++            subject: Default::default(),
++            seen: Default::default(),
++            setFilter: Default::default(),
+         }
+     }
+-    fn emit(&mut self) -> &mut FolderTreeListingEmitter {
+-        &mut self.emit
++}
++
++/// This trait allow to override a Qt QAbstractItemModel
++impl QAbstractItemModel for FolderTreeListing {
++    fn row_count(&self, parent: QModelIndex) -> i32 {
++        // Initialize the Listener... Not the best way, but it works
++        if self.tree_listener.borrow().is_null() {
++            *self.tree_listener.borrow_mut() = QPointer::from(self);
++        }
++
++        self.tree.row_count(if parent.is_valid() {
++            Some(parent.id())
++        } else {
++            None
++        }) as i32
+     }
+-    fn row_count(&self, index: Option<usize>) -> usize {
+-        self.tree.row_count(index)
++    fn column_count(&self, _parent: QModelIndex) -> i32 {
++        1
+     }
+-    fn index(&self, index: Option<usize>, row: usize) -> usize {
+-        self.tree.index(index, row)
++    fn index(&self, row: i32, column: i32, parent: QModelIndex) -> QModelIndex {
++        let id = self.tree.index(
++            if parent.is_valid() {
++                Some(parent.id())
++            } else {
++                None
++            },
++            row as usize,
++        );
++        QAbstractItemModel::create_index(self, row, column, id)
+     }
+-    fn parent(&self, index: usize) -> Option<usize> {
+-        self.tree.parent(index)
++    fn parent(&self, index: QModelIndex) -> QModelIndex {
++        let parent_id = self.tree.parent(index.id()).unwrap_or(0);
++        if parent_id == 0 {
++            return Default::default();
++        }
++        let row = self.tree.row(parent_id) as i32;
++        QAbstractItemModel::create_index(self, row, 0, parent_id)
+     }
+-    fn row(&self, index: usize) -> usize {
+-        self.tree.row(index)
++    fn data(&self, index: QModelIndex, role: i32) -> QVariant {
++        if role == USER_ROLE {
++            self.uid(index).to_qvariant()
++        } else if role == USER_ROLE + 1 {
++            self.date(index).to_qvariant()
++        } else if role == USER_ROLE + 2 {
++            self.section(index).to_qvariant()
++        } else if role == USER_ROLE + 3 {
++            self.from(index).to_qvariant()
++        } else if role == USER_ROLE + 4 {
++            self.subject(index).to_qvariant()
++        } else if role == USER_ROLE + 5 {
++            self.seen(index).into()
++        } else {
++            Default::default()
++        }
+     }
+-    fn check_row(&self, index: usize, row: usize) -> Option<usize> {
+-        self.tree.check_row(index, row)
++    fn role_names(&self) -> HashMap<i32, QByteArray> {
++        let mut map = HashMap::new();
++        map.insert(USER_ROLE, "uid".into());
++        map.insert(USER_ROLE + 1, "date".into());
++        map.insert(USER_ROLE + 2, "section".into());
++        map.insert(USER_ROLE + 3, "from".into());
++        map.insert(USER_ROLE + 4, "subject".into());
++        map.insert(USER_ROLE + 5, "seen".into());
++        map
+     }
+-    fn uid(&self, index: usize) -> u64 {
+-        self.tree[index].uid.0 as u64
++}
++
++impl FolderTreeListing {
++    fn uid(&self, index: QModelIndex) -> u64 {
++        self.tree[index.id()].uid.0 as u64
+     }
+-    fn date(&self, index: usize) -> Option<String> {
+-        Some(format!(
+-            "{}",
+-            self.tree[index].as_ref().date.format("%y-%m-%d %H:%M")
+-        ))
++    fn date(&self, index: QModelIndex) -> String {
++        self.tree[index.id()]
++            .as_ref()
++            .date
++            .format("%y-%m-%d %H:%M")
++            .to_string()
+     }
+-    fn section(&self, mut index: usize) -> String {
++    fn section(&self, mut index: QModelIndex) -> QString {
+         // find the oldest date
+-        while let Some(parent) = self.parent(index) {
+-            index = parent;
++        loop {
++            let p = self.parent(index);
++            if !p.is_valid() || p.id() == 0 {
++                break;
++            }
++            index = p;
+         }
+-        let mut s = self.tree[index].as_ref().thread_end.to_rfc3339();
++        let mut s = self.tree[index.id()].as_ref().thread_end.to_rfc3339();
+         s.truncate(10);
+-        s
++        s.into()
+     }
+-    fn from(&self, index: usize) -> Option<&str> {
+-        Some(self.tree[index].as_ref().from.as_str())
++    fn from(&self, index: QModelIndex) -> String {
++        self.tree[index.id()].as_ref().from.clone()
+     }
+-    fn subject(&self, index: usize) -> Option<&str> {
+-        Some(self.tree[index].as_ref().subject.as_str())
++    fn subject(&self, index: QModelIndex) -> String {
++        self.tree[index.id()].as_ref().subject.clone()
+     }
+-    fn seen(&self, index: usize) -> bool {
+-        self.tree[index].seen
++    fn seen(&self, index: QModelIndex) -> bool {
++        self.tree[index.id()].seen
+     }
+-    fn can_fetch_more(&self, _index: Option<usize>) -> bool {
+-        !self.data.lock().unwrap().changes.is_empty()
+-    }
+-    fn fetch_more(&mut self, _index: Option<usize>) {
+-        let mut changes = Vec::new();
+-        if let Ok(mut l) = self.data.lock() {
+-            ::std::mem::swap(&mut changes, &mut l.changes);
+-        }
++
++    pub fn apply_changes(&mut self, changes: Vec<TreeChange<Arc<Message>>>) {
+         self.tree.apply_all(changes);
+     }
+-    fn set_filter(&mut self, filter: String) {
++
++    #[allow(non_snake_case)]
++    fn setFilter(&mut self, filter: String) {
+         use regex::{escape, RegexBuilder};
+         let filter = filter.trim();
+         if filter.is_empty() {
+@@ -185,8 +289,7 @@ impl FolderTreeListingTrait for FolderTreeListing {
+                     .case_insensitive(true)
+                     .build()
+                     .unwrap()
+-            })
+-            .collect();
++            }).collect();
+         self.tree.set_filter(Box::new(move |message| {
+             regexes.iter().all(|regex| {
+                 regex.find(&message.subject).is_some() || regex.find(&message.from).is_some()
+diff --git a/src/implementation/mail_folders.rs b/src/implementation/mail_folders.rs
+index 14a791c..010ad95 100644
+--- a/src/implementation/mail_folders.rs
++++ b/src/implementation/mail_folders.rs
+@@ -1,20 +1,7 @@
+-use interface::{MailFoldersEmitter, MailFoldersTrait, MailFoldersTree};
+ use mail_store::Name;
+-use std::sync::{Arc, Mutex};
++use qmetaobject::*;
++use std::collections::hash_map::HashMap;
+ 
+-pub struct MailFoldersData {
+-    emit: MailFoldersEmitter,
+-    folders: Option<Vec<Name>>,
+-}
+-
+-impl MailFoldersData {
+-    pub fn set_folders(&mut self, folders: Vec<Name>) {
+-        self.folders = Some(folders);
+-        self.emit.new_data_ready(None)
+-    }
+-}
+-
+-/// Nodes in the tree
+ struct MailFolder {
+     name: String,
+     delimiter: String,
+@@ -24,24 +11,19 @@ struct MailFolder {
+     subfolders: Vec<usize>,
+ }
+ 
+-/// Rust-side implementation of QAbstractItemModel via MailFoldersTrait
++/// Rust-side implementation of QAbstractItemModel
++#[derive(Default, QObject)]
+ pub struct MailFolders {
+-    /// interface for emitting signals from any thread to the UI
+-    emit: MailFoldersEmitter,
+-    /// interface for emitting signals from the UI thread to the UI
+-    tree: MailFoldersTree,
++    base: qt_base_class!(trait QAbstractItemModel),
++
+     /// all nodes in the tree
+     folders: Vec<MailFolder>,
+-    /// interface for sending new data to this object
+-    data: Arc<Mutex<MailFoldersData>>,
++
++    delimiter: qt_method!(fn(&self, index: QModelIndex) -> QString),
++    name: qt_method!(fn(&self, index: QModelIndex) -> QString),
+ }
+ 
+ impl MailFolders {
+-    /// Get a handle for setting new data on this object.
+-    /// This handle can be sent to a thread that aquires this information.
+-    pub fn data(&self) -> Arc<Mutex<MailFoldersData>> {
+-        self.data.clone()
+-    }
+     fn add_folder(&mut self, parent: usize, name: String, delimiter: String) -> usize {
+         let index = self.folders.len();
+         self.folders.push(MailFolder {
+@@ -65,14 +47,15 @@ impl MailFolders {
+     }
+     pub fn set_folders(&mut self, folders: Vec<Name>) {
+         // split the folder names at the delimiter and add them to the tree
+-        self.tree.begin_reset_model();
++        QAbstractItemModel::begin_reset_model(self);
+         self.init();
+         for folder in folders {
+             let mut index = 0;
+             for f in folder.name.split(&folder.delimiter) {
+-                let pos = if let Some(pos) = self.folders[index].subfolders.iter().find(|i| {
+-                    self.folders[**i].name == f
+-                })
++                let pos = if let Some(pos) = self.folders[index]
++                    .subfolders
++                    .iter()
++                    .find(|i| self.folders[**i].name == f)
+                 {
+                     Some(*pos)
+                 } else {
+@@ -85,79 +68,70 @@ impl MailFolders {
+                 }
+             }
+         }
+-        self.tree.end_reset_model();
++        QAbstractItemModel::end_reset_model(self);
++    }
++
++    fn name(&self, index: QModelIndex) -> QString {
++        self.folders
++            .get(index.id())
++            .map(|x| x.name.clone().into())
++            .unwrap_or_default()
++    }
++    fn delimiter(&self, index: QModelIndex) -> QString {
++        self.folders
++            .get(index.id())
++            .map(|x| x.delimiter.clone().into())
++            .unwrap_or_default()
+     }
+ }
+ 
+-impl MailFoldersTrait for MailFolders {
+-    fn new(mut emit: MailFoldersEmitter, tree: MailFoldersTree) -> MailFolders {
+-        let mut i = MailFolders {
+-            emit: emit.clone(),
+-            tree,
+-            folders: Vec::new(),
+-            data: Arc::new(Mutex::new(MailFoldersData {
+-                emit,
+-                folders: None,
+-            })),
++/// This trait allow to override a Qt QAbstractItemModel
++impl QAbstractItemModel for MailFolders {
++    fn row_count(&self, parent: QModelIndex) -> i32 {
++        self.folders
++            .get(parent.id())
++            .map(|x| x.subfolders.len() as i32)
++            .unwrap_or(0)
++    }
++    fn column_count(&self, _parent: QModelIndex) -> i32 {
++        1
++    }
++    fn index(&self, row: i32, column: i32, parent: QModelIndex) -> QModelIndex {
++        let id = self.folders[parent.id()].subfolders[row as usize];
++        QAbstractItemModel::create_index(self, row, column, id)
++    }
++    fn parent(&self, index: QModelIndex) -> QModelIndex {
++        let parent_id = if let Some(parent_id) = self.folders.get(index.id()).and_then(|x| x.parent)
++        {
++            parent_id
++        } else {
++            return Default::default();
+         };
+-        i.init();
+-        i
+-    }
+-    fn emit(&mut self) -> &mut MailFoldersEmitter {
+-        &mut self.emit
+-    }
+-    /// Returns the number of rows for a node with a given index.
+-    /// To get the number of root nodes, call `row_count(None)`.
+-    fn row_count(&self, index: Option<usize>) -> usize {
+-        self.folders[index.unwrap_or(0)].subfolders.len()
+-    }
+-    /// Returns the index for n-th row in parent.
+-    /// To get the index of the n-th root node, call `index(None, n)`.
+-    fn index(&self, parent: Option<usize>, row: usize) -> usize {
+-        self.folders[parent.unwrap_or(0)].subfolders[row]
+-    }
+-    /// Returns the index of the parent node or `None` if there is no parent.
+-    fn parent(&self, index: usize) -> Option<usize> {
+-        self.folders[index].parent
+-    }
+-    /// Returns the row number of a node with given index.
+-    fn row(&self, index: usize) -> usize {
+-        if let Some(parent) = self.folders[index].parent {
+-            self.folders[parent]
++        let row = if let Some(grand_parent) = self.folders.get(parent_id).and_then(|x| x.parent) {
++            self.folders[grand_parent]
+                 .subfolders
+                 .iter()
+-                .position(|i| *i == index)
+-                .unwrap()
++                .position(|i| *i == parent_id)
++                .unwrap() as i32
+         } else {
+             0
+-        }
++        };
++
++        QAbstractItemModel::create_index(self, row, 0, parent_id)
+     }
+-    /// Check if a node with given index and previous row number still exists.
+-    /// If it still exists return the new row number. Otherwise return `None`.
+-    /// This function is used to automatically update QPersistentModelIndexes when
+-    /// `layoutChanged()` is called.
+-    fn check_row(&self, index: usize, _row: usize) -> Option<usize> {
+-        if index < self.folders.len() {
+-            Some(self.row(index))
++    fn data(&self, index: QModelIndex, role: i32) -> QVariant {
++        if role == USER_ROLE {
++            self.delimiter(index).to_qvariant()
++        } else if role == USER_ROLE + 1 {
++            self.name(index).to_qvariant()
+         } else {
+-            None
++            Default::default()
+         }
+     }
+-    fn name(&self, index: usize) -> &str {
+-        &self.folders[index].name
+-    }
+-    fn delimiter(&self, index: usize) -> &str {
+-        &self.folders[index].delimiter
+-    }
+-    /// Returns true if more data is available to show in the UI.
+-    fn can_fetch_more(&self, _index: Option<usize>) -> bool {
+-        self.data.lock().unwrap().folders.is_some()
+-    }
+-    /// Show the available new data.
+-    fn fetch_more(&mut self, _index: Option<usize>) {
+-        let f = self.data.lock().unwrap().folders.take();
+-        if let Some(new_folders) = f {
+-            self.set_folders(new_folders);
+-        }
++    fn role_names(&self) -> HashMap<i32, QByteArray> {
++        let mut map = HashMap::new();
++        map.insert(USER_ROLE, "delimiter".into());
++        map.insert(USER_ROLE + 1, "name".into());
++        map
+     }
+ }
+diff --git a/src/implementation/mail_model.rs b/src/implementation/mail_model.rs
+index ea23737..65107dc 100644
+--- a/src/implementation/mail_model.rs
++++ b/src/implementation/mail_model.rs
+@@ -1,112 +1,118 @@
+-use implementation::{Email, EmailData, FolderTreeListing, FolderTreeListingData, MailFolders,
+-                     MailFoldersData};
+-use interface::{MailModelEmitter, MailModelTrait};
+-use job_processor::{EmailReceiver, FoldersReceiver, Job, JobProcessor};
++use implementation::{Email, FolderTreeListing, MailFolders};
++use job_processor::{EmailReceiver, FolderReceiver, FoldersReceiver, Job, JobProcessor};
+ use mail_store::Name;
+ use message::{Message, Uid};
+-use std::path::PathBuf;
+-use std::sync::{Arc, Mutex};
++use qmetaobject::*;
++use std::cell::RefCell;
++use std::sync::Arc;
++use sync_tree::TreeChange;
+ 
++#[allow(non_snake_case)]
++#[derive(QObject)]
+ pub struct MailModel {
+-    emit: MailModelEmitter,
+-    folders: MailFolders,
+-    folder_threads: FolderTreeListing,
+-    current_folder: String,
++    base: qt_base_class!(trait QObject),
++
++    folders: qt_property!(RefCell<MailFolders>; CONST),
++    folder_threads: qt_property!(RefCell<FolderTreeListing>; CONST),
++    current_folder: qt_property!(String; ALIAS currentFolder WRITE set_current_folder NOTIFY current_folder_changed),
++    current_folder_changed: qt_signal!(),
+     job_processor: JobProcessor<R, F, E>,
+-    config_file: Option<PathBuf>,
+-    email: Email,
++    config_file: qt_property!(String; ALIAS configFile WRITE set_config_file),
++    email: qt_property!(Email; NOTIFY email_changed),
++    email_changed: qt_signal!(),
++    setEmail: qt_method!(fn(&mut self, uid: u64)),
+ }
+ 
+-type R = Arc<Mutex<MailFoldersData>>;
++type R = Box<Fn(Vec<Name>) + Send>;
+ 
+ impl FoldersReceiver for R {
+     fn set_folders(&self, folders: Vec<Name>) {
+-        self.lock().unwrap().set_folders(folders)
++        (*self)(folders);
+     }
+ }
+ 
+-type F = Arc<Mutex<FolderTreeListingData>>;
+-
+-type E = Arc<Mutex<EmailData>>;
++type F = Box<Fn(Vec<TreeChange<Arc<Message>>>) + Send>;
++impl FolderReceiver for F {
++    fn add_changes(&mut self, changes: Vec<TreeChange<Arc<Message>>>) {
++        (*self)(changes);
++    }
++}
+ 
++type E = Box<Fn(Option<Arc<Message>>) + Send>;
+ impl EmailReceiver for E {
+     fn set_email(&self, message: Option<Arc<Message>>) {
+-        self.lock().unwrap().set_email(message)
++        (*self)(message);
+     }
+ }
+ 
+-impl MailModel {}
+-
+-impl MailModelTrait for MailModel {
+-    fn new(
+-        mut emit: MailModelEmitter,
+-        email: Email,
+-        folder_threads: FolderTreeListing,
+-        folders: MailFolders,
+-    ) -> MailModel {
++impl Default for MailModel {
++    fn default() -> Self {
+         MailModel {
+-            emit: emit.clone(),
+-            folders,
+-            folder_threads,
++            base: Default::default(),
++            folders: Default::default(),
++            folder_threads: Default::default(),
+             current_folder: "/".into(),
++            current_folder_changed: Default::default(),
+             job_processor: JobProcessor::new(),
+-            email,
+-            config_file: None,
++            config_file: Default::default(),
++            email: Default::default(),
++            email_changed: Default::default(),
++            setEmail: Default::default(),
+         }
+     }
+-    fn emit(&mut self) -> &mut MailModelEmitter {
+-        &mut self.emit
+-    }
+-    fn folders(&self) -> &MailFolders {
+-        &self.folders
+-    }
+-    fn folders_mut(&mut self) -> &mut MailFolders {
+-        &mut self.folders
+-    }
+-    fn folder_threads(&self) -> &FolderTreeListing {
+-        &self.folder_threads
+-    }
+-    fn folder_threads_mut(&mut self) -> &mut FolderTreeListing {
+-        &mut self.folder_threads
+-    }
+-    fn current_folder(&self) -> &str {
+-        &self.current_folder
+-    }
++}
++
++impl MailModel {
+     fn set_current_folder(&mut self, folder: String) {
+         if self.current_folder == folder {
+             return;
+         }
+         self.current_folder = folder;
+-        self.emit.current_folder_changed();
++        self.current_folder_changed();
+         if !self.current_folder.is_empty() {
++            let qptr = QPointer::from(&*self);
+             let _ = self.job_processor.send(Job::SetFolder(
+-                self.folder_threads.data(),
++                Box::new(::qmetaobject::queued_callback(
++                    move |changes: Vec<TreeChange<Arc<Message>>>| {
++                        qptr.as_pinned().map(|s| {
++                            let b = s.borrow();
++                            b.folder_threads.borrow_mut().apply_changes(changes);
++                        });
++                    },
++                )),
+                 self.current_folder.clone(),
+             ));
+         }
+     }
+-    fn email(&self) -> &Email {
+-        &self.email
+-    }
+-    fn email_mut(&mut self) -> &mut Email {
+-        &mut self.email
+-    }
+-    fn set_email(&mut self, uid: u64) {
++
++    #[allow(non_snake_case)]
++    fn setEmail(&mut self, uid: u64) {
++        let qptr = QPointer::from(&*self);
+         let _ = self.job_processor.send(Job::SetEmail(
+-            self.email.data(),
++            Box::new(::qmetaobject::queued_callback(
++                move |message: Option<Arc<Message>>| {
++                    qptr.as_pinned().map(|s| {
++                        s.borrow_mut().email.set_email(message);
++                        s.borrow().email_changed();
++                    });
++                },
++            )),
+             self.current_folder.clone(),
+             Uid(uid as usize),
+         ));
+     }
+-    fn config_file(&self) -> Option<&str> {
+-        self.config_file.as_ref().and_then(|s| s.to_str())
+-    }
+-    fn set_config_file(&mut self, config_file: Option<String>) {
+-        self.config_file = config_file.clone().map(|s| s.into());
+-        if let Some(config_file) = &self.config_file {
++
++    fn set_config_file(&mut self, config_file: String) {
++        self.config_file = config_file.clone();
++        if !config_file.is_empty() {
++            let qptr = QPointer::from(&*self);
+             let _ = self.job_processor.send(Job::SetConfig(
+-                self.folders.data(),
+-                config_file.clone(),
++                Box::new(::qmetaobject::queued_callback(move |folders: Vec<Name>| {
++                    qptr.as_ref().map(|s| {
++                        s.folders.borrow_mut().set_folders(folders);
++                    });
++                })),
++                config_file.into(),
+             ));
+         }
+     }
+diff --git a/src/main.rs b/src/main.rs
+index 1d4ea28..f9d6bd2 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -16,6 +16,12 @@ extern crate walkdir;
+ extern crate serde_derive;
+ extern crate serde_json;
+ 
++#[macro_use]
++extern crate qmetaobject;
++
++#[macro_use]
++extern crate cstr;
++
+ mod errors {
+     // Create the Error, ErrorKind, ResultExt, and Result types
+     error_chain!{
+@@ -45,21 +51,42 @@ mod sorted_filtered_tree;
+ mod sync_tree;
+ mod tree;
+ 
+-use std::os::raw::c_char;
+-extern {
+-    fn main_cpp(app: *const c_char, config_file: *const c_char);
+-}
++/* FIXME!
++#include <QNetworkAccessManager>
++#include <QQmlNetworkAccessManagerFactory>
++
++class NoNetworkAccessManagerFactory : public QQmlNetworkAccessManagerFactory
++{
++public:
++    QNetworkAccessManager *create(QObject *parent) override {
++        auto n = new QNetworkAccessManager();
++        n->setNetworkAccessible(QNetworkAccessManager::NotAccessible);
++        return n;
++    }
++};
++NoNetworkAccessManagerFactory networkManagerFactory;
++engine.setNetworkAccessManagerFactory(&networkManagerFactory);
++*/
++
++qrc!(qml_resource,
++    "qml" {
++        "main.qml",
++        "ThreadsView.qml",
++        "Email.qml",
++     }
++);
+ 
+ fn main() {
+-    use std::ffi::CString;
+-    let mut args = ::std::env::args();
+-    let app = CString::new(args.next().unwrap()).unwrap();
+-    let config_file = CString::new(args.next().unwrap_or_else(||panic!("Provide a file with mail configuration."))).unwrap();
+-    unsafe {
+-        main_cpp(app.as_ptr(), config_file.as_ptr());
+-    }
+-}
++    use qmetaobject::*;
+ 
+-pub mod interface {
+-    include!(concat!(env!("OUT_DIR"), "/src/interface.rs"));
++    let config_file: QString = std::env::args()
++        .nth(1)
++        .expect("Provide a file with mail configuration.")
++        .into();
++    qml_resource();
++    qml_register_type::<implementation::MailModel>(cstr!("RustCode"), 1, 0, cstr!("MailModel"));
++    let mut engine = QmlEngine::new();
++    engine.set_property("mailConfigFile".into(), config_file.into());
++    engine.load_file("qrc:/qml/main.qml".into());
++    engine.exec();
+ }
+-- 
+2.19.1
+
