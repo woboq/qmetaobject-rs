@@ -777,3 +777,5 @@ pub mod connections;
 pub use connections::RustSignal;
 use connections::{CppSignal, SignalCppRepresentation};
 pub mod scenegraph;
+pub mod qtquickcontrols2;
+pub use qtquickcontrols2::*;
