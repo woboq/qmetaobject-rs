@@ -116,22 +116,22 @@ struct MetaObject {
     string_data: Vec<String>,
 }
 impl MetaObject {
-    fn build_string_data(&self) -> Vec<u8> {
+    fn build_string_data(&self, target_pointer_width: u32) -> Vec<u8> {
         let mut result: Vec<u8> = Vec::new();
-        #[cfg(target_pointer_width = "64")]
-        let sizeof_qbytearraydata = 24;
-        #[cfg(target_pointer_width = "32")]
-        let sizeof_qbytearraydata = 16;
+
+        let sizeof_qbytearraydata = if target_pointer_width == 64 { 24 } else { 16 };
         let mut ofs = sizeof_qbytearraydata * self.string_data.len() as i32;
         for s in self.string_data.iter() {
             result.extend_from_slice(&write_u32(-1)); // ref (-1)
             result.extend_from_slice(&write_u32(s.len() as i32)); // size
             result.extend_from_slice(&write_u32(0)); // alloc / capacityReserved
-            #[cfg(target_pointer_width = "64")]
-            result.extend_from_slice(&write_u32(0)); // padding
+            if target_pointer_width == 64 {
+                result.extend_from_slice(&write_u32(0)); // padding
+            }
             result.extend_from_slice(&write_u32(ofs)); // offset (LSB)
-            #[cfg(target_pointer_width = "64")]
-            result.extend_from_slice(&write_u32(0)); // offset (MSB)
+            if target_pointer_width == 64 {
+                result.extend_from_slice(&write_u32(0)); // offset (MSB)
+            }
 
             ofs += s.len() as i32 + 1; // +1 for the '\0'
             ofs -= sizeof_qbytearraydata;
@@ -489,7 +489,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let mut mo: MetaObject = Default::default();
     mo.compute_int_data(name.to_string(), &properties, &methods, signals.len());
 
-    let str_data = mo.build_string_data();
+    let str_data32 = mo.build_string_data(32);
+    let str_data64 = mo.build_string_data(64);
     let int_data = mo.int_data;
 
     use self::MetaObjectCall::*;
@@ -809,7 +810,10 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 
             fn static_meta_object()->*const #crate_::QMetaObject {
 
-                static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
+                #[cfg(target_pointer_width = "64")]
+                static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
+                #[cfg(target_pointer_width = "32")]
+                static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
                 #[allow(unused_variables)]
