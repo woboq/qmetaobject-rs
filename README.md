@@ -79,3 +79,7 @@ impl Graph {
 
 But ideally, we should wrap as much as possible so this would not be needed. You can request API
 as a github issue, or contribute via a pull request.
+
+## License
+
+This software is licensed under the terms of the [MIT License](LICENSE.MIT).
