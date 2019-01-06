@@ -6,14 +6,6 @@ pub struct QQuickStyle {}
 impl QQuickStyle {
     /// Refer to the Qt documentation for QQuickStyle::setStyle
     pub fn set_style(style: QString) {
-        unsafe {
-            cpp! {{
-                #include <QtQuickControls2/QQuickStyle>
-            }}
-
-            cpp! {[style as "QString"] {
-                 QQuickStyle::setStyle(style);
-            }}
-        }
+        std::env::set_var::<_, String>("QT_QUICK_CONTROLS_STYLE", style.into());
     }
 }
