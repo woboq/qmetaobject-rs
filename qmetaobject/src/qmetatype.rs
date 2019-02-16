@@ -244,6 +244,8 @@ qdeclare_builtin_metatype!{f32  => 38}
 qdeclare_builtin_metatype!{QVariantList  => 9}
 qdeclare_builtin_metatype!{QString => 10}
 qdeclare_builtin_metatype!{QByteArray => 12}
+qdeclare_builtin_metatype!{QRectF => 20}
+qdeclare_builtin_metatype!{QPointF => 26}
 //qdeclare_builtin_metatype!{QVariant => 41}
 impl QMetaType for QVariant {
     fn register(_name: Option<&std::ffi::CStr>) -> i32 {
@@ -257,6 +259,8 @@ impl QMetaType for QVariant {
     }
 }
 qdeclare_builtin_metatype!{QModelIndex => 42}
+qdeclare_builtin_metatype!{QColor => 67}
+qdeclare_builtin_metatype!{QImage => 70}
 
 #[cfg(target_pointer_width = "32")]
 qdeclare_builtin_metatype!{isize  => 32} // That's QMetaType::Long

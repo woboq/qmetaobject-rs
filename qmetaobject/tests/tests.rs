@@ -84,6 +84,8 @@ struct MyObject {
     }),
 
     method_out_of_line: qt_method!(fn(&self, a: QString) -> QString),
+
+    prop_color: qt_property!(QColor)
 }
 
 impl MyObject {
