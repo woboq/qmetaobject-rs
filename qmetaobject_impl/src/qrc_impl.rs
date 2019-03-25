@@ -241,7 +241,7 @@ impl Data {
             .unwrap_or_else(|_| panic!("Cannot open file {}", filepath.display()));
         push_u32_be(&mut self.payload, data.len() as u32);
         self.payload.append(&mut data);
-        self.files.push(format!("../{}", filename));
+        self.files.push(filepath.to_str().expect("File path contains invalid Unicode").into());
     }
 
     fn insert_directory(&mut self, contents: &BTreeMap<HashedString, TreeNode>) {
