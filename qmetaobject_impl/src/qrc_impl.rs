@@ -18,8 +18,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use proc_macro::TokenStream;
 
 use std::collections::BTreeMap;
+use std::env;
 use std::fs;
 use std::iter::FromIterator;
+use std::path::PathBuf;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::LitStr;
 
@@ -228,11 +230,18 @@ struct Data {
 }
 impl Data {
     fn insert_file(&mut self, filename: &str) {
-        let mut data =
-            fs::read(filename).unwrap_or_else(|_| panic!("Canot open file {}", filename));
+        let mut filepath = PathBuf::new();
+        if let Ok(cargo_manifest) = env::var("CARGO_MANIFEST_DIR") {
+            filepath.push(cargo_manifest);
+        }
+
+        filepath.push(filename);
+
+        let mut data = fs::read(&filepath)
+            .unwrap_or_else(|_| panic!("Cannot open file {}", filepath.display()));
         push_u32_be(&mut self.payload, data.len() as u32);
         self.payload.append(&mut data);
-        self.files.push(format!("../{}", filename));
+        self.files.push(filepath.to_str().expect("File path contains invalid Unicode").into());
     }
 
     fn insert_directory(&mut self, contents: &BTreeMap<HashedString, TreeNode>) {
