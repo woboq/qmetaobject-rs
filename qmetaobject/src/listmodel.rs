@@ -247,7 +247,7 @@ impl<T: SimpleListItem> SimpleListModel<T> {
     pub fn remove(&mut self, index: usize) {
         (self as &mut QAbstractListModel).begin_remove_rows(index as i32, index as i32);
         self.values.remove(index);
-        (self as &mut QAbstractListModel).end_insert_rows();
+        (self as &mut QAbstractListModel).end_remove_rows();
     }
     pub fn change_line(&mut self, index: usize, value: T) {
         self.values[index] = value;

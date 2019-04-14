@@ -22,6 +22,9 @@ use qmetaobject::*;
 mod common;
 use common::*;
 
+use std::cell::RefCell;
+use std::iter::FromIterator;
+
 #[test]
 fn simple_model() {
     #[derive(Default, SimpleListItem)]
@@ -48,6 +51,56 @@ fn simple_model() {
             function doTest() {
                 console.log('simple_model:', rep.count, rep.itemAt(0).text);
                 return rep.count === 1 && rep.itemAt(0).text === 'hello1';
+            }}"
+    ));
+}
+
+#[test]
+fn simple_model_remove() {
+    #[derive(QObject, Default)]
+    pub struct Foo {
+        base: qt_base_class!(trait QObject),
+        pub list: qt_property!(RefCell<SimpleListModel<X>>; CONST),
+        pub remove: qt_method!(fn remove(&mut self, index: usize) {
+            self.list.borrow_mut().remove(index);
+        }),
+    }
+
+    #[derive(Debug, Clone, SimpleListItem, Default)]
+    pub struct X {
+        pub val: usize,
+    }
+
+    impl Foo {
+        pub fn new() -> Self {
+            Self {
+                list: RefCell::new(FromIterator::from_iter(vec![
+                    X { val: 10 },
+                    X { val: 11 },
+                    X { val: 12 },
+                    X { val: 13 },
+                ])),
+                ..Default::default()
+            }
+        }
+    }
+
+    let obj = Foo::new();
+
+    assert!(do_test(
+        obj,
+        "Item {
+            Repeater{
+                id: rep;
+                model:_obj.list;
+                Text {
+                    text: val;
+                }
+            }
+            function doTest() {
+                _obj.remove(1);
+                console.log('simple_model_remove', rep.count, rep.itemAt(0).text, rep.itemAt(1).text, rep.itemAt(2).text);
+                return rep.count === 3 && rep.itemAt(0).text === '10' && rep.itemAt(1).text === '12'  && rep.itemAt(2).text === '13';
             }}"
     ));
 }
