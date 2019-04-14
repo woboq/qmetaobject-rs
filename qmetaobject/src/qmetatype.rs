@@ -263,14 +263,13 @@ qdeclare_builtin_metatype!{QColor => 67}
 qdeclare_builtin_metatype!{QImage => 70}
 
 #[cfg(target_pointer_width = "32")]
-qdeclare_builtin_metatype!{isize  => 32} // That's QMetaType::Long
+qdeclare_builtin_metatype!{isize  => 2} // That's QMetaType::Int
 #[cfg(target_pointer_width = "32")]
-qdeclare_builtin_metatype!{usize  => 35} // That's QMetaType::ULong
-                                         // long on 64bit windows is still 32bit, so use LongLong
+qdeclare_builtin_metatype!{usize  => 3} // That's QMetaType::UInt
 #[cfg(target_pointer_width = "64")]
-qdeclare_builtin_metatype!{isize  => 4}
+qdeclare_builtin_metatype!{isize  => 4} // That's QMetaType::LongLong
 #[cfg(target_pointer_width = "64")]
-qdeclare_builtin_metatype!{usize  => 5}
+qdeclare_builtin_metatype!{usize  => 5} // That's QMetaType::ULongLong
 
 /// Internal trait used to pass or read the type in a Q_PROPERTY
 ///
