@@ -20,3 +20,7 @@ cpp_build = "0.5"
 
 [dev-dependencies]
 cstr = "0.1"
+
+[package.metadata.docs.rs]
+dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]
+rustc-args = [ "--cfg feature='docs-only'" ]

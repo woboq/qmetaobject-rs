@@ -21,6 +21,7 @@ use std::process::Command;
 fn qmake_query(var: &str) -> String {
     String::from_utf8(
         Command::new("qmake")
+            .env("QT_SELECT", "qt5")
             .args(&["-query", var])
             .output()
             .expect("Failed to execute qmake. Make sure 'qmake' is in your path")
