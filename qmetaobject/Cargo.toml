@@ -1,6 +1,6 @@
 [package]
 name = "qmetaobject"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
 description = "Expose rust object to Qt and QML."
@@ -10,7 +10,7 @@ keywords = ["Qt", "QML", "QMetaObject",]
 repository = "https://github.com/woboq/qmetaobject-rs"
 
 [dependencies]
-qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.1.0"}
+qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.1.1"}
 lazy_static = "1.0"
 cpp = "0.5"
 bitflags = "1.0"
