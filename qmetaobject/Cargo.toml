@@ -1,6 +1,6 @@
 [package]
 name = "qmetaobject"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
 description = "Expose rust object to Qt and QML."
@@ -23,4 +23,4 @@ cstr = "0.1"
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]
-rustc-args = [ "--cfg feature='docs-only'" ]
+rustc-args = [ "--cfg feature=\"docs-only\"" ]
