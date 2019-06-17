@@ -4,6 +4,8 @@ The qmetaobject crate is a crate which is used to expose rust object to Qt and Q
 
 [![Travis Build Status](https://travis-ci.org/woboq/qmetaobject-rs.svg?branch=master)](https://travis-ci.org/woboq/qmetaobject-rs)
 [![Appveyor Build status](https://ci.appveyor.com/api/projects/status/8l5te3wlj2ie4njc/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/qmetaobject-rs/branch/master)
+[![Crates.io](https://img.shields.io/crates/v/qmetaobject.svg)](https://crates.io/crates/qmetaobject)
+[![Documentation](https://docs.rs/qmetaobject/badge.svg)](https://docs.rs/qmetaobject/)
 
 ## Objectives
 
