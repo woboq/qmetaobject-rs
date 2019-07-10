@@ -320,6 +320,33 @@ where
     }
 }
 
+impl<T> PropertyType for QPointer<T>
+where
+    T: QObject,
+{
+    fn register_type(_name: &::std::ffi::CStr) -> i32 {
+        register_metatype_qobject::<T>()
+    }
+    unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
+        let pinned = self.as_pinned();
+        let r = a as *mut *const ::std::os::raw::c_void;
+        match pinned {
+            Some(pinned) => *r = pinned.get_or_create_cpp_object(),
+            None => *r = 0 as *const ::std::os::raw::c_void,
+        }
+    }
+
+    unsafe fn read_from_qt(a: *const ::std::os::raw::c_void) -> Self {
+        let r = a as *const *mut ::std::os::raw::c_void;
+        if a == (0 as *const ::std::os::raw::c_void) || *r == (0 as *mut ::std::os::raw::c_void) {
+            Self::default()
+        } else {
+            let obj = unsafe { T::get_from_cpp(*r) };
+            obj.borrow().into()
+        }
+    }
+}
+
 #[test]
 fn test_qmetatype() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
