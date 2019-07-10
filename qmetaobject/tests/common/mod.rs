@@ -24,14 +24,27 @@ use std::cell::RefCell;
 
 lazy_static! {
     pub static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
+    pub static ref QML_LOGS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 }
 
 extern "C" fn log_capture(msg_type : QtMsgType, context: &QMessageLogContext, message : &QString) {
-    println!("{}:{} [{:?} {} {}] {}", context.file(), context.line(), msg_type, context.category(), context.function(), message);
+    let log = format!(
+        "{}:{} [{:?} {} {}] {}",
+        context.file(),
+        context.line(),
+        msg_type,
+        context.category(),
+        context.function(),
+        message
+    );
+    println!("{}", log);
+    let mut logs = QML_LOGS.lock().unwrap_or_else(|e| e.into_inner());
+    logs.push(log);
 }
 
 pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
     install_message_handler(log_capture);
 
@@ -47,6 +60,7 @@ pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
 
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
     install_message_handler(log_capture);
 
@@ -56,4 +70,19 @@ pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
     engine.set_property("_obj".into(), obj);
     engine.load_data(qml_text.into());
     engine.invoke_method("doTest".into(), &[]).to_bool()
+}
+
+pub fn test_loading_logs(qml: &str, log: &str) -> bool {
+    let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
+
+    install_message_handler(log_capture);
+
+    let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
+
+    let mut engine = QmlEngine::new();
+    engine.load_data(qml_text.into());
+
+    let logs = QML_LOGS.lock().unwrap_or_else(|e| e.into_inner());
+    logs.iter().any(|x| x.contains(log))
 }

@@ -247,6 +247,67 @@ fn qobject_properties() {
     ));
 }
 
+#[derive(QObject, Default)]
+struct SomeObject {
+    base: qt_base_class!(trait QObject),
+}
+
+#[derive(QObject, Default)]
+struct ObjectWithSomeObjectPointer {
+    base: qt_base_class!(trait QObject),
+    prop_changed: qt_signal!(),
+    prop: qt_property!(QPointer<SomeObject>; NOTIFY prop_changed),
+}
+
+#[test]
+fn qpointer_properties() {
+    let my_obj = ObjectWithSomeObjectPointer::default();
+    qml_register_type::<SomeObject>(
+        CStr::from_bytes_with_nul(b"SomeObjectLib\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"SomeObject\0").unwrap(),
+    );
+    assert!(do_test(
+        my_obj,
+        "import SomeObjectLib 1.0
+        Item {
+        SomeObject { id: some }
+        function doTest() {
+            if(_obj.prop != null) {
+                return false
+            }
+            _obj.prop = some
+            if(_obj.prop != some) {
+                return false
+            }
+            _obj.prop = null
+            if(_obj.prop != null) {
+                return false
+            }
+            return true
+        }}"
+    ));
+}
+
+#[test]
+fn qpointer_properties_incompatible() {
+    qml_register_type::<ObjectWithSomeObjectPointer>(
+        CStr::from_bytes_with_nul(b"SomeObjectLib\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"ObjectWithSome\0").unwrap(),
+    );
+    assert!(test_loading_logs(
+        "import SomeObjectLib 1.0
+        Item {
+        Text { id: some }
+        ObjectWithSome { prop: some }
+        }",
+        "Unable to assign QQuickText to SomeObject"
+    ));
+}
+
 #[test]
 fn singleshot() {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
