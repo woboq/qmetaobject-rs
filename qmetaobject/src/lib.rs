@@ -409,6 +409,16 @@ pub trait QGadget {
         Self: Sized;
 }
 
+/// Trait that is implemented by the QEnum custom derive macro
+///
+/// Do not implement this trait yourself, use `#[derive(QEnum)]`.
+pub trait QEnum {
+    /// Returns a pointer to a meta object
+    fn static_meta_object() -> *const QMetaObject
+    where
+        Self: Sized;
+}
+
 #[doc(hidden)]
 #[no_mangle]
 pub unsafe extern "C" fn RustObject_metaObject(p: *mut RefCell<QObject>) -> *const QMetaObject {
@@ -445,7 +455,8 @@ pub struct QMetaObject {
     pub superdata: *const QMetaObject,
     pub string_data: *const u8,
     pub data: *const u32,
-    pub static_metacall: extern "C" fn(o: *mut c_void, c: u32, idx: u32, a: *const *mut c_void),
+    pub static_metacall:
+        Option<extern "C" fn(o: *mut c_void, c: u32, idx: u32, a: *const *mut c_void)>,
     pub r: *const c_void,
     pub e: *const c_void,
 }
