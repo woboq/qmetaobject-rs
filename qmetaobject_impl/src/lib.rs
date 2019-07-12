@@ -70,6 +70,12 @@ pub fn qgadget_impl(input: TokenStream) -> TokenStream {
     qobject_impl::generate(input, false)
 }
 
+/// Implementation of #[derive(QEnum)]
+#[proc_macro_derive(QEnum, attributes(QMetaObjectCrate))]
+pub fn qenum_impl(input: TokenStream) -> TokenStream {
+    qobject_impl::generate_enum(input)
+}
+
 /// Implementation of the qmetaobject::qrc! macro
 #[proc_macro]
 pub fn qrc_internal(input: TokenStream) -> TokenStream {

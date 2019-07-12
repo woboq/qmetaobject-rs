@@ -239,6 +239,27 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     })}
 }
 
+/// Register the given enum as a QML type
+///
+/// Refer to the Qt documentation for qmlRegisterUncreatableMetaObject.
+pub fn qml_register_enum<T: QEnum>(
+    uri: &std::ffi::CStr,
+    version_major: u32,
+    version_minor: u32,
+    qml_name: &std::ffi::CStr,
+)
+{
+    let uri_ptr = uri.as_ptr();
+    let qml_name_ptr = qml_name.as_ptr();
+    let meta_object = T::static_meta_object();
+
+    unsafe { cpp!([qml_name_ptr as "char*", uri_ptr as "char*", version_major as "int",
+                    version_minor as "int", meta_object as "const QMetaObject *"]{
+        qmlRegisterUncreatableMetaObject(*meta_object, uri_ptr, version_major,
+            version_minor, qml_name_ptr, "Access to enums & flags only");
+    })}
+}
+
 /// A QObject-like trait to inherit from QQuickItem.
 ///
 /// Work in progress

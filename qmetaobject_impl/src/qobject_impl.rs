@@ -110,9 +110,15 @@ struct MetaProperty {
     alias: Option<syn::Ident>,
 }
 
+#[derive(Clone)]
+struct MetaEnum {
+    name: syn::Ident,
+    variants: Vec<syn::Ident>,
+}
+
 #[derive(Default)]
 struct MetaObject {
-    int_data: Vec<u32>,
+    int_data: Vec<proc_macro2::TokenStream>,
     string_data: Vec<String>,
 }
 impl MetaObject {
@@ -144,58 +150,75 @@ impl MetaObject {
         result
     }
 
+    fn push_int(&mut self, i: u32) {
+        self.int_data.push(quote!(#i));
+    }
+
+    fn extend_from_int_slice(&mut self, slice: &[u32]) {
+        for i in slice {
+            self.int_data.push(quote!(#i));
+        }
+    }
+
     fn compute_int_data(
         &mut self,
         class_name: String,
         properties: &[MetaProperty],
         methods: &[MetaMethod],
+        enums: &[MetaEnum],
         signal_count: usize,
     ) {
-        let has_notify = properties.iter().any(|p| p.notify_signal.is_some());
-
+        let has_notify = properties.iter().any(|p| p.notify_signal.is_some());    
         self.add_string(class_name);
         self.add_string("".to_owned());
 
         let mut offset = 14;
         let property_offset = offset + methods.len() as u32 * 5;
-        //...
+        let enum_offset = property_offset + properties.len() as u32 * (if has_notify { 4 } else { 3 });
 
-        self.int_data.extend_from_slice(&[
+        self.extend_from_int_slice(&[
             7, // revision
             0, // classname
             0,
             0, // class info count and offset
             methods.len() as u32,
-            offset, // method count and offset
+            if methods.len() == 0 { 0 } else { offset }, // method count and offset
             properties.len() as u32,
-            property_offset, // properties count and offset
-            0,
-            0, // enum count and offset
+            if properties.len() == 0 { 0 } else { property_offset }, // properties count and offset
+            enums.len() as u32,
+            if enums.len() == 0 { 0 } else { enum_offset }, // enum count and offset
             0,
             0,                   // constructor count and offset
             0x4,                 // flags (PropertyAccessInStaticMetaCall)
             signal_count as u32, // signalCount
         ]);
 
-        offset = property_offset + properties.len() as u32 * (if has_notify { 4 } else { 3 });
+        offset = enum_offset + enums.len() as u32 * 4;
 
         for m in methods {
             let n = self.add_string(m.name.to_string());
-            self.int_data
-                .extend_from_slice(&[n, m.args.len() as u32, offset, 1, m.flags]);
+            self.extend_from_int_slice(&[n, m.args.len() as u32, offset, 1, m.flags]);
             offset += 1 + 2 * m.args.len() as u32;
         }
 
         for p in properties {
             let n = self.add_string(p.alias.as_ref().unwrap_or(&p.name).to_string());
             let type_id = self.add_type(p.typ.clone());
-            self.int_data.extend_from_slice(&[n, type_id, p.flags]);
+            self.extend_from_int_slice(&[n, type_id, p.flags]);
         }
+
+        for e in enums {
+            let n = self.add_string(e.name.to_string());
+            // name, flag, count, data offset
+            self.extend_from_int_slice(&[n, 0x2, e.variants.len() as u32, offset]);
+            offset += 2 * e.variants.len() as u32;
+        }
+
         if has_notify {
             for p in properties {
                 match p.notify_signal {
-                    None => self.int_data.push(0 as u32),
-                    Some(ref signal) => self.int_data.push(
+                    None => self.push_int(0 as u32),
+                    Some(ref signal) => self.push_int(
                         methods
                             .iter()
                             .position(|x| x.name == *signal && (x.flags & 0x4) != 0)
@@ -208,16 +231,26 @@ impl MetaObject {
         for m in methods {
             // return type
             let ret_type = self.add_type(m.ret_type.clone());
-            self.int_data.push(ret_type);
+            self.push_int(ret_type);
             // types
             for a in m.args.iter() {
                 let ty = self.add_type(a.typ.clone());
-                self.int_data.push(ty);
+                self.push_int(ty);
             }
             // names
             for a in m.args.iter() {
                 let n = self.add_string(a.name.clone().into_token_stream().to_string());
-                self.int_data.push(n);
+                self.push_int(n);
+            }
+        }
+
+        for e in enums {
+            for v in &e.variants {
+                let n = self.add_string(v.to_string());
+                // name, value
+                self.push_int(n);
+                let e_name = &e.name;
+                self.int_data.push(quote!{ #e_name::#v as u32 });
             }
         }
     }
@@ -487,7 +520,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let methods = methods2;
 
     let mut mo: MetaObject = Default::default();
-    mo.compute_int_data(name.to_string(), &properties, &methods, signals.len());
+    mo.compute_int_data(name.to_string(), &properties, &methods, &[], signals.len());
 
     let str_data32 = mo.build_string_data(32);
     let str_data64 = mo.build_string_data(64);
@@ -710,7 +743,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                 superdata: #base_meta_object,
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
-                static_metacall: static_metacall,
+                static_metacall: Some(static_metacall),
                 r: ::std::ptr::null(),
                 e: ::std::ptr::null(),
             };};
@@ -739,7 +772,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                     superdata: #base_meta_object,
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
-                    static_metacall: static_metacall #turbo_generics,
+                    static_metacall: Some(static_metacall #turbo_generics),
                     r: ::std::ptr::null(),
                     e: ::std::ptr::null(),
             }));
@@ -883,5 +916,97 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 
         }
     }
+    body.into()
+}
+
+fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
+    match attribute.parse_meta() {
+        Ok(syn::Meta::List(list)) => {
+            if list.ident.to_string() == "repr" && list.nested.len() == 1 {
+                match &list.nested[0] {
+                    syn::NestedMeta::Meta(syn::Meta::Word(word)) => {
+                        let acceptables = vec!["u8", "u16", "u32", "i8", "i16", "i32"];
+                        let word = word.to_string();
+                        acceptables.iter().any(|x| *x == word.to_string())
+                    }
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        }
+        _ => false
+    }
+}
+
+pub fn generate_enum(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as syn::DeriveInput);
+
+    let name = &ast.ident;
+
+    let mut is_repr_explicit = false;
+    for attr in &ast.attrs {
+        is_repr_explicit |= is_valid_repr_attribute(attr);
+    }
+    if !is_repr_explicit {
+        panic!("#[derive(QEnum)] only support enum with explicit #[repr(*)], possible integer type are u8, u16, u32, i8, i16, i32.")
+    }
+
+    let crate_ = super::get_crate(&ast);
+    let mut meta_enum = MetaEnum {
+        name: name.clone(),
+        variants: Vec::new()
+    };
+
+    if let syn::Data::Enum(ref data) = ast.data {
+        for variant in data.variants.iter() {
+            match &variant.fields {
+                syn::Fields::Unit => {}
+                // TODO report error with span
+                _ => panic!("#[derive(QEnum)] only support field-less enum")
+            }
+
+            let var_name = &variant.ident;
+            meta_enum.variants.push(var_name.clone());
+        }
+    } else {
+        panic!("#[derive(QEnum)] is only defined for enums, not for structs!");
+    }
+
+    let enums = vec![meta_enum];
+    let mut mo: MetaObject = Default::default();
+    mo.compute_int_data(name.to_string(), &[], &[], &enums, 0);
+    let str_data32 = mo.build_string_data(32);
+    let str_data64 = mo.build_string_data(64);
+    let int_data = mo.int_data;
+
+    let mo = if ast.generics.params.is_empty() {
+        quote! {
+            qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
+                superdata: ::std::ptr::null(),
+                string_data: STRING_DATA.as_ptr(),
+                data: INT_DATA.as_ptr(),
+                static_metacall: None,
+                r: ::std::ptr::null(),
+                e: ::std::ptr::null(),
+            };};
+            return &*MO;
+        }
+    } else {
+        panic!("#[derive(QEnum)] is only defined for C enums, doesn't support generics");
+    };
+
+    let body = quote!{
+        impl #crate_::QEnum for #name {
+            fn static_meta_object()->*const #crate_::QMetaObject {
+                #[cfg(target_pointer_width = "64")]
+                static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
+                #[cfg(target_pointer_width = "32")]
+                static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
+                static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
+                #mo
+            }
+        }
+    };
     body.into()
 }
