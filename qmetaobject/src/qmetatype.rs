@@ -332,13 +332,13 @@ where
         let r = a as *mut *const ::std::os::raw::c_void;
         match pinned {
             Some(pinned) => *r = pinned.get_or_create_cpp_object(),
-            None => *r = 0 as *const ::std::os::raw::c_void,
+            None => *r = std::ptr::null(),
         }
     }
 
     unsafe fn read_from_qt(a: *const ::std::os::raw::c_void) -> Self {
         let r = a as *const *mut ::std::os::raw::c_void;
-        if a == (0 as *const ::std::os::raw::c_void) || *r == (0 as *mut ::std::os::raw::c_void) {
+        if a.is_null() || (*r).is_null() {
             Self::default()
         } else {
             let obj = T::get_from_cpp(*r);

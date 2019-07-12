@@ -18,7 +18,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern crate qmetaobject;
 use qmetaobject::*;
 
-#[macro_use]
 extern crate lazy_static;
 use std::cell::RefCell;
 use std::ffi::CStr;
@@ -659,7 +658,6 @@ fn threading() {
         result : qt_property!(QString; NOTIFY result_changed),
         result_changed : qt_signal!(),
         recompute_result : qt_method!(fn recompute_result(&self, name : String) {
-            dbg!(&name);
             let qptr = QPointer::from(&*self);
             let set_value = qmetaobject::queued_callback(move |val : QString| {
                 qptr.as_pinned().map(|self_| {
@@ -671,12 +669,12 @@ fn threading() {
                 // do stuff asynchroniously ...
                 let r = QString::from("Hello ".to_owned() + &name);
                 set_value(r);
-            }).join();
+            }).join().unwrap();
         })
     }
 
     let obj = std::cell::RefCell::new(MyAsyncObject::default());
-    let mut engine = QmlEngine::new();
+    let engine = QmlEngine::new();
     unsafe { qmetaobject::connect(
         QObject::cpp_construct(&obj),
         obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),

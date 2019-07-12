@@ -75,7 +75,7 @@ struct ContainerNode : QSGNode {
 /// Represent a tuple of Fn(SGNode<...>)->SGNode<...>), for SGNode<ContainerNode>::update_static
 ///
 /// Do not reimplement
-#[cfg_attr(feature = "cargo-clippy", allow(len_without_is_empty))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::len_without_is_empty))]
 pub trait UpdateNodeFnTuple<T> {
     fn len(&self) -> u64;
     unsafe fn update_fn(&self, i: u64, _: *mut c_void) -> *mut c_void;
