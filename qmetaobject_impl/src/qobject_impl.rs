@@ -182,11 +182,11 @@ impl MetaObject {
             0,
             0, // class info count and offset
             methods.len() as u32,
-            if methods.len() == 0 { 0 } else { offset }, // method count and offset
+            if methods.is_empty() { 0 } else { offset }, // method count and offset
             properties.len() as u32,
-            if properties.len() == 0 { 0 } else { property_offset }, // properties count and offset
+            if properties.is_empty() { 0 } else { property_offset }, // properties count and offset
             enums.len() as u32,
-            if enums.len() == 0 { 0 } else { enum_offset }, // enum count and offset
+            if enums.is_empty() { 0 } else { enum_offset }, // enum count and offset
             0,
             0,                   // constructor count and offset
             0x4,                 // flags (PropertyAccessInStaticMetaCall)
@@ -922,12 +922,11 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
     match attribute.parse_meta() {
         Ok(syn::Meta::List(list)) => {
-            if list.ident.to_string() == "repr" && list.nested.len() == 1 {
+            if list.ident == "repr" && list.nested.len() == 1 {
                 match &list.nested[0] {
                     syn::NestedMeta::Meta(syn::Meta::Word(word)) => {
-                        let acceptables = vec!["u8", "u16", "u32", "i8", "i16", "i32"];
-                        let word = word.to_string();
-                        acceptables.iter().any(|x| *x == word.to_string())
+                        const ACCEPTABLES : &[&str; 6] = &["u8", "u16", "u32", "i8", "i16", "i32"];
+                        ACCEPTABLES.iter().any(|w| word == w)
                     }
                     _ => false,
                 }
