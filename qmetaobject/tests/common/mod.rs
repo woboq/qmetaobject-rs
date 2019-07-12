@@ -27,6 +27,12 @@ lazy_static! {
     pub static ref QML_LOGS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 }
 
+/// There can only be one thread running at the time with a QQuickEngine
+/// (in principle, everything should be in the same main thread)
+pub fn lock_for_test () -> std::sync::MutexGuard<'static, ()> {
+    TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 extern "C" fn log_capture(msg_type : QtMsgType, context: &QMessageLogContext, message : &QString) {
     let log = format!(
         "{}:{} [{:?} {} {}] {}",
@@ -43,7 +49,7 @@ extern "C" fn log_capture(msg_type : QtMsgType, context: &QMessageLogContext, me
 }
 
 pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
-    let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let _lock = lock_for_test();
     QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
     install_message_handler(log_capture);
@@ -59,7 +65,7 @@ pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
 }
 
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
-    let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let _lock = lock_for_test();
     QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
     install_message_handler(log_capture);

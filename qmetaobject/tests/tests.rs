@@ -647,3 +647,42 @@ fn enum_properties() {
         }}"
     ));
 }
+
+#[test]
+fn threading() {
+
+    let _lock = lock_for_test();
+
+    #[derive(QObject,Default)]
+    struct MyAsyncObject {
+        base : qt_base_class!(trait QObject),
+        result : qt_property!(QString; NOTIFY result_changed),
+        result_changed : qt_signal!(),
+        recompute_result : qt_method!(fn recompute_result(&self, name : String) {
+            dbg!(&name);
+            let qptr = QPointer::from(&*self);
+            let set_value = qmetaobject::queued_callback(move |val : QString| {
+                qptr.as_pinned().map(|self_| {
+                    self_.borrow_mut().result = val;
+                    self_.borrow().result_changed();
+                });
+            });
+            std::thread::spawn(move || {
+                // do stuff asynchroniously ...
+                let r = QString::from("Hello ".to_owned() + &name);
+                set_value(r);
+            }).join();
+        })
+    }
+
+    let obj = std::cell::RefCell::new(MyAsyncObject::default());
+    let mut engine = QmlEngine::new();
+    unsafe { qmetaobject::connect(
+        QObject::cpp_construct(&obj),
+        obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),
+        || engine.quit()
+    ) };
+    obj.borrow().recompute_result("World".into());
+    engine.exec();
+    assert_eq!(obj.borrow().result, QString::from("Hello World"));
+}

@@ -16,47 +16,110 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/*! This crate implements binding to the Qt API.
+/*! This crate implements binding to the Qt API which allow to use QML from a rust application.
 
-    Example:
+    # Example:
 
     ```
     extern crate qmetaobject;
     use qmetaobject::*;
     #[macro_use] extern crate cstr;
 
+    // The `QObject` custom derive macro allows to expose a class to Qt and QML
     #[derive(QObject,Default)]
     struct Greeter {
+        // Specify the base class with the qt_base_class macro
         base : qt_base_class!(trait QObject),
+        // Decalare `name` as a property usable from Qt
         name : qt_property!(QString; NOTIFY name_changed),
+        // Declare a signal
         name_changed : qt_signal!(),
+        // And even a slot
         compute_greetings : qt_method!(fn compute_greetings(&self, verb : String) -> QString {
             return (verb + " " + &self.name.to_string()).into()
         })
     }
 
     fn main() {
+        // Register the `Greeter` struct to QML
         qml_register_type::<Greeter>(cstr!("Greeter"), 1, 0, cstr!("Greeter"));
+        // Create a QML engine from rust
         let mut engine = QmlEngine::new();
     # return; // We can't create a window in the CI
+        // (Here the QML code is inline, but one can also load from a file)
         engine.load_data(r#"
             import QtQuick 2.6;
             import QtQuick.Window 2.0;
-            import Greeter 1.0
+            import Greeter 1.0  // import our Rust classes
             Window {
                 visible: true;
-                Greeter {
+                Greeter { //  Instentiate the rust struct
                     id: greeter;
-                    name: 'World';
+                    name: 'World'; // set a property
                 }
                 Text {
                     anchors.centerIn: parent;
+                    // Call a method
                     text: greeter.compute_greetings('hello');
                 }
             }"#.into());
         engine.exec();
     }
     ```
+
+    # Basic type
+
+    The re-exported module [qttypes](qttypes/index.html) contains binding to the most usefull
+    basic types such as [QString](qttypes/struct.QString.html),
+    [QVariant](qttypes/struct.QVariant.html), ...
+
+    You can also simply use rust type `String`, but using QString might avoid unecessary
+    conversions in some case.
+
+    # Threading
+
+    The QML engine only runs in a single thread. And probably all the QObject needs to be living
+    in the Qt thread. But you can use the [queued_callback](fn.queued_callback.html) function to
+    create callback that can be called from any thread and are going to run in the Qt thread.
+
+    This can be done like so:
+
+    ```
+    # extern crate qmetaobject;
+    # use qmetaobject::*;
+    #[derive(QObject,Default)]
+    struct MyAsyncObject {
+        base : qt_base_class!(trait QObject),
+        result : qt_property!(QString; NOTIFY result_changed),
+        result_changed : qt_signal!(),
+        recompute_result : qt_method!(fn recompute_result(&self, name : String) {
+            dbg!(&name);
+            let qptr = QPointer::from(&*self);
+            let set_value = qmetaobject::queued_callback(move |val : QString| {
+                qptr.as_pinned().map(|self_| {
+                    self_.borrow_mut().result = val;
+                    self_.borrow().result_changed();
+                });
+            });
+            std::thread::spawn(move || {
+                // do stuff asynchroniously ...
+                let r = QString::from("Hello ".to_owned() + &name);
+                set_value(r);
+            }).join();
+        })
+    }
+    # let obj = std::cell::RefCell::new(MyAsyncObject::default());
+    # let mut engine = QmlEngine::new();
+    # unsafe { qmetaobject::connect(
+    #     QObject::cpp_construct(&obj),
+    #     obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),
+    #     || engine.quit()
+    # ) };
+    # obj.borrow().recompute_result("World".into());
+    # engine.exec();
+    # assert_eq!(obj.borrow().result, QString::from("Hello World"));
+    ```
+
 */
 
 #![recursion_limit = "10240"]
@@ -786,7 +849,7 @@ pub use qmetatype::*;
 pub mod qrc;
 pub mod connections;
 pub use connections::RustSignal;
-use connections::{CppSignal, SignalCppRepresentation};
+pub use connections::{CppSignal, SignalCppRepresentation, connect};
 pub mod scenegraph;
 pub mod qtquickcontrols2;
 pub use qtquickcontrols2::*;
