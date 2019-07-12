@@ -67,7 +67,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     }
     ```
 
-    # Basic type
+    # Basic types
 
     The re-exported module [qttypes](qttypes/index.html) contains binding to the most usefull
     basic types such as [QString](qttypes/struct.QString.html),
@@ -75,6 +75,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     You can also simply use rust type `String`, but using QString might avoid unecessary
     conversions in some case.
+
+    # Meta type
+
+    In order to be able to use a type in a signal or method parameter, or as a property type,
+    the type need to implement the [QMetaType](qmetatype/trait.QMetaType.html) trait.
+    All the method are provided so you can just implement the QMetaType like this:
+
+    ```rust
+    # use qmetaobject::QMetaType;
+    #[derive(Default, Clone)]
+    struct MyPoint(u32, u32);
+    impl QMetaType for MyPoint {};
+    ```
+
+    With that it is also possible to put the type in a  [QVariant](qttypes/struct.QVariant.html)
+
+    # Object pinning
+
+    Once an object that derives from QObject is exposed to C++, it needs to be pinned, and cannot
+    be moved in memory.
+    Also, since the Qt code can be re-entrant, the object must be placed in a RefCell.
+    The [QObjectPinned](struct.QObjectPinned.html) object is used to enforce the pinning.
+
+    If you want to keep pointer to reference, tou can use [QPointer](struct.QPointer.html).
 
     # Threading
 
