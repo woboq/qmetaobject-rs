@@ -341,7 +341,7 @@ where
         if a == (0 as *const ::std::os::raw::c_void) || *r == (0 as *mut ::std::os::raw::c_void) {
             Self::default()
         } else {
-            let obj = unsafe { T::get_from_cpp(*r) };
+            let obj = T::get_from_cpp(*r);
             obj.borrow().into()
         }
     }

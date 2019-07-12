@@ -1,5 +1,3 @@
-use qttypes::QString;
-
 /// Refer to the Qt documentation for QQuickStyle
 pub struct QQuickStyle {}
 

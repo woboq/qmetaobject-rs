@@ -37,8 +37,10 @@ cpp!{{
     };
 }}
 
-/// Wrap a Qt Application and a QmlEngine
-cpp_class!(pub unsafe struct QmlEngine as "QmlEngineHolder");
+cpp_class!(
+    /// Wrap a Qt Application and a QmlEngine
+    pub unsafe struct QmlEngine as "QmlEngineHolder"
+);
 impl QmlEngine {
     /// create a new QmlEngine
     pub fn new() -> QmlEngine {
@@ -407,8 +409,10 @@ impl<'a> QMouseEvent<'a> {
     }
 }
 
-/// Wrapper for QJSValue
-cpp_class!(pub unsafe struct QJSValue as "QJSValue");
+cpp_class!(
+    /// Wrapper for QJSValue
+    pub unsafe struct QJSValue as "QJSValue"
+);
 impl QJSValue {
     pub fn to_string(&self) -> QString {
         unsafe {
