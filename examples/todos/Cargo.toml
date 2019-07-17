@@ -2,6 +2,7 @@
 name = "todos"
 version = "0.1.0"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+edition = "2018"
 
 [dependencies]
 qmetaobject = { path = "../../qmetaobject"}

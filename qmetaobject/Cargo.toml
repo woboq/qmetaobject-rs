@@ -1,6 +1,7 @@
 [package]
 name = "qmetaobject"
 version = "0.1.2"
+edition = "2018"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
 description = "Expose rust object to Qt and QML."
