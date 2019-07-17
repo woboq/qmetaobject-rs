@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    'qmetaobject_impl',
+    'qmetaobject',
+    'examples/todos',
+    'examples/graph',
+]
