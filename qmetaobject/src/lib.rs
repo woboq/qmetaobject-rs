@@ -503,6 +503,12 @@ pub trait QEnum {
     fn static_meta_object() -> *const QMetaObject
     where
         Self: Sized;
+
+    fn from_raw_value(raw: u32) -> Option<Self>
+    where
+        Self: Sized;
+
+    fn to_raw_value(&self) -> u32;
 }
 
 #[doc(hidden)]
