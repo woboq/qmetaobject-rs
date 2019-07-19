@@ -265,6 +265,9 @@ impl MetaObject {
     }
 
     fn add_string(&mut self, string: String) -> u32 {
+        if let Some((pos, _)) = self.string_data.iter().enumerate().find(|(_, val)| *val == &string) {
+            return pos as u32;
+        }
         self.string_data.push(string);
         self.string_data.len() as u32 - 1
     }
