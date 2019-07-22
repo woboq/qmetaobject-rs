@@ -504,11 +504,13 @@ pub trait QEnum {
     where
         Self: Sized;
 
-    fn from_raw_value(raw: u32) -> Option<Self>
+    type Repr: Copy;
+
+    fn from_raw(raw: Self::Repr) -> Option<Self>
     where
         Self: Sized;
 
-    fn to_raw_value(&self) -> u32;
+    fn to_raw(&self) -> Self::Repr;
 }
 
 #[doc(hidden)]

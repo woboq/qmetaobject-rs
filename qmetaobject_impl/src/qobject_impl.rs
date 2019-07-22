@@ -922,22 +922,29 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     body.into()
 }
 
-fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
+fn attribute_to_repr(attribute: &syn::Attribute) -> Option<proc_macro2::TokenStream> {
     match attribute.parse_meta() {
         Ok(syn::Meta::List(list)) => {
             if list.ident == "repr" && list.nested.len() == 1 {
                 match &list.nested[0] {
                     syn::NestedMeta::Meta(syn::Meta::Word(word)) => {
-                        const ACCEPTABLES: &[&str; 6] = &["u8", "u16", "u32", "i8", "i16", "i32"];
-                        ACCEPTABLES.iter().any(|w| word == w)
+                        match &word.to_string()[..] {
+                            "u8" => Some(quote!{ u8 }),
+                            "u16" => Some(quote!{ u16 }),
+                            "u32" => Some(quote!{ u32 }),
+                            "i8" => Some(quote!{ i8 }),
+                            "i16" => Some(quote!{ i16 }),
+                            "i32" => Some(quote!{ i32 }),
+                            _ => None,
+                        }
                     }
-                    _ => false,
+                    _ => None,
                 }
             } else {
-                false
+                None
             }
         }
-        _ => false,
+        _ => None,
     }
 }
 
@@ -946,13 +953,17 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
 
     let name = &ast.ident;
 
-    let mut is_repr_explicit = false;
+    let mut repr = None;
     for attr in &ast.attrs {
-        is_repr_explicit |= is_valid_repr_attribute(attr);
+        if let Some(r) = attribute_to_repr(attr) {
+            repr = Some(r);
+            break;
+        }
     }
-    if !is_repr_explicit {
-        panic!("#[derive(QEnum)] only support enum with explicit #[repr(*)], possible integer type are u8, u16, u32, i8, i16, i32.")
-    }
+    let repr = match repr {
+        Some(r) => r,
+        None => panic!("#[derive(QEnum)] only support enum with explicit #[repr(*)], possible integer type are u8, u16, u32, i8, i16, i32."),
+    };
 
     let crate_ = super::get_crate(&ast);
     let mut meta_enum = MetaEnum {
@@ -975,13 +986,13 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
             meta_enum.variants.push(var_name.clone());
 
             from_raw_blocks.push(quote! {
-                if raw == #name::#var_name as u32 {
+                if raw == #name::#var_name as #repr {
                     Some(#name::#var_name)
                 } else
             });
 
             to_raw_blocks.push(quote! {
-                #name::#var_name => #name::#var_name as u32,
+                #name::#var_name => #name::#var_name as #repr,
             });
         }
     } else {
@@ -1013,12 +1024,14 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
 
     let body = quote! {
         impl #crate_::QEnum for #name {
-            fn from_raw_value(raw :u32) -> Option<Self> {
+            type Repr = #repr;
+
+            fn from_raw(raw: Self::Repr) -> Option<Self> {
                 #(#from_raw_blocks)*
                 { None }
             }
 
-            fn to_raw_value(&self) -> u32 {
+            fn to_raw(&self) -> Self::Repr {
                 match self {
                     #(#to_raw_blocks)*
                 }

@@ -155,7 +155,7 @@ pub fn register_metatype_qenum<T: QEnum + QMetaType>(
 
 pub fn enum_to_qvariant<T: QEnum + QMetaType>(e: &T) -> QVariant {
     let id: i32 = T::id();
-    let raw = e.to_raw_value();
+    let raw = e.to_raw();
     let raw_ptr = &raw;
     cpp!(unsafe [id as "int", raw_ptr as "const void*"] -> QVariant as "QVariant" {
         return QVariant(id, raw_ptr);
@@ -175,8 +175,8 @@ pub fn enum_from_qvariant<T: QEnum + QMetaType>(mut variant: QVariant) -> Option
     if ptr.is_null() {
         None
     } else {
-        let raw = unsafe{ *(ptr as *const u32) };
-        T::from_raw_value(raw as u32)
+        let raw = unsafe{ *(ptr as *const T::Repr) };
+        T::from_raw(raw)
     }
 }
 
