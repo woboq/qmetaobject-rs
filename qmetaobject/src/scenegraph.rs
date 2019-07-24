@@ -356,7 +356,7 @@ impl SGNode<RectangleNode> {
         });
     }
 
-    pub fn create(&mut self, item: &QQuickItem) {
+    pub fn create(&mut self, item: &dyn QQuickItem) {
         if !self.raw.is_null() {
             return;
         }
