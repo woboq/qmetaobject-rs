@@ -64,6 +64,25 @@ pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
     engine.invoke_method("doTest".into(), &[]).to_bool()
 }
 
+/// Expect error from QmlEngine. Return it.
+pub fn do_test_error_with_url<T: QObject + Sized>(obj: T, qml: &str, url: &str) -> String {
+    let _lock = lock_for_test();
+    QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
+
+    install_message_handler(log_capture);
+
+    let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
+
+    let obj = RefCell::new(obj);
+
+    let mut engine = QmlEngine::new();
+    engine.set_object_property("_obj".into(), unsafe { QObjectPinned::new(&obj) });
+    engine.load_data_as(qml_text.into(), QString::from(url).into());
+    engine.invoke_method("doTest".into(), &[]);
+    let errors = QML_LOGS.lock().unwrap_or_else(|e| e.into_inner());
+    errors.last().expect("An error from QmlEngine was expected").clone()
+}
+
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
     let _lock = lock_for_test();
     QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
