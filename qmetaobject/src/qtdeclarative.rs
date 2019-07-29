@@ -66,6 +66,15 @@ impl QmlEngine {
         }
     }
 
+    /// Loads qml data with `url` as base url component (See QQmlApplicationEngine::loadData)
+    pub fn load_data_as(&mut self, data: QByteArray, url: QUrl) {
+        unsafe {
+            cpp!([self as "QmlEngineHolder*", data as "QByteArray", url as "QUrl"] {
+            self->engine->loadData(data, url);
+        })
+        }
+    }
+
     /// Launches the application
     pub fn exec(&self) {
         unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->exec(); }) }
