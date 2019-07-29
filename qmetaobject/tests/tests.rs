@@ -684,3 +684,21 @@ fn threading() {
     engine.exec();
     assert_eq!(obj.borrow().result, QString::from("Hello World"));
 }
+
+#[test]
+fn load_data_as() {
+    #[derive(QObject, Default)]
+    struct Basic {
+        base: qt_base_class!(trait QObject),
+        value: qt_property!(bool),
+    }
+
+    let mut obj = Basic::default();
+    obj.value = true;
+    let error = do_test_error_with_url(
+        obj,
+        "Item { function doTest() { return _intentional_error } }",
+        "file:///path/file.ext",
+    );
+    assert!(error.contains("file:///path/file.ext"));
+}

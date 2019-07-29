@@ -97,6 +97,19 @@ impl std::fmt::Debug for QByteArray {
 }
 
 cpp_class!(
+/// Wrapper around Qt's QUrl class
+    #[derive(PartialEq, PartialOrd, Eq, Ord)]
+    pub unsafe struct QUrl as "QUrl"
+);
+impl From<QString> for QUrl {
+    fn from(qstring: QString) -> QUrl {
+        unsafe { cpp!([qstring as "QString"] -> QUrl as "QUrl" {
+            return QUrl(qstring);
+        })}
+    }
+}
+
+cpp_class!(
 /// Wrapper around Qt's QString class
 #[derive(PartialEq, PartialOrd, Eq, Ord)]
 pub unsafe struct QString as "QString");
@@ -111,6 +124,13 @@ impl QString {
             });
             std::slice::from_raw_parts(c_ptr, size)
         }
+    }
+}
+impl From<QUrl> for QString {
+    fn from(qurl: QUrl) -> QString {
+        unsafe { cpp!([qurl as "QUrl"] -> QString as "QString" {
+            return qurl.toString();
+        })}
     }
 }
 impl<'a> From<&'a str> for QString {
