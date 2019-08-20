@@ -225,7 +225,7 @@ pub struct QObjectDescription {
         trait_object_ptr: *const c_void,
         extra_destruct: extern "C" fn(*mut c_void),
     ),
-    pub get_rust_refcell: unsafe extern "C" fn(*mut c_void) -> *const RefCell<QObject>,
+    pub get_rust_refcell: unsafe extern "C" fn(*mut c_void) -> *const RefCell<dyn QObject>,
 }
 
 /// Trait that is implemented by the QObject custom derive macro
@@ -278,7 +278,7 @@ pub trait QObject {
         } ) }
     }
 }
-impl QObject {
+impl dyn QObject {
     /// Creates a C++ object and construct a QVariant containing a pointer to it.
     ///
     /// The cpp_construct function must already have been called.
@@ -507,13 +507,13 @@ pub trait QEnum {
 
 #[doc(hidden)]
 #[no_mangle]
-pub unsafe extern "C" fn RustObject_metaObject(p: *mut RefCell<QObject>) -> *const QMetaObject {
+pub unsafe extern "C" fn RustObject_metaObject(p: *mut RefCell<dyn QObject>) -> *const QMetaObject {
     (*(*p).as_ptr()).meta_object()
 }
 
 #[doc(hidden)]
 #[no_mangle]
-pub unsafe extern "C" fn RustObject_destruct(p: *mut RefCell<QObject>) {
+pub unsafe extern "C" fn RustObject_destruct(p: *mut RefCell<dyn QObject>) {
     // We are destroyed from the C++ code, which means that the object was owned by C++ and we
     // can destroy the rust object as well
     let _b = Box::from_raw(p);
@@ -683,7 +683,7 @@ cpp!{{
         TraitObject fnbox;
         ~FnBoxWrapper() {
             if (fnbox) {
-                rust!(FnBoxWrapper_destructor [fnbox : *mut FnMut() as "TraitObject"] {
+                rust!(FnBoxWrapper_destructor [fnbox : *mut dyn FnMut() as "TraitObject"] {
                     unsafe { let _ = Box::from_raw(fnbox); }
                 });
             }
@@ -698,7 +698,7 @@ cpp!{{
         FnBoxWrapper(FnBoxWrapper &&o) : fnbox(o.fnbox) {  o.fnbox = {}; }
         FnBoxWrapper &operator=(FnBoxWrapper &&o) { std::swap(o.fnbox, fnbox); return *this; }
         void operator()() {
-            rust!(FnBoxWrapper_operator [fnbox : *mut FnMut() as "TraitObject"] {
+            rust!(FnBoxWrapper_operator [fnbox : *mut dyn FnMut() as "TraitObject"] {
                 unsafe { (*fnbox)(); }
             });
         }
@@ -721,7 +721,7 @@ pub fn single_shot<F>(interval: std::time::Duration, func: F)
 where
     F: FnMut() + 'static,
 {
-    let func: Box<FnMut()> = Box::new(func);
+    let func: Box<dyn FnMut()> = Box::new(func);
     let mut func_raw = Box::into_raw(func);
     let interval_ms : u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
     unsafe{ cpp!([interval_ms as "int", mut func_raw as "FnBoxWrapper"] {
@@ -762,7 +762,7 @@ pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + 
     move |x| {
         let mut x = Some(x); // Workaround the fact we can't have a Box<FnOnce>
         let func = func.clone();
-        let func: Box<FnMut()> = Box::new(move || {
+        let func: Box<dyn FnMut()> = Box::new(move || {
             // the borrow_mut could panic if the function was called recursively. This could happen
             // if the event-loop re-enter.
             let f = &mut (*(func.0).borrow_mut());

@@ -45,7 +45,7 @@ class RustSlotOject : public QtPrivate::QSlotObjectBase
             break;
         case Call: {
             auto slot = static_cast<RustSlotOject*>(this_)->slot;
-            rust!(RustSlotObject_call[slot : *mut FnMut(*const *const c_void) as "TraitObject", a : *const *const c_void as "void**"] {
+            rust!(RustSlotObject_call[slot : *mut dyn FnMut(*const *const c_void) as "TraitObject", a : *const *const c_void as "void**"] {
                    unsafe { (*slot)(a); }
                 });
             break;
@@ -57,7 +57,7 @@ class RustSlotOject : public QtPrivate::QSlotObjectBase
     }
 public:
     explicit RustSlotOject(TraitObject slot) : QSlotObjectBase(&impl), slot(slot) {}
-    ~RustSlotOject() { rust!(RustSlotOject_destruct [slot : *mut FnMut(*const *const c_void) as "TraitObject"] { unsafe { let _ = Box::from_raw(slot); } }); }
+    ~RustSlotOject() { rust!(RustSlotOject_destruct [slot : *mut dyn FnMut(*const *const c_void) as "TraitObject"] { unsafe { let _ = Box::from_raw(slot); } }); }
     Q_DISABLE_COPY(RustSlotOject);
 };
 
@@ -202,7 +202,7 @@ pub unsafe fn connect<Args, F: Slot<Args>>(
 ) -> ConnectionHandle {
     let mut cpp_signal = signal.inner;
     let apply_closure = move |a: *const *const c_void| slot.apply(a);
-    let b: Box<FnMut(*const *const c_void)> = Box::new(apply_closure);
+    let b: Box<dyn FnMut(*const *const c_void)> = Box::new(apply_closure);
     let slot_raw = Box::into_raw(b);
     /*unsafe*/
     {

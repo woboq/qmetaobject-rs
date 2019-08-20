@@ -490,7 +490,7 @@ fn connect_cpp_signal() {
         )
     };
     assert!(con.is_valid());
-    (&*f.borrow() as &QObject).set_object_name("YOYO".into());
+    (&*f.borrow() as &dyn QObject).set_object_name("YOYO".into());
     assert_eq!(result, Some("YOYO".into()));
 }
 
@@ -558,8 +558,8 @@ fn qpointer() {
         obj.push(XX("foo".into()));
         let obj = RefCell::new(obj);
         unsafe { QObjectPinned::new(&obj).get_or_create_cpp_object() };
-        let obj_ref: &qmetaobject::listmodel::QAbstractListModel = &*obj.borrow();
-        ptr = QPointer::<qmetaobject::listmodel::QAbstractListModel>::from(obj_ref);
+        let obj_ref: &dyn qmetaobject::listmodel::QAbstractListModel = &*obj.borrow();
+        ptr = QPointer::<dyn qmetaobject::listmodel::QAbstractListModel>::from(obj_ref);
         pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x| x.row_count()), 1);
         assert_eq!(pt2.as_ref().map_or(898, |x| x.row_count()), 1);

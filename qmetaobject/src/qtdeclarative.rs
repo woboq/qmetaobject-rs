@@ -310,14 +310,14 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void itemChange(ItemChange, const ItemChangeData &);*/
     void classBegin() override {
         QQuickItem::classBegin();
-        rust!(Rust_QQuickItem_classBegin[rust_object : QObjectPinned<QQuickItem> as "TraitObject"] {
+        rust!(Rust_QQuickItem_classBegin[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject"] {
             rust_object.borrow_mut().class_begin();
         });
     }
 
     void componentComplete() override {
         QQuickItem::componentComplete();
-        rust!(Rust_QQuickItem_componentComplete[rust_object : QObjectPinned<QQuickItem> as "TraitObject"] {
+        rust!(Rust_QQuickItem_componentComplete[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject"] {
             rust_object.borrow_mut().component_complete();
         });
     }
@@ -335,7 +335,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 
     void handleMouseEvent(QMouseEvent *event) {
        if (!rust!(Rust_QQuickItem_mousePressEvent[
-            rust_object : QObjectPinned<QQuickItem> as "TraitObject",
+            rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject",
             event : QMouseEvent as "QMouseEvent*"
         ] -> bool as "bool" {
             rust_object.borrow_mut().mouse_event(event)
@@ -360,7 +360,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     virtual void windowDeactivateEvent();*/
     virtual void geometryChanged(const QRectF &new_geometry,
                                  const QRectF &old_geometry) {
-        rust!(Rust_QQuickItem_geometryChanged[rust_object : QObjectPinned<QQuickItem> as "TraitObject",
+        rust!(Rust_QQuickItem_geometryChanged[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject",
                 new_geometry : QRectF as "QRectF", old_geometry : QRectF as "QRectF"] {
             rust_object.borrow_mut().geometry_changed(new_geometry, old_geometry);
         });
@@ -368,7 +368,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
     }
 
     QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
-        return rust!(Rust_QQuickItem_updatePaintNode[rust_object : QObjectPinned<QQuickItem> as "TraitObject",
+        return rust!(Rust_QQuickItem_updatePaintNode[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject",
                     node : *mut c_void as "QSGNode*"] -> SGNode<ContainerNode> as "QSGNode*" {
             rust_object.borrow_mut().update_paint_node(unsafe { SGNode::<ContainerNode>::from_raw(node) })
         });
@@ -382,7 +382,7 @@ struct Rust_QQuickItem : RustObject<QQuickItem> {
 
 }}
 
-impl<'a> QQuickItem + 'a {
+impl<'a> dyn QQuickItem + 'a {
     pub fn bounding_rect(&self) -> QRectF {
         let obj = self.get_cpp_object();
         cpp!(unsafe [obj as "Rust_QQuickItem*"] -> QRectF as "QRectF" {
@@ -541,7 +541,7 @@ cpp!{{
 #include <QtQml/QQmlExtensionPlugin>
 struct Rust_QQmlExtensionPlugin : RustObject<QQmlExtensionPlugin> {
     void registerTypes(const char *uri) override  {
-        rust!(Rust_QQmlExtensionPlugin_registerTypes[rust_object : QObjectPinned<QQmlExtensionPlugin> as "TraitObject",
+        rust!(Rust_QQmlExtensionPlugin_registerTypes[rust_object : QObjectPinned<dyn QQmlExtensionPlugin> as "TraitObject",
                                                             uri : *const std::os::raw::c_char as "const char*"] {
             rust_object.borrow_mut().register_types(unsafe { std::ffi::CStr::from_ptr(uri) });
         });
