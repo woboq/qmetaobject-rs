@@ -64,8 +64,8 @@ impl Todos {
             return false;
         }
         self.list[item].completed = v;
-        let idx = (self as &mut QAbstractListModel).row_index(item as i32);
-        (self as &mut QAbstractListModel).data_changed(idx.clone(), idx);
+        let idx = (self as &mut dyn QAbstractListModel).row_index(item as i32);
+        (self as &mut dyn QAbstractListModel).data_changed(idx.clone(), idx);
         self.update_active_count();
         true
     }
@@ -76,8 +76,8 @@ impl Todos {
             return false;
         }
         self.list[item].description = v;
-        let idx = (self as &mut QAbstractListModel).row_index(item as i32);
-        (self as &mut QAbstractListModel).data_changed(idx.clone(), idx);
+        let idx = (self as &mut dyn QAbstractListModel).row_index(item as i32);
+        (self as &mut dyn QAbstractListModel).data_changed(idx.clone(), idx);
         true
     }
 
@@ -85,11 +85,11 @@ impl Todos {
         if count == 0 || row > self.list.len() {
             return false;
         }
-        (self as &mut QAbstractListModel).begin_insert_rows(row as i32, (row + count - 1) as i32);
+        (self as &mut dyn QAbstractListModel).begin_insert_rows(row as i32, (row + count - 1) as i32);
         for i in 0..count {
             self.list.insert(row + i, TodosItem::default());
         }
-        (self as &mut QAbstractListModel).end_insert_rows();
+        (self as &mut dyn QAbstractListModel).end_insert_rows();
         self.activeCount += count;
         self.active_count_changed();
         self.count_changed();
@@ -100,9 +100,9 @@ impl Todos {
         if count == 0 || row + count > self.list.len() {
             return false;
         }
-        (self as &mut QAbstractListModel).begin_remove_rows(row as i32, (row + count - 1) as i32);
+        (self as &mut dyn QAbstractListModel).begin_remove_rows(row as i32, (row + count - 1) as i32);
         self.list.drain(row..row + count);
-        (self as &mut QAbstractListModel).end_remove_rows();
+        (self as &mut dyn QAbstractListModel).end_remove_rows();
         self.count_changed();
         self.update_active_count();
         true
@@ -110,17 +110,17 @@ impl Todos {
 
     #[allow(non_snake_case)]
     fn clearCompleted(&mut self) {
-        (self as &mut QAbstractListModel).begin_reset_model();
+        (self as &mut dyn QAbstractListModel).begin_reset_model();
         self.list.retain(|i| !i.completed);
-        (self as &mut QAbstractListModel).end_reset_model();
+        (self as &mut dyn QAbstractListModel).end_reset_model();
         self.count_changed();
     }
 
     fn add(&mut self, description: String) {
         let end = self.list.len();
-        (self as &mut QAbstractListModel).begin_insert_rows(end as i32, end as i32);
+        (self as &mut dyn QAbstractListModel).begin_insert_rows(end as i32, end as i32);
         self.list.insert(end, TodosItem { completed: false, description });
-        (self as &mut QAbstractListModel).end_insert_rows();
+        (self as &mut dyn QAbstractListModel).end_insert_rows();
         self.activeCount += 1;
         self.active_count_changed();
         self.count_changed();
@@ -136,10 +136,10 @@ impl Todos {
             i.completed = completed;
         }
 
-        let idx1 = (self as &mut QAbstractListModel).row_index(0);
+        let idx1 = (self as &mut dyn QAbstractListModel).row_index(0);
         let end = self.list.len() as i32;
-        let idx2 = (self as &mut QAbstractListModel).row_index(end - 1);
-        (self as &mut QAbstractListModel).data_changed(idx1, idx2);
+        let idx2 = (self as &mut dyn QAbstractListModel).row_index(end - 1);
+        (self as &mut dyn QAbstractListModel).data_changed(idx1, idx2);
         self.update_active_count();
     }
 }
