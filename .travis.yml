@@ -19,7 +19,7 @@ before_install:
     - sudo apt-get update
 
 install:
-    - sudo apt-get install -y -qq qt${QT_VERSION}base qt${QT_VERSION}declarative g++-7
+    - sudo apt-get install -y -qq qt${QT_VERSION}base qt${QT_VERSION}declarative g++-7 libmesa-dev
     - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 90;
 
 before_script:
