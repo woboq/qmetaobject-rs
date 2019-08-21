@@ -15,7 +15,7 @@ matrix:
 
 
 before_install:
-    - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_SOURCE}-trusty;
+    - sudo add-apt-repository -y ppa:beineri/opt-qt${QT_SOURCE}-xenial;
     - sudo apt-get update
 
 install:
