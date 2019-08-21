@@ -799,8 +799,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                 assert!(pinned.borrow().#base_prop.get().is_null());
                 let object_ptr = #crate_::QObjectPinned::<#crate_::QObject>::new(pinned as &::std::cell::RefCell<#crate_::QObject>);
                 let object_ptr_ptr : *const #crate_::QObjectPinned<#crate_::QObject> = &object_ptr;
-                let rust_pinned = #crate_::QObjectPinned::<#base>::new(pinned as &::std::cell::RefCell<#base>);
-                let rust_pinned_ptr : *const #crate_::QObjectPinned<#base> = &rust_pinned;
+                let rust_pinned = #crate_::QObjectPinned::<dyn #base>::new(pinned as &::std::cell::RefCell<dyn #base>);
+                let rust_pinned_ptr : *const #crate_::QObjectPinned<dyn #base> = &rust_pinned;
                 let n = (<#name #ty_generics as #base>::get_object_description().create)
                     (rust_pinned_ptr as *const ::std::os::raw::c_void, object_ptr_ptr as *const ::std::os::raw::c_void);
                 pinned.borrow_mut().#base_prop.set(n);
@@ -812,8 +812,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 
                 let object_ptr = #crate_::QObjectPinned::<#crate_::QObject>::new(pinned as &::std::cell::RefCell<#crate_::QObject>);
                 let object_ptr_ptr : *const #crate_::QObjectPinned<#crate_::QObject> = &object_ptr;
-                let rust_pinned = #crate_::QObjectPinned::<#base>::new(pinned as &::std::cell::RefCell<#base>);
-                let rust_pinned_ptr : *const #crate_::QObjectPinned<#base> = &rust_pinned;
+                let rust_pinned = #crate_::QObjectPinned::<dyn #base>::new(pinned as &::std::cell::RefCell<dyn #base>);
+                let rust_pinned_ptr : *const #crate_::QObjectPinned<dyn #base> = &rust_pinned;
                 pinned.borrow_mut().#base_prop.set(mem);
                 (<#name #ty_generics as #base>::get_object_description().qml_construct)(
                     mem, rust_pinned_ptr as *const ::std::os::raw::c_void,

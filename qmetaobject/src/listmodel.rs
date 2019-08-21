@@ -50,7 +50,7 @@ pub trait QAbstractListModel: QObject {
 }
 
 // FIXME! code duplication with impl QAbstractItemModel
-impl QAbstractListModel {
+impl dyn QAbstractListModel {
     /// Refer to the Qt documentation of QAbstractListModel::beginInsertRows
     pub fn begin_insert_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
@@ -145,7 +145,7 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
     using QAbstractListModel::endResetModel;
 
     int rowCount(const QModelIndex & = QModelIndex()) const override {
-        return rust!(Rust_QAbstractListModel_rowCount[rust_object : QObjectPinned<QAbstractListModel> as "TraitObject"]
+        return rust!(Rust_QAbstractListModel_rowCount[rust_object : QObjectPinned<dyn QAbstractListModel> as "TraitObject"]
                 -> i32 as "int" {
             rust_object.borrow().row_count()
         });
@@ -154,14 +154,14 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
     //int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        return rust!(Rust_QAbstractListModel_data[rust_object : QObjectPinned<QAbstractListModel> as "TraitObject",
+        return rust!(Rust_QAbstractListModel_data[rust_object : QObjectPinned<dyn QAbstractListModel> as "TraitObject",
                 index : QModelIndex as "QModelIndex", role : i32 as "int"] -> QVariant as "QVariant" {
             rust_object.borrow().data(index, role)
         });
     }
 
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
-        return rust!(Rust_QAbstractListModel_setData[rust_object : QObjectPinned<QAbstractListModel> as "TraitObject",
+        return rust!(Rust_QAbstractListModel_setData[rust_object : QObjectPinned<dyn QAbstractListModel> as "TraitObject",
                 index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
                 -> bool as "bool" {
             rust_object.borrow_mut().set_data(index, &value, role)
@@ -174,7 +174,7 @@ struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 
     QHash<int, QByteArray> roleNames() const override {
         QHash<int, QByteArray> base = QAbstractListModel::roleNames();
-        rust!(Rust_QAbstractListModel_roleNames[rust_object : QObjectPinned<QAbstractListModel> as "TraitObject",
+        rust!(Rust_QAbstractListModel_roleNames[rust_object : QObjectPinned<dyn QAbstractListModel> as "TraitObject",
                 base: *mut c_void as "QHash<int, QByteArray>&"] {
             for (key, val) in rust_object.borrow().role_names().iter() {
                 add_to_hash(base, *key, val.clone());
@@ -236,28 +236,28 @@ where
 }
 impl<T: SimpleListItem> SimpleListModel<T> {
     pub fn insert(&mut self, index: usize, element: T) {
-        (self as &mut QAbstractListModel).begin_insert_rows(index as i32, index as i32);
+        (self as &mut dyn QAbstractListModel).begin_insert_rows(index as i32, index as i32);
         self.values.insert(index, element);
-        (self as &mut QAbstractListModel).end_insert_rows();
+        (self as &mut dyn QAbstractListModel).end_insert_rows();
     }
     pub fn push(&mut self, value: T) {
         let idx = self.values.len();
         self.insert(idx, value);
     }
     pub fn remove(&mut self, index: usize) {
-        (self as &mut QAbstractListModel).begin_remove_rows(index as i32, index as i32);
+        (self as &mut dyn QAbstractListModel).begin_remove_rows(index as i32, index as i32);
         self.values.remove(index);
-        (self as &mut QAbstractListModel).end_remove_rows();
+        (self as &mut dyn QAbstractListModel).end_remove_rows();
     }
     pub fn change_line(&mut self, index: usize, value: T) {
         self.values[index] = value;
-        let idx = (self as &mut QAbstractListModel).row_index(index as i32);
-        (self as &mut QAbstractListModel).data_changed(idx, idx);
+        let idx = (self as &mut dyn QAbstractListModel).row_index(index as i32);
+        (self as &mut dyn QAbstractListModel).data_changed(idx, idx);
     }
     pub fn reset_data(&mut self, data: Vec<T>) {
-        (self as &mut QAbstractListModel).begin_reset_model();
+        (self as &mut dyn QAbstractListModel).begin_reset_model();
         self.values = data;
-        (self as &mut QAbstractListModel).end_reset_model();
+        (self as &mut dyn QAbstractListModel).end_reset_model();
     }
 }
 
