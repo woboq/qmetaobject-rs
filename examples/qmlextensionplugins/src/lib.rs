@@ -42,15 +42,15 @@ impl TimeModel {
             let arc = Arc::<AbortCondVar>::new(Default::default());
             let arc2 = arc.clone();
             let thread = std::thread::spawn(move || loop {
-                {
-                    let lock = arc2.is_aborted.lock().unwrap();
-                    if *lock {
-                        break;
-                    }
-                    arc2.abort_condvar
-                        .wait_timeout(lock, std::time::Duration::from_millis(1000))
-                        .unwrap();
+                let lock = arc2.is_aborted.lock().unwrap();
+                if *lock {
+                    break;
                 }
+                // We just wait on the condition variable for 1 second to similate a one second timer
+                let lock = arc2.abort_condvar
+                    .wait_timeout(lock, std::time::Duration::from_millis(1000))
+                    .unwrap().0;
+                std::mem::drop(lock);
                 cb(());
             });
             self.thread = Some((thread, arc));
