@@ -278,13 +278,13 @@ fn map_method_parameters(
 ) -> Vec<MetaMethodParameter> {
     args.iter()
         .filter_map(|x| match x {
-            syn::FnArg::Captured(ref cap) => Some(MetaMethodParameter {
-                name: if let syn::Pat::Ident(ref id) = cap.pat {
+            syn::FnArg::Typed(cap) => Some(MetaMethodParameter {
+                name: if let syn::Pat::Ident(ref id) = *cap.pat {
                     Some(id.ident.clone())
                 } else {
                     None
                 },
-                typ: cap.ty.clone(),
+                typ: (*cap.ty).clone(),
             }),
             _ => None,
         }).collect()
@@ -297,11 +297,7 @@ fn map_method_parameters2(
         .filter_map(|x| {
             if let Some(ref name) = x.name {
                 Some(MetaMethodParameter {
-                    name: if let syn::BareFnArgName::Named(ref id) = name.0 {
-                        Some(id.clone())
-                    } else {
-                        None
-                    },
+                    name: Some(name.0.clone()),
                     typ: x.ty.clone(),
                 })
             } else {
@@ -334,7 +330,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             use syn::Type::Macro;
             if let Macro(ref mac) = f.ty {
                 if let Some(ref segment) = mac.mac.path.segments.last() {
-                    match segment.value().ident.to_string().as_ref() {
+                    match segment.ident.to_string().as_ref() {
                         "qt_property" => {
                             #[derive(Debug)]
                             enum Flag {
@@ -380,7 +376,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                 };
 
                             let parsed = unwrap_parse_error!(
-                                property_parser.parse(mac.mac.tts.clone().into())
+                                property_parser.parse(mac.mac.tokens.clone().into())
                             );
                             let mut notify_signal = None;
                             let mut getter = None;
@@ -429,15 +425,15 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                             let name = f.ident.clone().expect("Method does not have a name");
 
                             let (output, args) = if let Ok(method_ast) =
-                                syn::parse::<syn::ItemFn>(mac.mac.tts.clone().into())
+                                syn::parse::<syn::ItemFn>(mac.mac.tokens.clone().into())
                             {
-                                assert_eq!(method_ast.ident, name);
-                                let tts = &mac.mac.tts;
+                                assert_eq!(method_ast.sig.ident, name);
+                                let tts = &mac.mac.tokens;
                                 func_bodies.push(quote! { #tts });
-                                let args = map_method_parameters(&method_ast.decl.inputs);
-                                (method_ast.decl.output, args)
+                                let args = map_method_parameters(&method_ast.sig.inputs);
+                                (method_ast.sig.output, args)
                             } else if let Ok(method_decl) =
-                                syn::parse::<syn::TypeBareFn>(mac.mac.tts.clone().into())
+                                syn::parse::<syn::TypeBareFn>(mac.mac.tokens.clone().into())
                             {
                                 let args = map_method_parameters2(&method_decl.inputs);
                                 (method_decl.output, args)
@@ -459,7 +455,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                         "qt_signal" => {
                             let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_terminated;
                             let args_list =
-                                unwrap_parse_error!(parser.parse(mac.mac.tts.clone().into()));
+                                unwrap_parse_error!(parser.parse(mac.mac.tokens.clone().into()));
                             let args = map_method_parameters(&args_list);
                             signals.push(MetaMethod {
                                 name: f.ident.clone().expect("Signal does not have a name"),
@@ -473,14 +469,14 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                 input.parse::<Token![trait]>()?;
                                 input.parse()
                             };
-                            base = unwrap_parse_error!(parser.parse(mac.mac.tts.clone().into()));
+                            base = unwrap_parse_error!(parser.parse(mac.mac.tokens.clone().into()));
                             base_prop = f.ident.clone().expect("base prop needs a name");
                             has_base_property = true;
                         }
                         "qt_plugin" => {
                             is_plugin = true;
                             let iid: syn::LitStr =
-                                unwrap_parse_error!(syn::parse(mac.mac.tts.clone().into()));
+                                unwrap_parse_error!(syn::parse(mac.mac.tokens.clone().into()));
                             plugin_iid = Some(iid);
                         }
                         _ => {}
@@ -488,22 +484,19 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                 }
             }
             for i in f.attrs.iter() {
-                if let Some(x) = i.interpret_meta() {
-                    match x.name().to_string().as_ref() {
-                        "qt_base_class" => {
-                            if let syn::Meta::NameValue(mnv) = x {
-                                if let syn::Lit::Str(s) = mnv.lit {
-                                    base = unwrap_parse_error!(syn::parse_str(&s.value()));
-                                    base_prop = f.ident.clone().expect("base prop needs a name");
-                                    has_base_property = true;
-                                } else {
-                                    panic!("Can't parse qt_base_class");
-                                }
+                if let Ok(x) = i.parse_meta() {
+                    if x.path().is_ident("qt_base_class") {
+                        if let syn::Meta::NameValue(mnv) = x {
+                            if let syn::Lit::Str(s) = mnv.lit {
+                                base = unwrap_parse_error!(syn::parse_str(&s.value()));
+                                base_prop = f.ident.clone().expect("base prop needs a name");
+                                has_base_property = true;
                             } else {
                                 panic!("Can't parse qt_base_class");
                             }
+                        } else {
+                            panic!("Can't parse qt_base_class");
                         }
-                        _ => {}
                     }
                 }
             }
@@ -925,11 +918,11 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
     match attribute.parse_meta() {
         Ok(syn::Meta::List(list)) => {
-            if list.ident == "repr" && list.nested.len() == 1 {
+            if list.path.is_ident("repr") && list.nested.len() == 1 {
                 match &list.nested[0] {
-                    syn::NestedMeta::Meta(syn::Meta::Word(word)) => {
+                    syn::NestedMeta::Meta(syn::Meta::Path(word)) => {
                         const ACCEPTABLES : &[&str; 6] = &["u8", "u16", "u32", "i8", "i16", "i32"];
-                        ACCEPTABLES.iter().any(|w| word == w)
+                        ACCEPTABLES.iter().any(|w| word.is_ident(w))
                     }
                     _ => false,
                 }

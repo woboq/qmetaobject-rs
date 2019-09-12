@@ -41,8 +41,8 @@ mod simplelistitem_impl;
 /// the QMetaObjectCrate is specified
 fn get_crate(input: &syn::DeriveInput) -> impl quote::ToTokens {
     for i in input.attrs.iter() {
-        if let Some(x) = i.interpret_meta() {
-            if x.name() == "QMetaObjectCrate" {
+        if let Ok(x) = i.parse_meta() {
+            if x.path().is_ident("QMetaObjectCrate") {
                 if let syn::Meta::NameValue(mnv) = x {
                     use syn::Lit::*;
                     let lit: syn::Path = match mnv.lit {
