@@ -23,7 +23,7 @@ struct Graph {
     removeFirstSample: qt_method!(fn removeFirstSample(&mut self) {
         self.m_samples.drain(0..1);
         self.m_samplesChanged = true;
-        (self as &QQuickItem).update();
+        (self as &dyn QQuickItem).update();
     }),
 }
 
@@ -35,18 +35,18 @@ impl Graph {
         let obj = self.get_cpp_object();
         assert!(!obj.is_null());
         cpp!(unsafe [obj as "QQuickItem*"] { obj->setFlag(QQuickItem::ItemHasContents); });
-        (self as &QQuickItem).update();
+        (self as &dyn QQuickItem).update();
     }
 }
 
 impl QQuickItem for Graph {
     fn geometry_changed(&mut self, new_geometry: QRectF, old_geometry: QRectF) {
         self.m_geometryChanged = true;
-        (self as &QQuickItem).update();
+        (self as &dyn QQuickItem).update();
     }
 
     fn update_paint_node(&mut self, mut node: SGNode<ContainerNode>) -> SGNode<ContainerNode> {
-        let rect = (self as &QQuickItem).bounding_rect();
+        let rect = (self as &dyn QQuickItem).bounding_rect();
 
         node.update_static((
             |mut n| -> SGNode<nodes::NoisyNode> {

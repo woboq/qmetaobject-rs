@@ -24,7 +24,7 @@ cpp!{{
 
 pub enum NoisyNode {}
 
-pub fn create_noisy_node(s: &mut SGNode<NoisyNode>, ctx: &QQuickItem) {
+pub fn create_noisy_node(s: &mut SGNode<NoisyNode>, ctx: &dyn QQuickItem) {
     init_ressource();
     let item_ptr = ctx.get_cpp_object();
     cpp!(unsafe [s as "NoisyNode**", item_ptr as "QQuickItem*"] {
