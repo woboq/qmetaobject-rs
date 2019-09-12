@@ -26,7 +26,8 @@ fn qmake_query(var: &str) -> String {
             .output()
             .expect("Failed to execute qmake. Make sure 'qmake' is in your path")
             .stdout,
-    ).expect("UTF-8 conversion failed")
+    )
+    .expect("UTF-8 conversion failed")
 }
 
 fn main() {
@@ -49,9 +50,24 @@ fn main() {
         macos_lib_search,
         qt_library_path.trim()
     );
-    println!("cargo:rustc-link-lib{}=Qt{}Widgets", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Gui", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Core", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Quick", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Qml", macos_lib_search, macos_lib_framework);
+    println!(
+        "cargo:rustc-link-lib{}=Qt{}Widgets",
+        macos_lib_search, macos_lib_framework
+    );
+    println!(
+        "cargo:rustc-link-lib{}=Qt{}Gui",
+        macos_lib_search, macos_lib_framework
+    );
+    println!(
+        "cargo:rustc-link-lib{}=Qt{}Core",
+        macos_lib_search, macos_lib_framework
+    );
+    println!(
+        "cargo:rustc-link-lib{}=Qt{}Quick",
+        macos_lib_search, macos_lib_framework
+    );
+    println!(
+        "cargo:rustc-link-lib{}=Qt{}Qml",
+        macos_lib_search, macos_lib_framework
+    );
 }

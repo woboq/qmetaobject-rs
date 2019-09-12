@@ -48,8 +48,10 @@ impl<'a> From<&'a [u8]> for QByteArray {
     fn from(s: &'a [u8]) -> QByteArray {
         let len = s.len();
         let ptr = s.as_ptr();
-        unsafe { cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
-        { return QByteArray(ptr, len); })}
+        unsafe {
+            cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
+        { return QByteArray(ptr, len); })
+        }
     }
 }
 impl<'a> From<&'a str> for QByteArray {

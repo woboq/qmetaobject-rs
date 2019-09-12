@@ -241,7 +241,12 @@ impl Data {
             .unwrap_or_else(|_| panic!("Cannot open file {}", filepath.display()));
         push_u32_be(&mut self.payload, data.len() as u32);
         self.payload.append(&mut data);
-        self.files.push(filepath.to_str().expect("File path contains invalid Unicode").into());
+        self.files.push(
+            filepath
+                .to_str()
+                .expect("File path contains invalid Unicode")
+                .into(),
+        );
     }
 
     fn insert_directory(&mut self, contents: &BTreeMap<HashedString, TreeNode>) {
@@ -323,7 +328,7 @@ fn expand_macro(func: &syn::Ident, data: Data) -> TokenStream {
     // since the payload array can be quite large, this is completely unacceptable.
     let payload = ::proc_macro2::TokenStream::from_iter(payload.iter().map(|x| quote!(#x,)));
 
-    let q = quote!{
+    let q = quote! {
         fn #func() {
             use ::std::sync::{Once, ONCE_INIT};
             static INIT_RESOURCES: Once = ONCE_INIT;

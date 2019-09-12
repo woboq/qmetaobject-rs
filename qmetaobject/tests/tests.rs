@@ -84,7 +84,7 @@ struct MyObject {
 
     method_out_of_line: qt_method!(fn(&self, a: QString) -> QString),
 
-    prop_color: qt_property!(QColor)
+    prop_color: qt_property!(QColor),
 }
 
 impl MyObject {
@@ -328,7 +328,8 @@ fn test_queud_callback() {
     let callback = queued_callback(move |()| engine_copy.quit());
     std::thread::spawn(move || {
         callback(());
-    }).join()
+    })
+    .join()
     .unwrap();
     engine.exec();
 }
@@ -649,15 +650,14 @@ fn enum_properties() {
 
 #[test]
 fn threading() {
-
     let _lock = lock_for_test();
 
-    #[derive(QObject,Default)]
+    #[derive(QObject, Default)]
     struct MyAsyncObject {
-        base : qt_base_class!(trait QObject),
-        result : qt_property!(QString; NOTIFY result_changed),
-        result_changed : qt_signal!(),
-        recompute_result : qt_method!(fn recompute_result(&self, name : String) {
+        base: qt_base_class!(trait QObject),
+        result: qt_property!(QString; NOTIFY result_changed),
+        result_changed: qt_signal!(),
+        recompute_result: qt_method!(fn recompute_result(&self, name : String) {
             let qptr = QPointer::from(&*self);
             let set_value = qmetaobject::queued_callback(move |val : QString| {
                 qptr.as_pinned().map(|self_| {
@@ -670,16 +670,20 @@ fn threading() {
                 let r = QString::from("Hello ".to_owned() + &name);
                 set_value(r);
             }).join().unwrap();
-        })
+        }),
     }
 
     let obj = std::cell::RefCell::new(MyAsyncObject::default());
     let engine = QmlEngine::new();
-    unsafe { qmetaobject::connect(
-        QObject::cpp_construct(&obj),
-        obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),
-        || engine.quit()
-    ) };
+    unsafe {
+        qmetaobject::connect(
+            QObject::cpp_construct(&obj),
+            obj.borrow()
+                .result_changed
+                .to_cpp_representation(&*obj.borrow()),
+            || engine.quit(),
+        )
+    };
     obj.borrow().recompute_result("World".into());
     engine.exec();
     assert_eq!(obj.borrow().result, QString::from("Hello World"));

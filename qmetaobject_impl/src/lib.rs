@@ -19,7 +19,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! This crates implement the custom derive used by the `qmetaobject` crate.
 
 #![recursion_limit = "256"]
-
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))] // Because we copy-paste constants from Qt
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
 

@@ -57,8 +57,8 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
-            if(obj) obj->beginInsertRows(p, first, last);
-        })
+                if(obj) obj->beginInsertRows(p, first, last);
+            })
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endInsertRows
@@ -66,8 +66,8 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
-            if(obj) obj->endInsertRows();
-        })
+                if(obj) obj->endInsertRows();
+            })
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::beginRemoveRows
@@ -76,8 +76,8 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*", p as "QModelIndex", first as "int", last as "int"]{
-            if(obj) obj->beginRemoveRows(p, first, last);
-        })
+                if(obj) obj->beginRemoveRows(p, first, last);
+            })
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endRemoveRows
@@ -85,8 +85,8 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
-            if(obj) obj->endRemoveRows();
-        })
+                if(obj) obj->endRemoveRows();
+            })
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::beginResetModel
@@ -94,8 +94,8 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
-            if(obj) obj->beginResetModel();
-        })
+                if(obj) obj->beginResetModel();
+            })
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endResetModel
@@ -103,8 +103,8 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
-            if(obj) obj->endResetModel();
-        })
+                if(obj) obj->endResetModel();
+            })
         }
     }
 
@@ -113,8 +113,8 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
-            if(obj) obj->dataChanged(top_left, bottom_right);
-        })
+                if(obj) obj->dataChanged(top_left, bottom_right);
+            })
         }
     }
 
@@ -123,18 +123,18 @@ impl dyn QAbstractListModel {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*", i as "int"] -> QModelIndex as "QModelIndex" {
-            return obj ? obj->index(i) : QModelIndex();
-        })
+                return obj ? obj->index(i) : QModelIndex();
+            })
         }
     }
 }
 
-cpp!{{
+cpp! {{
 #include <qmetaobject_rust.hpp>
 #include <QtCore/QAbstractListModel>
 }}
 
-cpp!{{
+cpp! {{
 struct Rust_QAbstractListModel : RustObject<QAbstractListModel> {
 
     using QAbstractListModel::beginInsertRows;

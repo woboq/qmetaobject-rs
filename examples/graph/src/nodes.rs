@@ -1,7 +1,7 @@
 use qmetaobject::scenegraph::SGNode;
 use qmetaobject::{QColor, QQuickItem, QRectF};
 
-qrc!{
+qrc! {
     init_ressource,
     "scenegraph/graph" {
 //        "main.qml",
@@ -15,7 +15,7 @@ qrc!{
 // Ideally, everything should be possible to do in plain rust.
 // However, there is quite some API to expose.
 
-cpp!{{
+cpp! {{
 #include "src/linenode.cpp"
 #include "src/noisynode.cpp"
 #include "src/gridnode.cpp"

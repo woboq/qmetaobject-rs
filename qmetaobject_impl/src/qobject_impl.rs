@@ -168,13 +168,14 @@ impl MetaObject {
         enums: &[MetaEnum],
         signal_count: usize,
     ) {
-        let has_notify = properties.iter().any(|p| p.notify_signal.is_some());    
+        let has_notify = properties.iter().any(|p| p.notify_signal.is_some());
         self.add_string(class_name);
         self.add_string("".to_owned());
 
         let mut offset = 14;
         let property_offset = offset + methods.len() as u32 * 5;
-        let enum_offset = property_offset + properties.len() as u32 * (if has_notify { 4 } else { 3 });
+        let enum_offset =
+            property_offset + properties.len() as u32 * (if has_notify { 4 } else { 3 });
 
         self.extend_from_int_slice(&[
             7, // revision
@@ -184,7 +185,11 @@ impl MetaObject {
             methods.len() as u32,
             if methods.is_empty() { 0 } else { offset }, // method count and offset
             properties.len() as u32,
-            if properties.is_empty() { 0 } else { property_offset }, // properties count and offset
+            if properties.is_empty() {
+                0
+            } else {
+                property_offset
+            }, // properties count and offset
             enums.len() as u32,
             if enums.is_empty() { 0 } else { enum_offset }, // enum count and offset
             0,
@@ -250,7 +255,7 @@ impl MetaObject {
                 // name, value
                 self.push_int(n);
                 let e_name = &e.name;
-                self.int_data.push(quote!{ #e_name::#v as u32 });
+                self.int_data.push(quote! { #e_name::#v as u32 });
             }
         }
     }
@@ -265,7 +270,12 @@ impl MetaObject {
     }
 
     fn add_string(&mut self, string: String) -> u32 {
-        if let Some((pos, _)) = self.string_data.iter().enumerate().find(|(_, val)| *val == &string) {
+        if let Some((pos, _)) = self
+            .string_data
+            .iter()
+            .enumerate()
+            .find(|(_, val)| *val == &string)
+        {
             return pos as u32;
         }
         self.string_data.push(string);
@@ -287,7 +297,8 @@ fn map_method_parameters(
                 typ: (*cap.ty).clone(),
             }),
             _ => None,
-        }).collect()
+        })
+        .collect()
 }
 
 fn map_method_parameters2(
@@ -303,7 +314,8 @@ fn map_method_parameters2(
             } else {
                 None
             }
-        }).collect()
+        })
+        .collect()
 }
 
 pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
@@ -371,7 +383,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                                     r.push(input.parse()?)
                                                 }
                                                 Ok(r)
-                                            }).unwrap_or_else(|| Ok(Default::default()))?,
+                                            })
+                                            .unwrap_or_else(|| Ok(Default::default()))?,
                                     ))
                                 };
 
@@ -442,7 +455,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                             };
 
                             let ret_type = match output {
-                                syn::ReturnType::Default => parse_quote!{()},
+                                syn::ReturnType::Default => parse_quote! {()},
                                 syn::ReturnType::Type(_, ref typ) => (**typ).clone(),
                             };
                             methods.push(MetaMethod {
@@ -461,7 +474,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                 name: f.ident.clone().expect("Signal does not have a name"),
                                 args,
                                 flags: 0x2 | 0x4,
-                                ret_type: parse_quote!{()},
+                                ret_type: parse_quote! {()},
                             });
                         }
                         "qt_base_class" => {
@@ -524,7 +537,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 
     use self::MetaObjectCall::*;
     let get_object = if is_qobject {
-        quote!{
+        quote! {
             let pinned = <#name #ty_generics as #crate_::QObject>::get_from_cpp(o);
             // FIXME: we should probably use borrow_mut here instead, but in a way which order re-entry
             let mut obj = &mut *pinned.as_ptr();
@@ -537,7 +550,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             let _check = Check(o, obj as *const #crate_::QObject);
         }
     } else {
-        quote!{ let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o); }
+        quote! { let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o); }
     };
 
     let property_meta_call: Vec<_> = properties
@@ -622,7 +635,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                     quote! {
                         (*(*(a.offset(#i + 1)) as *const #ty)).clone()
                     }
-                }).collect();
+                })
+                .collect();
 
             fn is_void(ret_type: &syn::Type) -> bool {
                 if let syn::Type::Tuple(ref tuple) = ret_type {
@@ -644,7 +658,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                     }
                 }
             }
-        }).collect();
+        })
+        .collect();
 
     let register_arguments: Vec<_> = methods
         .iter()
@@ -728,9 +743,9 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     });
 
     let base_meta_object = if is_qobject {
-        quote!{ <#name #ty_generics as #base>::get_object_description().meta_object }
+        quote! { <#name #ty_generics as #base>::get_object_description().meta_object }
     } else {
-        quote!{ ::std::ptr::null() }
+        quote! { ::std::ptr::null() }
     };
 
     let mo = if ast.generics.params.is_empty() {
@@ -777,7 +792,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     };
 
     let qobject_spec_func = if is_qobject {
-        quote!{
+        quote! {
             fn get_cpp_object(&self)-> *mut ::std::os::raw::c_void {
                 self.#base_prop.get()
             }
@@ -818,16 +833,16 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             }
         }
     } else {
-        quote!{}
+        quote! {}
     };
 
     let trait_name = if is_qobject {
-        quote!{ QObject }
+        quote! { QObject }
     } else {
-        quote!{ QGadget }
+        quote! { QGadget }
     };
 
-    let mut body = quote!{
+    let mut body = quote! {
         #[allow(non_snake_case)]
         impl #impl_generics #name #ty_generics #where_clause {
             #(#func_bodies)*
@@ -921,7 +936,7 @@ fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
             if list.path.is_ident("repr") && list.nested.len() == 1 {
                 match &list.nested[0] {
                     syn::NestedMeta::Meta(syn::Meta::Path(word)) => {
-                        const ACCEPTABLES : &[&str; 6] = &["u8", "u16", "u32", "i8", "i16", "i32"];
+                        const ACCEPTABLES: &[&str; 6] = &["u8", "u16", "u32", "i8", "i16", "i32"];
                         ACCEPTABLES.iter().any(|w| word.is_ident(w))
                     }
                     _ => false,
@@ -930,7 +945,7 @@ fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
                 false
             }
         }
-        _ => false
+        _ => false,
     }
 }
 
@@ -950,7 +965,7 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
     let crate_ = super::get_crate(&ast);
     let mut meta_enum = MetaEnum {
         name: name.clone(),
-        variants: Vec::new()
+        variants: Vec::new(),
     };
 
     if let syn::Data::Enum(ref data) = ast.data {
@@ -958,7 +973,7 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
             match &variant.fields {
                 syn::Fields::Unit => {}
                 // TODO report error with span
-                _ => panic!("#[derive(QEnum)] only support field-less enum")
+                _ => panic!("#[derive(QEnum)] only support field-less enum"),
             }
 
             let var_name = &variant.ident;
@@ -991,7 +1006,7 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
         panic!("#[derive(QEnum)] is only defined for C enums, doesn't support generics");
     };
 
-    let body = quote!{
+    let body = quote! {
         impl #crate_::QEnum for #name {
             fn static_meta_object()->*const #crate_::QMetaObject {
                 #[cfg(target_pointer_width = "64")]

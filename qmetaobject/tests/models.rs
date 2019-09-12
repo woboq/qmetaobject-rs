@@ -36,7 +36,8 @@ fn simple_model() {
     let model: qmetaobject::listmodel::SimpleListModel<TM> = (vec![TM {
         a: "hello".into(),
         b: 1,
-    }]).into_iter()
+    }])
+    .into_iter()
     .collect();
     assert!(do_test(
         model,

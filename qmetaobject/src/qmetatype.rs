@@ -228,24 +228,24 @@ macro_rules! qdeclare_builtin_metatype {
         }
     };
 }
-qdeclare_builtin_metatype!{()   => 43}
-qdeclare_builtin_metatype!{bool => 1}
-qdeclare_builtin_metatype!{i32  => 2}
-qdeclare_builtin_metatype!{u32  => 3}
-qdeclare_builtin_metatype!{i64  => 4}
-qdeclare_builtin_metatype!{u64  => 5}
-qdeclare_builtin_metatype!{f64  => 6}
-qdeclare_builtin_metatype!{i16  => 33}
-qdeclare_builtin_metatype!{i8   => 34}
-qdeclare_builtin_metatype!{u16  => 36}
-qdeclare_builtin_metatype!{u8   => 37}
-qdeclare_builtin_metatype!{f32  => 38}
+qdeclare_builtin_metatype! {()   => 43}
+qdeclare_builtin_metatype! {bool => 1}
+qdeclare_builtin_metatype! {i32  => 2}
+qdeclare_builtin_metatype! {u32  => 3}
+qdeclare_builtin_metatype! {i64  => 4}
+qdeclare_builtin_metatype! {u64  => 5}
+qdeclare_builtin_metatype! {f64  => 6}
+qdeclare_builtin_metatype! {i16  => 33}
+qdeclare_builtin_metatype! {i8   => 34}
+qdeclare_builtin_metatype! {u16  => 36}
+qdeclare_builtin_metatype! {u8   => 37}
+qdeclare_builtin_metatype! {f32  => 38}
 //qdeclare_builtin_metatype!{"*c_void" => 31,
-qdeclare_builtin_metatype!{QVariantList  => 9}
-qdeclare_builtin_metatype!{QString => 10}
-qdeclare_builtin_metatype!{QByteArray => 12}
-qdeclare_builtin_metatype!{QRectF => 20}
-qdeclare_builtin_metatype!{QPointF => 26}
+qdeclare_builtin_metatype! {QVariantList  => 9}
+qdeclare_builtin_metatype! {QString => 10}
+qdeclare_builtin_metatype! {QByteArray => 12}
+qdeclare_builtin_metatype! {QRectF => 20}
+qdeclare_builtin_metatype! {QPointF => 26}
 //qdeclare_builtin_metatype!{QVariant => 41}
 impl QMetaType for QVariant {
     fn register(_name: Option<&std::ffi::CStr>) -> i32 {
@@ -258,18 +258,18 @@ impl QMetaType for QVariant {
         Some(variant)
     }
 }
-qdeclare_builtin_metatype!{QModelIndex => 42}
-qdeclare_builtin_metatype!{QColor => 67}
-qdeclare_builtin_metatype!{QImage => 70}
+qdeclare_builtin_metatype! {QModelIndex => 42}
+qdeclare_builtin_metatype! {QColor => 67}
+qdeclare_builtin_metatype! {QImage => 70}
 
 #[cfg(target_pointer_width = "32")]
-qdeclare_builtin_metatype!{isize  => 2} // That's QMetaType::Int
+qdeclare_builtin_metatype! {isize  => 2} // That's QMetaType::Int
 #[cfg(target_pointer_width = "32")]
-qdeclare_builtin_metatype!{usize  => 3} // That's QMetaType::UInt
+qdeclare_builtin_metatype! {usize  => 3} // That's QMetaType::UInt
 #[cfg(target_pointer_width = "64")]
-qdeclare_builtin_metatype!{isize  => 4} // That's QMetaType::LongLong
+qdeclare_builtin_metatype! {isize  => 4} // That's QMetaType::LongLong
 #[cfg(target_pointer_width = "64")]
-qdeclare_builtin_metatype!{usize  => 5} // That's QMetaType::ULongLong
+qdeclare_builtin_metatype! {usize  => 5} // That's QMetaType::ULongLong
 
 /// Internal trait used to pass or read the type in a Q_PROPERTY
 ///

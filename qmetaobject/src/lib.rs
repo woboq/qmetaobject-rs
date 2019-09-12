@@ -159,7 +159,7 @@ extern crate qmetaobject_impl;
 pub use qmetaobject_impl::*;
 
 /* In order to be able to use the lazy_static macro from the QObject custom derive, we re-export
-   it under a new name qmetaobject_lazy_static */
+it under a new name qmetaobject_lazy_static */
 extern crate lazy_static;
 #[allow(unused_imports)]
 #[doc(hidden)]
@@ -177,7 +177,7 @@ use std::os::raw::{c_char, c_void};
 pub mod qttypes;
 pub use qttypes::*;
 
-cpp!{{
+cpp! {{
     #include <qmetaobject_rust.hpp>
 }}
 
@@ -188,12 +188,14 @@ pub struct QObjectCppWrapper {
 impl Drop for QObjectCppWrapper {
     fn drop(&mut self) {
         let ptr = self.ptr;
-        unsafe { cpp!([ptr as "QObject*"] {
-            // The event 513 is catched by RustObject and deletes the object.
-            QEvent e(QEvent::Type(513));
-            if (ptr)
-                ptr->event(&e);
-        }) };
+        unsafe {
+            cpp!([ptr as "QObject*"] {
+                // The event 513 is catched by RustObject and deletes the object.
+                QEvent e(QEvent::Type(513));
+                if (ptr)
+                    ptr->event(&e);
+            })
+        };
     }
 }
 impl Default for QObjectCppWrapper {
@@ -217,8 +219,10 @@ impl QObjectCppWrapper {
 pub struct QObjectDescription {
     pub size: usize,
     pub meta_object: *const QMetaObject,
-    pub create: unsafe extern "C" fn(pinned_object: *const c_void, trait_object_ptr: *const c_void)
-        -> *mut c_void,
+    pub create: unsafe extern "C" fn(
+        pinned_object: *const c_void,
+        trait_object_ptr: *const c_void,
+    ) -> *mut c_void,
     pub qml_construct: unsafe extern "C" fn(
         mem: *mut c_void,
         pinned_object: *const c_void,
@@ -415,7 +419,9 @@ impl<'b, T: QObject + ?Sized + 'b> Drop for QObjectRefMut<'b, T> {
 #[repr(transparent)]
 pub struct QObjectPinned<'pin, T: QObject + ?Sized + 'pin>(&'pin RefCell<T>);
 impl<'pin, T: QObject + ?Sized + 'pin> Clone for QObjectPinned<'pin, T> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 impl<'pin, T: QObject + ?Sized + 'pin> Copy for QObjectPinned<'pin, T> {}
 
@@ -678,7 +684,7 @@ macro_rules! qt_plugin {
     ($($t:tt)*) => { std::marker::PhantomData<()> };
 }
 
-cpp!{{
+cpp! {{
     struct FnBoxWrapper {
         TraitObject fnbox;
         ~FnBoxWrapper() {
@@ -723,10 +729,12 @@ where
 {
     let func: Box<dyn FnMut()> = Box::new(func);
     let mut func_raw = Box::into_raw(func);
-    let interval_ms : u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
-    unsafe{ cpp!([interval_ms as "int", mut func_raw as "FnBoxWrapper"] {
-        QTimer::singleShot(interval_ms, std::move(func_raw));
-    })};
+    let interval_ms: u32 = interval.as_secs() as u32 * 1000 + interval.subsec_nanos() * 1e-6 as u32;
+    unsafe {
+        cpp!([interval_ms as "int", mut func_raw as "FnBoxWrapper"] {
+            QTimer::singleShot(interval_ms, std::move(func_raw));
+        })
+    };
 }
 
 /// Create a callback to invoke a queued callback in the current thread.
@@ -743,7 +751,9 @@ where
 /// let callback = queued_callback(|()| println!("hello from main thread"));
 /// std::thread::spawn(move || {callback(());}).join();
 /// ```
-pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + Send + Sync + Clone {
+pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(
+    func: F,
+) -> impl Fn(T) + Send + Sync + Clone {
     let current_thread = cpp!(unsafe [] -> QPointerImpl as "QPointer<QThread>" {
         return QThread::currentThread();
     });
@@ -771,17 +781,19 @@ pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + 
             };
         });
         let mut func_raw = Box::into_raw(func);
-        unsafe{ cpp!([mut func_raw as "FnBoxWrapper", current_thread as "QPointer<QThread>"] {
-            if (!current_thread) return;
-            if (!qApp || current_thread != qApp->thread()) {
-                QObject *reciever = new QObject();
-                reciever->moveToThread(current_thread);
-                invokeMethod(reciever, std::move(func_raw));
-                reciever->deleteLater();
-            } else {
-                invokeMethod(qApp, std::move(func_raw));
-            }
-        })};
+        unsafe {
+            cpp!([mut func_raw as "FnBoxWrapper", current_thread as "QPointer<QThread>"] {
+                if (!current_thread) return;
+                if (!qApp || current_thread != qApp->thread()) {
+                    QObject *reciever = new QObject();
+                    reciever->moveToThread(current_thread);
+                    invokeMethod(reciever, std::move(func_raw));
+                    reciever->deleteLater();
+                } else {
+                    invokeMethod(qApp, std::move(func_raw));
+                }
+            })
+        };
     }
 }
 
@@ -789,8 +801,8 @@ pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(func: F) -> impl Fn(T) + 
 fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
     unsafe {
         cpp!([hash as "QHash<int, QByteArray>*", key as "int", value as "QByteArray"]{
-        (*hash)[key] = std::move(value);
-    })
+            (*hash)[key] = std::move(value);
+        })
     }
 }
 
@@ -872,7 +884,7 @@ pub use qmetatype::*;
 pub mod qrc;
 pub mod connections;
 pub use connections::RustSignal;
-pub use connections::{CppSignal, SignalCppRepresentation, connect};
-pub mod scenegraph;
+pub use connections::{connect, CppSignal, SignalCppRepresentation};
 pub mod qtquickcontrols2;
+pub mod scenegraph;
 pub use qtquickcontrols2::*;

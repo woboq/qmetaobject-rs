@@ -19,8 +19,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #![allow(dead_code)]
 
 use qmetaobject::*;
-use std::sync::Mutex;
 use std::cell::RefCell;
+use std::sync::Mutex;
 
 lazy_static! {
     pub static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
@@ -29,11 +29,11 @@ lazy_static! {
 
 /// There can only be one thread running at the time with a QQuickEngine
 /// (in principle, everything should be in the same main thread)
-pub fn lock_for_test () -> std::sync::MutexGuard<'static, ()> {
+pub fn lock_for_test() -> std::sync::MutexGuard<'static, ()> {
     TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-extern "C" fn log_capture(msg_type : QtMsgType, context: &QMessageLogContext, message : &QString) {
+extern "C" fn log_capture(msg_type: QtMsgType, context: &QMessageLogContext, message: &QString) {
     let log = format!(
         "{}:{} [{:?} {} {}] {}",
         context.file(),
@@ -80,7 +80,10 @@ pub fn do_test_error_with_url<T: QObject + Sized>(obj: T, qml: &str, url: &str) 
     engine.load_data_as(qml_text.into(), QString::from(url).into());
     engine.invoke_method("doTest".into(), &[]);
     let errors = QML_LOGS.lock().unwrap_or_else(|e| e.into_inner());
-    errors.last().expect("An error from QmlEngine was expected").clone()
+    errors
+        .last()
+        .expect("An error from QmlEngine was expected")
+        .clone()
 }
 
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {

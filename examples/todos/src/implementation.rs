@@ -21,13 +21,11 @@
 use qmetaobject::*;
 use std::collections::HashMap;
 
-
 #[derive(Default, Clone)]
 struct TodosItem {
     completed: bool,
     description: String,
 }
-
 
 #[allow(non_snake_case)]
 #[derive(Default, QObject)]
@@ -85,7 +83,8 @@ impl Todos {
         if count == 0 || row > self.list.len() {
             return false;
         }
-        (self as &mut dyn QAbstractListModel).begin_insert_rows(row as i32, (row + count - 1) as i32);
+        (self as &mut dyn QAbstractListModel)
+            .begin_insert_rows(row as i32, (row + count - 1) as i32);
         for i in 0..count {
             self.list.insert(row + i, TodosItem::default());
         }
@@ -100,7 +99,8 @@ impl Todos {
         if count == 0 || row + count > self.list.len() {
             return false;
         }
-        (self as &mut dyn QAbstractListModel).begin_remove_rows(row as i32, (row + count - 1) as i32);
+        (self as &mut dyn QAbstractListModel)
+            .begin_remove_rows(row as i32, (row + count - 1) as i32);
         self.list.drain(row..row + count);
         (self as &mut dyn QAbstractListModel).end_remove_rows();
         self.count_changed();
@@ -119,7 +119,13 @@ impl Todos {
     fn add(&mut self, description: String) {
         let end = self.list.len();
         (self as &mut dyn QAbstractListModel).begin_insert_rows(end as i32, end as i32);
-        self.list.insert(end, TodosItem { completed: false, description });
+        self.list.insert(
+            end,
+            TodosItem {
+                completed: false,
+                description,
+            },
+        );
         (self as &mut dyn QAbstractListModel).end_insert_rows();
         self.activeCount += 1;
         self.active_count_changed();
@@ -148,12 +154,16 @@ impl QAbstractListModel for Todos {
     fn row_count(&self) -> i32 {
         self.list.len() as i32
     }
-    fn data(&self, index: QModelIndex, role:i32) -> QVariant {
+    fn data(&self, index: QModelIndex, role: i32) -> QVariant {
         let idx = index.row() as usize;
         if idx < self.list.len() {
-            if role == USER_ROLE { self.list[idx].completed.into() }
-            else if role == USER_ROLE + 1 { QString::from(self.list[idx].description.clone()).into() }
-            else { QVariant::default() }
+            if role == USER_ROLE {
+                self.list[idx].completed.into()
+            } else if role == USER_ROLE + 1 {
+                QString::from(self.list[idx].description.clone()).into()
+            } else {
+                QVariant::default()
+            }
         } else {
             QVariant::default()
         }
@@ -165,5 +175,3 @@ impl QAbstractListModel for Todos {
         map
     }
 }
-
-

@@ -156,12 +156,12 @@ impl dyn QAbstractItemModel {
     }
 }
 
-cpp!{{
+cpp! {{
 #include <qmetaobject_rust.hpp>
 #include <QtCore/QAbstractItemModel>
 }}
 
-cpp!{{
+cpp! {{
 struct Rust_QAbstractItemModel : RustObject<QAbstractItemModel> {
 
     using QAbstractItemModel::beginInsertRows;

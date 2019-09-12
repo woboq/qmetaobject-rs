@@ -63,7 +63,7 @@ impl<T> Drop for SGNode<T> {
 /// or the child node can have different type, but the amont of nodes is known at compile time
 pub enum ContainerNode {}
 
-cpp!{{
+cpp! {{
 struct ContainerNode : QSGNode {
     quint64 type_id = 0;
     std::size_t size = 0; // -1 for static

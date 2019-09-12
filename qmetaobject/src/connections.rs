@@ -19,7 +19,7 @@ use super::*;
 use std;
 use std::os::raw::c_void;
 
-cpp!{{
+cpp! {{
 #include <QtCore/QObject>
 #include "qmetaobject_rust.hpp"
 
@@ -112,10 +112,11 @@ impl<Args> CppSignal<Args> {
     }
 }
 impl<Args> Clone for CppSignal<Args> {
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 impl<Args> Copy for CppSignal<Args> {}
-
 
 /// Types of signals constructed with the qt_signal! macro.
 ///
@@ -148,10 +149,10 @@ impl<Args> RustSignal<Args> {
         );
         let inner = unsafe {
             cpp!([diff as "qintptr"] -> SignalCppRepresentation as "SignalCppRepresentation" {
-            SignalCppRepresentation u;
-            u.rust_signal = diff;
-            return u;
-        })
+                SignalCppRepresentation u;
+                u.rust_signal = diff;
+                return u;
+            })
         };
         CppSignal {
             inner,
@@ -207,8 +208,8 @@ pub unsafe fn connect<Args, F: Slot<Args>>(
     /*unsafe*/
     {
         cpp!([sender as "const QObject*", mut cpp_signal as "SignalCppRepresentation", slot_raw as "TraitObject"] -> ConnectionHandle as "QMetaObject::Connection" {
-        return QObjectPrivate::rust_connectImpl(sender, reinterpret_cast<void **>(&cpp_signal), sender, nullptr,
-                    new RustSlotOject(slot_raw), Qt::DirectConnection, nullptr, sender->metaObject());
-    })
+            return QObjectPrivate::rust_connectImpl(sender, reinterpret_cast<void **>(&cpp_signal), sender, nullptr,
+                        new RustSlotOject(slot_raw), Qt::DirectConnection, nullptr, sender->metaObject());
+        })
     }
 }

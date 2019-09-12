@@ -14,8 +14,12 @@ qrc!(my_ressource,
 
 fn main() {
     my_ressource();
-    qml_register_type::<implementation::Todos>(CStr::from_bytes_with_nul(b"RustCode\0").unwrap(), 1, 0,
-        CStr::from_bytes_with_nul(b"Todos\0").unwrap());
+    qml_register_type::<implementation::Todos>(
+        CStr::from_bytes_with_nul(b"RustCode\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"Todos\0").unwrap(),
+    );
     let mut engine = QmlEngine::new();
     engine.load_file("qrc:/todos/qml/main.qml".into());
     engine.exec();
