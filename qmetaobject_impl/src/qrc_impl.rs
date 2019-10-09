@@ -330,8 +330,8 @@ fn expand_macro(func: &syn::Ident, data: Data) -> TokenStream {
 
     let q = quote! {
         fn #func() {
-            use ::std::sync::{Once, ONCE_INIT};
-            static INIT_RESOURCES: Once = ONCE_INIT;
+            use ::std::sync::Once;
+            static INIT_RESOURCES: Once = Once::new();
             INIT_RESOURCES.call_once(|| {
                 static PAYLOAD : &'static [u8] = & [ #payload ];
                 static NAMES : &'static [u8] = & [ #(#names),* ];
