@@ -141,6 +141,15 @@ impl QmlEngine {
             })
         }
     }
+
+    /// Adds an import path for this QML engine (calls QQmlEngine::addImportPath)
+    pub fn add_import_path(&mut self, path: QString) {
+        unsafe {
+            cpp!([self as "QmlEngineHolder*", path as "QString"] {
+                self->engine->addImportPath(path);
+            })
+        }
+    }
 }
 
 /// Bindings to a QQuickView
