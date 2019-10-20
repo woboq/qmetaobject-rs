@@ -204,6 +204,16 @@ impl From<u32> for QVariant {
         unsafe { cpp!([a as "uint"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
+impl From<f32> for QVariant {
+    fn from(a: f32) -> QVariant {
+        unsafe { cpp!([a as "float"] -> QVariant as "QVariant" { return QVariant(a); }) }
+    }
+}
+impl From<f64> for QVariant {
+    fn from(a: f64) -> QVariant {
+        unsafe { cpp!([a as "double"] -> QVariant as "QVariant" { return QVariant(a); }) }
+    }
+}
 impl From<bool> for QVariant {
     fn from(a: bool) -> QVariant {
         unsafe { cpp!([a as "bool"] -> QVariant as "QVariant" { return QVariant(a); }) }
