@@ -143,6 +143,24 @@ impl Into<NaiveDate> for QDate {
     }
 }
 
+#[test]
+fn test_qdate() {
+    let date = QDate::from_y_m_d(2019, 10, 22);
+    assert_eq!((2019, 10, 22), date.get_y_m_d());
+}
+
+#[cfg(feature = "chrono_qdatetime")]
+#[test]
+fn test_qdate_chrono() {
+    let chrono_date = NaiveDate::from_ymd(2019, 10, 22);
+    let qdate: QDate = chrono_date.into();
+    let actual_chrono_date: NaiveDate = qdate.into();
+
+    // Ensure that conversion works for both the Into trait and get_y_m_d() function
+    assert_eq!((2019, 10, 22), qdate.get_y_m_d());
+    assert_eq!(chrono_date, actual_chrono_date);
+}
+
 cpp_class!(
     /// Wrapper around Qt's QTime class
     #[derive(PartialEq, PartialOrd, Eq, Ord)]
@@ -210,15 +228,89 @@ impl Into<NaiveTime> for QTime {
     }
 }
 
+#[test]
+fn test_qtime() {
+    let qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(1000));
+    println!("{}", qtime.get_hour());
+    assert_eq!((10, 30, 40, 1000), qtime.get_h_m_s_ms());
+}
+
+#[cfg(feature = "chrono_qdatetime")]
+#[test]
+fn test_qtime_chrono() {
+    let chrono_time = NaiveTime::from_hms(10, 30, 50);
+    let qtime: QTime = chrono_time.into();
+    let actual_chrono_time: NaiveTime = qtime.into();
+
+    // Ensure that conversion works for both the Into trait and get_h_m_s_ms() function
+    assert_eq!((10, 30, 50, 0), qtime.get_h_m_s_ms());
+    assert_eq!(chrono_time, actual_chrono_time);
+}
+
 cpp_class!(
     /// Wrapper around Qt's QDateTime class
     #[derive(PartialEq, PartialOrd, Eq, Ord)]
     pub unsafe struct QDateTime as "QDateTime"
 );
 
-// impl QDateTime {
-    
-// }
+impl QDateTime {
+    /// Constructs a QDateTime from a QDate.
+    /// Refer to the documentation for QDateTime's constructor using QDate.
+    fn from_date(date: QDate) -> Self {
+        cpp!(unsafe [date as "QDate"] -> QDateTime as "QDateTime" {
+            return QDateTime(date);
+        })
+    }
+
+    /// Constructs a QDateTime from a QDate and a QTime, using the current system timezone.
+    /// Refer to the documentation for QDateTime's constructor using QDate, QTime and Qt::TimeSpec.
+    fn from_date_time_local_timezone(date: QDate, time: QTime) -> Self {
+        cpp!(unsafe [date as "QDate", time as "QTime"] -> QDateTime as "QDateTime" {
+            return QDateTime(date, time);
+        })
+    }
+
+    /// Gets the date component from a QDateTime.
+    /// Refer to the documentation for QDateTime::date.
+    fn get_date(&self) -> QDate {
+        cpp!(unsafe [self as "const QDateTime*"] -> QDate as "QDate" {
+            return self->date();
+        })
+    }
+
+    /// Gets the time component from a QDateTime.
+    /// Refer to the documentation for QDateTime::time.
+    fn get_time(&self) -> QTime {
+        cpp!(unsafe [self as "const QDateTime*"] -> QTime as "QTime" {
+            return self->time();
+        })
+    }
+
+    /// Convenience function for obtaining both date and time components.
+    fn get_date_time(&self) -> (QDate, QTime) {
+        (self.get_date(), self.get_time())
+    }
+}
+
+#[test]
+fn test_qdatetime_from_date() {
+    let qdate = QDate::from_y_m_d(2019, 10, 22);
+    let qdatetime = QDateTime::from_date(qdate);
+    let actual_qdate = qdatetime.get_date();
+
+    assert_eq!((2019, 10, 22), actual_qdate.get_y_m_d());
+}
+
+#[test]
+fn test_qdatetime_from_date_time_local_timezone() {
+    let qdate = QDate::from_y_m_d(2019, 10, 22);
+    let qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(1000));
+    let qdatetime = QDateTime::from_date_time_local_timezone(qdate, qtime);
+    let (actual_qdate, actual_qtime) = qdatetime.get_date_time();
+
+    assert_eq!((2019, 10, 22), actual_qdate.get_y_m_d());
+    assert_eq!((10, 30, 40, 1000), actual_qtime.get_h_m_s_ms());
+}
 
 cpp_class!(
 /// Wrapper around Qt's QUrl class
