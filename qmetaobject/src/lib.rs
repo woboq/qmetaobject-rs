@@ -888,3 +888,5 @@ pub use connections::{connect, CppSignal, SignalCppRepresentation};
 pub mod qtquickcontrols2;
 pub mod scenegraph;
 pub use qtquickcontrols2::*;
+pub mod future;
+pub use future::*;

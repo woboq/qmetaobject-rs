@@ -569,7 +569,7 @@ fn qpointer() {
     assert!(pt2.as_ref().is_none());
 }
 
-/* Panic test are a bad idea as the sception has to cross the C++ boundaries which does not work every time
+/* Panic test are a bad idea as the exception has to cross the C++ boundaries which does not work every time
 #[derive(QObject, Default)]
 struct StupidObject {
     base: qt_base_class!(trait QObject),
@@ -705,4 +705,40 @@ fn load_data_as() {
         "file:///path/file.ext",
     );
     assert!(error.contains("file:///path/file.ext"));
+}
+
+#[test]
+fn test_future() {
+    #![allow(unused_variables)]
+
+    let _lock = lock_for_test();
+
+    #[derive(QObject, Default)]
+    struct ObjectWithSignal {
+        base: qt_base_class!(trait QObject),
+        sig: qt_signal!(),
+    }
+    let o = RefCell::new(ObjectWithSignal::default());
+    let obj_ptr = unsafe { QObjectPinned::new(&o).get_or_create_cpp_object() };
+
+
+    let fut = unsafe {
+        qmetaobject::future::wait_on_signal(
+            obj_ptr,
+            o.borrow().sig.to_cpp_representation(&*o.borrow()),
+        )
+    };
+
+    let engine = Rc::new(QmlEngine::new());
+    let engine2 = engine.clone();
+
+    if_rust_version::if_rust_version!(>= 1.39 {
+        qmetaobject::future::execute_async(async move {
+            fut.await;
+            engine.quit();
+        });
+        o.borrow().sig();
+        engine2.exec()
+    });
+
 }

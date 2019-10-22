@@ -20,6 +20,8 @@ cpp_build = "0.5"
 
 [dev-dependencies]
 cstr = "0.1"
+if_rust_version = "1"
+
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]
