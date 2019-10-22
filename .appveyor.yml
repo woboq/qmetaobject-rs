@@ -26,4 +26,4 @@ install:
 build: false
 
 test_script:
-  - cargo test --manifest-path qmetaobject/Cargo.toml
+  - cargo test --all-features --manifest-path qmetaobject/Cargo.toml

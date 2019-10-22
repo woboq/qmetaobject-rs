@@ -27,7 +27,7 @@ before_script:
     - export RUST_BACKTRACE=1
 
 script:
-    - (cd qmetaobject && xvfb-run cargo test)
+    - (cd qmetaobject && xvfb-run cargo test --all-features)
     - (cd examples/todos && cargo build)
     - (cd examples/qmlextensionplugins && cargo build)
     - (cd examples/graph && cargo build)
