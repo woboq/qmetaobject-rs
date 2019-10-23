@@ -621,8 +621,12 @@ mod tests {
         );
         let v = QVariant::from(dt);
         let qstring = QString::from_qvariant(v.clone()).unwrap();
-        assert_eq!(qstring.to_string(), "2019-10-23T10:30:40.100");
-
+        let mut s = qstring.to_string();
+        if s.ends_with(".100") {
+            // Old version of qt did not include the miliseconds, so remove it
+            s.truncate(s.len() - 4);
+        }
+        assert_eq!(s, "2019-10-23T10:30:40");
         let qdate = QDate::from_qvariant(v.clone()).unwrap();
         assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
         assert!(qdate != QDate::from_y_m_d(2019, 10, 24));

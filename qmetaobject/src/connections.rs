@@ -125,7 +125,7 @@ impl<Args> Copy for CppSignal<Args> {}
 /// Args represents the type of the arguments, similar to the CppSignal ones
 pub struct RustSignal<Args> {
     phantom: std::marker::PhantomData<Args>,
-    _u: bool, // Actually but a field so it has a size;
+    _u: bool, // Actually put a field so it has a size;
 }
 impl<Args> Default for RustSignal<Args> {
     fn default() -> Self {
