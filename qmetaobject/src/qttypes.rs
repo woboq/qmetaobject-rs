@@ -200,7 +200,7 @@ impl QTime {
         })
     }
 
-    /// Refer to the Qt documentation for Qt::msec.
+    /// Refer to the Qt documentation for QTime::msec.
     pub fn get_msec(&self) -> i32 {
         cpp!(unsafe [self as "const QTime*"] -> i32 as "int" {
             return self->msec();
@@ -230,9 +230,8 @@ impl Into<NaiveTime> for QTime {
 
 #[test]
 fn test_qtime() {
-    let qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(1000));
-    println!("{}", qtime.get_hour());
-    assert_eq!((10, 30, 40, 1000), qtime.get_h_m_s_ms());
+    let qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(300));
+    assert_eq!((10, 30, 40, 300), qtime.get_h_m_s_ms());
 }
 
 #[cfg(feature = "chrono_qdatetime")]
@@ -256,15 +255,17 @@ cpp_class!(
 impl QDateTime {
     /// Constructs a QDateTime from a QDate.
     /// Refer to the documentation for QDateTime's constructor using QDate.
-    fn from_date(date: QDate) -> Self {
+    pub fn from_date(date: QDate) -> Self {
         cpp!(unsafe [date as "QDate"] -> QDateTime as "QDateTime" {
             return QDateTime(date);
         })
     }
 
     /// Constructs a QDateTime from a QDate and a QTime, using the current system timezone.
+    ///
+    /// Equivalent to the C++ code `QDateTime(date, time)`.
     /// Refer to the documentation for QDateTime's constructor using QDate, QTime and Qt::TimeSpec.
-    fn from_date_time_local_timezone(date: QDate, time: QTime) -> Self {
+    pub fn from_date_time_local_timezone(date: QDate, time: QTime) -> Self {
         cpp!(unsafe [date as "QDate", time as "QTime"] -> QDateTime as "QDateTime" {
             return QDateTime(date, time);
         })
@@ -272,7 +273,7 @@ impl QDateTime {
 
     /// Gets the date component from a QDateTime.
     /// Refer to the documentation for QDateTime::date.
-    fn get_date(&self) -> QDate {
+    pub fn get_date(&self) -> QDate {
         cpp!(unsafe [self as "const QDateTime*"] -> QDate as "QDate" {
             return self->date();
         })
@@ -280,14 +281,14 @@ impl QDateTime {
 
     /// Gets the time component from a QDateTime.
     /// Refer to the documentation for QDateTime::time.
-    fn get_time(&self) -> QTime {
+    pub fn get_time(&self) -> QTime {
         cpp!(unsafe [self as "const QDateTime*"] -> QTime as "QTime" {
             return self->time();
         })
     }
 
     /// Convenience function for obtaining both date and time components.
-    fn get_date_time(&self) -> (QDate, QTime) {
+    pub fn get_date_time(&self) -> (QDate, QTime) {
         (self.get_date(), self.get_time())
     }
 }
@@ -304,12 +305,17 @@ fn test_qdatetime_from_date() {
 #[test]
 fn test_qdatetime_from_date_time_local_timezone() {
     let qdate = QDate::from_y_m_d(2019, 10, 22);
-    let qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(1000));
+    let qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(300));
     let qdatetime = QDateTime::from_date_time_local_timezone(qdate, qtime);
     let (actual_qdate, actual_qtime) = qdatetime.get_date_time();
 
     assert_eq!((2019, 10, 22), actual_qdate.get_y_m_d());
-    assert_eq!((10, 30, 40, 1000), actual_qtime.get_h_m_s_ms());
+    assert_eq!((10, 30, 40, 300), actual_qtime.get_h_m_s_ms());
+
+    assert_eq!(10, actual_qtime.get_hour());
+    assert_eq!(30, actual_qtime.get_minute());
+    assert_eq!(40, actual_qtime.get_second());
+    assert_eq!(300, actual_qtime.get_msec());
 }
 
 cpp_class!(
