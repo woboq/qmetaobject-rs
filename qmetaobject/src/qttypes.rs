@@ -600,6 +600,28 @@ mod tests {
         assert_eq!(qs2.to_string(), "hello");
         assert_eq!(qba4.to_string(), "hello");
     }
+
+    #[test]
+    fn test_qvariant_datetime() {
+        use crate::QMetaType;
+
+        let dt = QDateTime::from_date_time_local_timezone(
+            QDate::from_y_m_d(2019, 10, 23),
+            QTime::from_h_m_s_ms(10, 30, Some(40), None)
+        );
+        let v = QVariant::from(dt);
+        let qstring = QString::from_qvariant(v.clone()).unwrap();
+        assert_eq!(qstring.to_string(), "2019-10-23T10:30:40.000");
+
+        let qdate = QDate::from_qvariant(v.clone()).unwrap();
+        assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
+        assert!(qdate != QDate::from_y_m_d(2019, 10, 24));
+
+        let qtime = QTime::from_qvariant(v.clone()).unwrap();
+        assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), None));
+        assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), Some(1)));
+    }
+
 }
 
 cpp_class!(
