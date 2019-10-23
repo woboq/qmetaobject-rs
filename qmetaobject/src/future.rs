@@ -110,61 +110,73 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
     sender: *const c_void,
     signal: crate::connections::CppSignal<Args>,
 ) -> impl Future<Output = <Args as SignalArgArrayToTuple>::Tuple> {
-    struct F<Args: SignalArgArrayToTuple> {
-        started: bool,
-        finished: bool,
-        handle: crate::connections::ConnectionHandle,
-        sender: *const c_void,
-        signal: crate::connections::CppSignal<Args>,
-        result: Option<<Args as SignalArgArrayToTuple>::Tuple>,
-        waker: Option<std::task::Waker>,
+    enum ConnectionFutureState<Args: SignalArgArrayToTuple> {
+        Init {
+            sender: *const c_void,
+            signal: crate::connections::CppSignal<Args>,
+        },
+        Started {
+            handle: crate::connections::ConnectionHandle,
+            waker: std::task::Waker,
+        },
+        Finished {
+            result: <Args as SignalArgArrayToTuple>::Tuple,
+        },
+        Invalid,
     }
-    impl<Args: SignalArgArrayToTuple> Drop for F<Args> {
+    impl<Args: SignalArgArrayToTuple> std::marker::Unpin for ConnectionFutureState<Args> {}
+    struct ConnectionFuture<Args: SignalArgArrayToTuple>(ConnectionFutureState<Args>);
+    impl<Args: SignalArgArrayToTuple> Drop for ConnectionFuture<Args> {
         fn drop(&mut self) {
-            self.handle.disconnect();
+            if let ConnectionFutureState::Started { ref mut handle, .. } = &mut self.0 {
+                handle.disconnect();
+            }
         }
     }
-    impl<Args: SignalArgArrayToTuple> Future for F<Args> {
+    impl<Args: SignalArgArrayToTuple> Future for ConnectionFuture<Args> {
         type Output = <Args as SignalArgArrayToTuple>::Tuple;
         fn poll(
-            self: Pin<&mut Self>,
+            mut self: Pin<&mut Self>,
             ctx: &mut std::task::Context,
         ) -> std::task::Poll<Self::Output> {
-            if self.finished {
-                unsafe {
-                    return std::task::Poll::Ready(self.get_unchecked_mut().result.take().unwrap());
+            let state = &mut self.0;
+            *state = match std::mem::replace(state, ConnectionFutureState::Invalid) {
+                ConnectionFutureState::Finished { result } => {
+                    return std::task::Poll::Ready(result);
                 }
-            }
-            if !self.started {
-                unsafe {
-                    let s_ptr = self.get_unchecked_mut() as *mut F<_>;
-                    (*s_ptr).started = true;
-                    (*s_ptr).waker = Some(ctx.waker().clone());
-                    (*s_ptr).handle =
-                        crate::connections::connect((*s_ptr).sender, (*s_ptr).signal, s_ptr);
-                    debug_assert!((*s_ptr).handle.is_valid());
+                ConnectionFutureState::Init { sender, signal } => {
+                    let s_ptr = state as *mut ConnectionFutureState<_>;
+                    let handle = unsafe { crate::connections::connect(sender, signal, s_ptr) };
+                    debug_assert!(handle.is_valid());
+                    ConnectionFutureState::Started {
+                        handle,
+                        waker: ctx.waker().clone(),
+                    }
                 }
-            }
+                s @ ConnectionFutureState::Started { .. } => s,
+                ConnectionFutureState::Invalid => unreachable!(),
+            };
             std::task::Poll::Pending
         }
     }
 
-    impl<Args: SignalArgArrayToTuple> crate::connections::Slot<Args> for *mut F<Args> {
+    impl<Args: SignalArgArrayToTuple> crate::connections::Slot<Args>
+        for *mut ConnectionFutureState<Args>
+    {
         unsafe fn apply(&mut self, a: *const *const c_void) {
-            (**self).finished = true;
-            (**self).result = Some(Args::args_array_to_tuple(a));
-            (**self).handle.disconnect();
-            (**self).waker.as_ref().unwrap().wake_by_ref();
+            if let ConnectionFutureState::Started { mut handle, waker } = std::mem::replace(
+                &mut **self,
+                ConnectionFutureState::Finished {
+                    result: Args::args_array_to_tuple(a),
+                },
+            ) {
+                handle.disconnect();
+                waker.wake();
+            } else {
+                unreachable!();
+            }
         }
     }
 
-    F {
-        started: false,
-        finished: false,
-        handle: crate::connections::ConnectionHandle::default(),
-        sender,
-        signal,
-        result: None,
-        waker: None,
-    }
+    ConnectionFuture(ConnectionFutureState::Init { sender, signal })
 }
