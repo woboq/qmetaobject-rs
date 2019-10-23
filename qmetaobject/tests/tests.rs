@@ -709,36 +709,54 @@ fn load_data_as() {
 
 #[test]
 fn test_future() {
-    #![allow(unused_variables)]
-
-    let _lock = lock_for_test();
-
-    #[derive(QObject, Default)]
-    struct ObjectWithSignal {
-        base: qt_base_class!(trait QObject),
-        sig: qt_signal!(),
-    }
-    let o = RefCell::new(ObjectWithSignal::default());
-    let obj_ptr = unsafe { QObjectPinned::new(&o).get_or_create_cpp_object() };
-
-
-    let fut = unsafe {
-        qmetaobject::future::wait_on_signal(
-            obj_ptr,
-            o.borrow().sig.to_cpp_representation(&*o.borrow()),
-        )
-    };
-
-    let engine = Rc::new(QmlEngine::new());
-    let engine2 = engine.clone();
-
     if_rust_version::if_rust_version!(>= 1.39 {
-        qmetaobject::future::execute_async(async move {
-            fut.await;
-            engine.quit();
-        });
-        o.borrow().sig();
-        engine2.exec()
-    });
+        let _lock = lock_for_test();
 
+        #[derive(QObject, Default)]
+        struct ObjectWithSignal {
+            base: qt_base_class!(trait QObject),
+            sig: qt_signal!(),
+            sig_with_args: qt_signal!(xx: u32, yy: String),
+        }
+        let o = RefCell::new(ObjectWithSignal::default());
+        let obj_ptr = unsafe { QObjectPinned::new(&o).get_or_create_cpp_object() };
+
+
+        let result = Rc::new(RefCell::new(None));
+        {
+            let result2 = result.clone();
+            let fut = unsafe {
+                qmetaobject::future::wait_on_signal(
+                    obj_ptr,
+                    o.borrow().sig_with_args.to_cpp_representation(&*o.borrow()),
+                )
+            };
+            qmetaobject::future::execute_async(async move {
+                let (xx, yy) = fut.await;
+                *result2.borrow_mut() = Some(format!("{}={}", yy, xx));
+            });
+        }
+
+
+        let engine = Rc::new(QmlEngine::new());
+        {
+            let fut = unsafe {
+                qmetaobject::future::wait_on_signal(
+                    obj_ptr,
+                    o.borrow().sig.to_cpp_representation(&*o.borrow()),
+                )
+            };
+            let engine2 = engine.clone();
+            qmetaobject::future::execute_async(async move {
+                fut.await;
+                engine2.quit();
+            });
+        }
+
+        o.borrow().sig_with_args(88, "Yop".to_owned());
+        o.borrow().sig();
+        engine.exec();
+
+        assert_eq!(result.borrow().as_ref().unwrap(), "Yop=88");
+    });
 }

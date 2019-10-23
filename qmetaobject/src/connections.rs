@@ -168,6 +168,15 @@ impl<Args> RustSignal<Args> {
 pub trait Slot<Args> {
     unsafe fn apply(&mut self, a: *const *const c_void);
 }
+
+/// Helper trait implemented for the fn(...) type used as the `Args` of signals or slots
+///
+/// Allows to convert an argument array to a tuple
+pub trait SignalArgArrayToTuple {
+    type Tuple;
+    unsafe fn args_array_to_tuple(a: *const *const c_void) -> Self::Tuple;
+}
+
 macro_rules! declare_SlotTraits {
     (@continue $A:ident : $N:tt $($tail:tt)*) => { declare_SlotTraits![$($tail)*]; };
     (@continue) => {};
@@ -186,6 +195,21 @@ macro_rules! declare_SlotTraits {
                     // $N is (count-1, count-2, ..., 0), so (count - $N) will be (1,2,...,count)
                     $(&(*(*(a.offset(count - $N)) as *const $A))),*
                 );
+            }
+        }
+
+        impl<$($A : Clone),*> SignalArgArrayToTuple for fn($($A),*) {
+            type Tuple = ($($A,)*);
+            #[allow(unused_variables)]
+            unsafe fn args_array_to_tuple(a : *const *const c_void) -> Self::Tuple {
+                #[allow(unused_mut)]
+                let mut count = 0;
+                $(count+=($N,1).1;)*
+                (
+                    // Same logic as in Slot::apply
+                    $((*(*(a.offset(count - $N)) as *const $A)).clone(),)*
+
+                )
             }
         }
 
