@@ -209,14 +209,24 @@ impl QTime {
 
     /// Convenience function for obtaining the hour, minute, second and millisecond components.
     pub fn get_h_m_s_ms(&self) -> (i32, i32, i32, i32) {
-        (self.get_hour(), self.get_minute(), self.get_second(), self.get_msec())
+        (
+            self.get_hour(),
+            self.get_minute(),
+            self.get_second(),
+            self.get_msec(),
+        )
     }
 }
 
 #[cfg(feature = "chrono_qdatetime")]
 impl From<NaiveTime> for QTime {
     fn from(a: NaiveTime) -> QTime {
-        QTime::from_h_m_s_ms(a.hour() as i32, a.minute() as i32, Some(a.second() as i32), Some(a.nanosecond() as i32 / 1_000_000))
+        QTime::from_h_m_s_ms(
+            a.hour() as i32,
+            a.minute() as i32,
+            Some(a.second() as i32),
+            Some(a.nanosecond() as i32 / 1_000_000),
+        )
     }
 }
 
@@ -607,7 +617,7 @@ mod tests {
 
         let dt = QDateTime::from_date_time_local_timezone(
             QDate::from_y_m_d(2019, 10, 23),
-            QTime::from_h_m_s_ms(10, 30, Some(40), None)
+            QTime::from_h_m_s_ms(10, 30, Some(40), None),
         );
         let v = QVariant::from(dt);
         let qstring = QString::from_qvariant(v.clone()).unwrap();
@@ -621,7 +631,6 @@ mod tests {
         assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), None));
         assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), Some(1)));
     }
-
 }
 
 cpp_class!(

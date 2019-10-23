@@ -1,30 +1,31 @@
-use std::future::Future;
-use std::pin::Pin;
-use std::os::raw::c_void;
 use crate::connections::SignalArgArrayToTuple;
+use std::future::Future;
+use std::os::raw::c_void;
+use std::pin::Pin;
 
-static QTWAKERVTABLE : std::task::RawWakerVTable = unsafe {
+static QTWAKERVTABLE: std::task::RawWakerVTable = unsafe {
     std::task::RawWakerVTable::new(
-        |s : *const()|  {
+        |s: *const ()| {
             std::task::RawWaker::new(
                 cpp!([s as "Waker*"] -> *const() as "Waker*" {
                     s->ref++;
                     return s;
                 }),
-                &QTWAKERVTABLE)
+                &QTWAKERVTABLE,
+            )
         },
-        |s : *const() | {
+        |s: *const ()| {
             cpp!([s as "Waker*"] {
                 s->wake();
                 s->deref();
             })
         },
-        |s : *const() | {
+        |s: *const ()| {
             cpp!([s as "Waker*"] {
                 s->wake();
             })
         },
-        |s : *const() | {
+        |s: *const ()| {
             cpp!([s as "Waker*"] {
                 s->deref();
             })
@@ -32,7 +33,7 @@ static QTWAKERVTABLE : std::task::RawWakerVTable = unsafe {
     )
 };
 
-cpp!{{
+cpp! {{
     struct Waker : QObject {
     public:
         TraitObject future;
@@ -74,8 +75,8 @@ cpp!{{
 /// Note that this function returns immediatly. A Qt event loop need to be running
 /// on the current thread so the future can be executed. (It is Ok if the Qt event
 /// loop hasn't started yet when this function is called)
-pub fn execute_async(f: impl Future<Output=()> + 'static) {
-    let f = Box::into_raw(Box::new(f)) as *mut dyn Future<Output=()>;
+pub fn execute_async(f: impl Future<Output = ()> + 'static) {
+    let f = Box::into_raw(Box::new(f)) as *mut dyn Future<Output = ()>;
     unsafe {
         let waker = cpp!([f as "TraitObject"] -> *const() as "Waker*" {
             auto w = new Waker;
@@ -87,7 +88,7 @@ pub fn execute_async(f: impl Future<Output=()> + 'static) {
     }
 }
 
-unsafe fn poll_with_qt_waker(waker: *const(), future: Pin<&mut dyn Future<Output = ()>>) {
+unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) {
     let waker = std::task::RawWaker::new(waker, &QTWAKERVTABLE);
     let waker = std::task::Waker::from_raw(waker);
     let mut context = std::task::Context::from_waker(&waker);
@@ -105,26 +106,30 @@ unsafe fn poll_with_qt_waker(waker: *const(), future: Pin<&mut dyn Future<Output
 /// The future will be ready as soon as the signal is emited.
 ///
 /// This is unsafe for the same reason that connections::connect is unsafe.
-pub unsafe fn wait_on_signal<Args : SignalArgArrayToTuple>(sender: *const c_void, signal : crate::connections::CppSignal<Args>)
-    -> impl Future<Output = <Args as SignalArgArrayToTuple>::Tuple>
-{
-    struct F<Args : SignalArgArrayToTuple> {
+pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
+    sender: *const c_void,
+    signal: crate::connections::CppSignal<Args>,
+) -> impl Future<Output = <Args as SignalArgArrayToTuple>::Tuple> {
+    struct F<Args: SignalArgArrayToTuple> {
         started: bool,
         finished: bool,
-        handle : crate::connections::ConnectionHandle,
+        handle: crate::connections::ConnectionHandle,
         sender: *const c_void,
-        signal : crate::connections::CppSignal<Args>,
+        signal: crate::connections::CppSignal<Args>,
         result: Option<<Args as SignalArgArrayToTuple>::Tuple>,
         waker: Option<std::task::Waker>,
     }
-    impl<Args : SignalArgArrayToTuple> Drop for F<Args> {
+    impl<Args: SignalArgArrayToTuple> Drop for F<Args> {
         fn drop(&mut self) {
             self.handle.disconnect();
         }
     }
-    impl<Args : SignalArgArrayToTuple> Future for F<Args> {
+    impl<Args: SignalArgArrayToTuple> Future for F<Args> {
         type Output = <Args as SignalArgArrayToTuple>::Tuple;
-        fn poll(self: Pin<&mut Self>, ctx: &mut std::task::Context) -> std::task::Poll<Self::Output> {
+        fn poll(
+            self: Pin<&mut Self>,
+            ctx: &mut std::task::Context,
+        ) -> std::task::Poll<Self::Output> {
             if self.finished {
                 unsafe {
                     return std::task::Poll::Ready(self.get_unchecked_mut().result.take().unwrap());
@@ -135,7 +140,8 @@ pub unsafe fn wait_on_signal<Args : SignalArgArrayToTuple>(sender: *const c_void
                     let s_ptr = self.get_unchecked_mut() as *mut F<_>;
                     (*s_ptr).started = true;
                     (*s_ptr).waker = Some(ctx.waker().clone());
-                    (*s_ptr).handle = crate::connections::connect((*s_ptr).sender, (*s_ptr).signal, s_ptr);
+                    (*s_ptr).handle =
+                        crate::connections::connect((*s_ptr).sender, (*s_ptr).signal, s_ptr);
                     debug_assert!((*s_ptr).handle.is_valid());
                 }
             }
@@ -143,8 +149,8 @@ pub unsafe fn wait_on_signal<Args : SignalArgArrayToTuple>(sender: *const c_void
         }
     }
 
-    impl<Args : SignalArgArrayToTuple> crate::connections::Slot<Args> for *mut F<Args> {
-        unsafe fn apply(&mut self, a : *const *const c_void) {
+    impl<Args: SignalArgArrayToTuple> crate::connections::Slot<Args> for *mut F<Args> {
+        unsafe fn apply(&mut self, a: *const *const c_void) {
             (**self).finished = true;
             (**self).result = Some(Args::args_array_to_tuple(a));
             (**self).handle.disconnect();
@@ -159,6 +165,6 @@ pub unsafe fn wait_on_signal<Args : SignalArgArrayToTuple>(sender: *const c_void
         sender,
         signal,
         result: None,
-        waker: None
+        waker: None,
     }
 }
