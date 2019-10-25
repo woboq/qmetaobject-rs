@@ -29,8 +29,8 @@ union SignalCppRepresentation {
 
     // Construct the object from an arbirary signal.
     // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
-    template<typename R, typename ...Args>
-    SignalCppRepresentation(R (QObject::*cpp_signal)(Args...))
+    template<typename R, typename Object, typename ...Args>
+    SignalCppRepresentation(R (Object::*cpp_signal)(Args...))
         : cpp_signal(*reinterpret_cast<void (QObject::**)()>(&cpp_signal)) { }
 };
 

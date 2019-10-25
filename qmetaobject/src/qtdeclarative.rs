@@ -23,6 +23,7 @@ cpp! {{
     #include <QtQuick/QtQuick>
     #include <QtCore/QDebug>
     #include <QtWidgets/QApplication>
+    #include <QtQml/QQmlComponent>
 
     static int argc = 1;
     static char name[] = "rust";
@@ -198,6 +199,106 @@ impl QQuickView {
 impl Default for QQuickView {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy)]
+pub enum CompilationMode {
+    PreferSynchronous,
+    Asynchronous,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy)]
+pub enum ComponentStatus {
+    Null,
+    Ready,
+    Loading,
+    Error
+}
+
+cpp!{{
+    struct QQmlComponentHolder {
+        std::unique_ptr<QQmlComponent> component;
+
+        QQmlComponentHolder(QQmlEngine *e) : component(new QQmlComponent(e)) {}
+    };
+}}
+
+cpp_class!(
+    /// Wrapper for QQmlComponent
+    pub unsafe struct QmlComponent as "QQmlComponentHolder"
+);
+
+impl QmlComponent {
+    /// Create a QmlComponent using the QmlEngine.
+    pub fn new(engine: &QmlEngine) -> QmlComponent {
+        unsafe {
+            cpp!([engine as "QmlEngineHolder*"] -> QmlComponent as "QQmlComponentHolder" {
+                return QQmlComponentHolder(engine->engine.get());
+            })
+        }
+    }
+
+    pub fn get_cpp_object(&self) -> *mut c_void {
+        unsafe { cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QQmlComponent*" {
+            return self->component.get();
+        })}
+    }
+
+    /// Performs QQmlComponent::loadUrl
+    pub fn load_url(&mut self, url: QUrl, compilation_mode: CompilationMode) {
+        unsafe { cpp!([self as "QQmlComponentHolder*", url as "QUrl", compilation_mode as "QQmlComponent::CompilationMode"]{
+            self->component->loadUrl(url, compilation_mode);
+        })}
+    }
+
+    /// Performs QQmlComponent::setData with a default url
+    pub fn set_data(&mut self, data: QByteArray) {
+        unsafe { cpp!([self as "QQmlComponentHolder*", data as "QByteArray"]{
+            self->component->setData(data, QUrl());
+        })}
+    }
+
+    /// Performs QQmlComponent::setData
+    pub fn set_data_as(&mut self, data: QByteArray, url: QUrl) {
+        unsafe { cpp!([self as "QQmlComponentHolder*", data as "QByteArray", url as "QUrl"]{
+            self->component->setData(data, url);
+        })}
+    }
+
+    /// Performs QQmlComponent::create
+    pub fn create(&mut self) -> *mut c_void {
+        unsafe { cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QObject*" {
+            return self->component->create();
+        })}
+    }
+
+    /// See Qt documentation for QObject::destroyed
+    pub fn status_changed_signal() -> CppSignal<fn(status: ComponentStatus)> {
+        unsafe { CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+            return &QQmlComponent::statusChanged;
+        }))}
+    }
+}
+
+#[cfg(test)]
+mod qqmlcomponent_tests {
+    use crate::*;
+
+    #[test]
+    fn create_component() {
+        let qml_text = "import QtQuick 2.0\nItem{}".to_owned();
+
+        let engine = QmlEngine::new();
+        let mut component = QmlComponent::new(&engine);
+
+        component.set_data(qml_text.into());
+
+        let obj = component.create();
+
+        assert!(!obj.is_null());
     }
 }
 
