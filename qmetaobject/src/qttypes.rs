@@ -378,18 +378,22 @@ fn test_qdatetime_is_valid() {
     let valid_qdatetime_from_date = QDateTime::from_date(valid_qdate);
     assert!(valid_qdatetime_from_date.is_valid());
 
-    let valid_qdatetime_from_valid_date_valid_time = QDateTime::from_date_time_local_timezone(valid_qdate, valid_qtime);
+    let valid_qdatetime_from_valid_date_valid_time =
+        QDateTime::from_date_time_local_timezone(valid_qdate, valid_qtime);
     assert!(valid_qdatetime_from_valid_date_valid_time.is_valid());
 
     // Refer to the documentation for QDateTime's constructors using QDate, QTime.
     // If the date is valid, but the time is not, the time will be set to midnight
-    let valid_qdatetime_from_valid_date_invalid_time = QDateTime::from_date_time_local_timezone(valid_qdate, invalid_qtime);
+    let valid_qdatetime_from_valid_date_invalid_time =
+        QDateTime::from_date_time_local_timezone(valid_qdate, invalid_qtime);
     assert!(valid_qdatetime_from_valid_date_invalid_time.is_valid());
 
-    let invalid_qdatetime_from_invalid_date_valid_time = QDateTime::from_date_time_local_timezone(invalid_qdate, valid_qtime);
+    let invalid_qdatetime_from_invalid_date_valid_time =
+        QDateTime::from_date_time_local_timezone(invalid_qdate, valid_qtime);
     assert!(!invalid_qdatetime_from_invalid_date_valid_time.is_valid());
 
-    let invalid_qdatetime_from_invalid_date_invalid_time = QDateTime::from_date_time_local_timezone(invalid_qdate, invalid_qtime);
+    let invalid_qdatetime_from_invalid_date_invalid_time =
+        QDateTime::from_date_time_local_timezone(invalid_qdate, invalid_qtime);
     assert!(!invalid_qdatetime_from_invalid_date_invalid_time.is_valid());
 }
 
