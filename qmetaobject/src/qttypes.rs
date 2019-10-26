@@ -117,7 +117,7 @@ impl QDate {
     }
 
     /// Returns the year, month and day components.
-    /// Refer to the Qt documentation of QDate::getDate.
+    /// Refer to the Qt documentation for QDate::getDate.
     pub fn get_y_m_d(&self) -> (i32, i32, i32) {
         let res = (0, 0, 0);
         let (ref y, ref m, ref d) = res;
@@ -125,6 +125,13 @@ impl QDate {
             return self->getDate(y, m, d);
         });
         res
+    }
+
+    /// Refer to the Qt documentation for QDate::isValid.
+    pub fn is_valid(&self) -> bool {
+        cpp!(unsafe [self as "const QDate*"] -> bool as "bool" {
+            return self->isValid();
+        })
     }
 }
 
@@ -147,6 +154,15 @@ impl Into<NaiveDate> for QDate {
 fn test_qdate() {
     let date = QDate::from_y_m_d(2019, 10, 22);
     assert_eq!((2019, 10, 22), date.get_y_m_d());
+}
+
+#[test]
+fn test_qdate_is_valid() {
+    let valid_qdate = QDate::from_y_m_d(2019, 10, 26);
+    assert!(valid_qdate.is_valid());
+
+    let invalid_qdate = QDate::from_y_m_d(-1, -1, -1);
+    assert!(!invalid_qdate.is_valid());
 }
 
 #[cfg(feature = "chrono_qdatetime")]
@@ -216,6 +232,13 @@ impl QTime {
             self.get_msec(),
         )
     }
+
+    /// Refer to the Qt documentation for QTime::isValid.
+    pub fn is_valid(&self) -> bool {
+        cpp!(unsafe [self as "const QTime*"] -> bool as "bool" {
+            return self->isValid();
+        })
+    }
 }
 
 #[cfg(feature = "chrono_qdatetime")]
@@ -254,6 +277,15 @@ fn test_qtime_chrono() {
     // Ensure that conversion works for both the Into trait and get_h_m_s_ms() function
     assert_eq!((10, 30, 50, 0), qtime.get_h_m_s_ms());
     assert_eq!(chrono_time, actual_chrono_time);
+}
+
+#[test]
+fn test_qtime_is_valid() {
+    let valid_qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(300));
+    assert!(valid_qtime.is_valid());
+
+    let invalid_qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(9999));
+    assert!(!invalid_qtime.is_valid());
 }
 
 cpp_class!(
@@ -301,6 +333,13 @@ impl QDateTime {
     pub fn get_date_time(&self) -> (QDate, QTime) {
         (self.get_date(), self.get_time())
     }
+
+    /// Refer to the Qt documentation for QDateTime::isValid.
+    pub fn is_valid(&self) -> bool {
+        cpp!(unsafe [self as "const QDateTime*"] -> bool as "bool" {
+            return self->isValid();
+        })
+    }
 }
 
 #[test]
@@ -326,6 +365,32 @@ fn test_qdatetime_from_date_time_local_timezone() {
     assert_eq!(30, actual_qtime.get_minute());
     assert_eq!(40, actual_qtime.get_second());
     assert_eq!(300, actual_qtime.get_msec());
+}
+
+#[test]
+fn test_qdatetime_is_valid() {
+    let valid_qdate = QDate::from_y_m_d(2019, 10, 26);
+    let invalid_qdate = QDate::from_y_m_d(-1, -1, -1);
+
+    let valid_qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(300));
+    let invalid_qtime = QTime::from_h_m_s_ms(10, 30, Some(40), Some(9999));
+
+    let valid_qdatetime_from_date = QDateTime::from_date(valid_qdate);
+    assert!(valid_qdatetime_from_date.is_valid());
+
+    let valid_qdatetime_from_valid_date_valid_time = QDateTime::from_date_time_local_timezone(valid_qdate, valid_qtime);
+    assert!(valid_qdatetime_from_valid_date_valid_time.is_valid());
+
+    // Refer to the documentation for QDateTime's constructors using QDate, QTime.
+    // If the date is valid, but the time is not, the time will be set to midnight
+    let valid_qdatetime_from_valid_date_invalid_time = QDateTime::from_date_time_local_timezone(valid_qdate, invalid_qtime);
+    assert!(valid_qdatetime_from_valid_date_invalid_time.is_valid());
+
+    let invalid_qdatetime_from_invalid_date_valid_time = QDateTime::from_date_time_local_timezone(invalid_qdate, valid_qtime);
+    assert!(!invalid_qdatetime_from_invalid_date_valid_time.is_valid());
+
+    let invalid_qdatetime_from_invalid_date_invalid_time = QDateTime::from_date_time_local_timezone(invalid_qdate, invalid_qtime);
+    assert!(!invalid_qdatetime_from_invalid_date_invalid_time.is_valid());
 }
 
 cpp_class!(
