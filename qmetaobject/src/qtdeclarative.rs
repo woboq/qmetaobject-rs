@@ -202,15 +202,17 @@ impl Default for QQuickView {
     }
 }
 
+/// See QQmlComponent::CompilationMode
 #[repr(u32)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CompilationMode {
     PreferSynchronous,
     Asynchronous,
 }
 
+/// See QQmlComponent::Status
 #[repr(u32)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ComponentStatus {
     Null,
     Ready,
@@ -241,6 +243,7 @@ impl QmlComponent {
         }
     }
 
+    /// Returns a pointer to the underlying QQmlComponent. Similar to QObject::get_cpp_object()
     pub fn get_cpp_object(&self) -> *mut c_void {
         unsafe { cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QQmlComponent*" {
             return self->component.get();
@@ -275,7 +278,7 @@ impl QmlComponent {
         })}
     }
 
-    /// See Qt documentation for QObject::destroyed
+    /// See Qt documentation for QQmlComponent::statusChanged
     pub fn status_changed_signal() -> CppSignal<fn(status: ComponentStatus)> {
         unsafe { CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
             return &QQmlComponent::statusChanged;
@@ -286,6 +289,8 @@ impl QmlComponent {
 #[cfg(test)]
 mod qqmlcomponent_tests {
     use crate::*;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     #[test]
     fn create_component() {
@@ -299,6 +304,41 @@ mod qqmlcomponent_tests {
         let obj = component.create();
 
         assert!(!obj.is_null());
+    }
+
+    #[test]
+    fn component_status_changed() {
+        if_rust_version::if_rust_version!(>= 1.39 {
+            let qml_text = "import QtQuick 2.0\nItem{}".to_owned();
+            let engine = Rc::new(QmlEngine::new());
+            let o = RefCell::new(QmlComponent::new(&engine));
+            let obj_ptr = o.borrow_mut().get_cpp_object();
+
+            assert!(!obj_ptr.is_null());
+
+            let result = Rc::new(RefCell::new(None));
+
+            {
+                let result2 = result.clone();
+                let fut = unsafe {
+                    future::wait_on_signal(
+                        obj_ptr,
+                        QmlComponent::status_changed_signal()
+                    )
+                };
+
+                future::execute_async(async move {
+                    let status = fut.await.0;
+
+                    *result2.borrow_mut() = Some(status);
+                });
+            }
+
+            o.borrow_mut().set_data(qml_text.into());
+            engine.exec();
+
+            assert_eq!(result.borrow().as_ref().unwrap(), &ComponentStatus::Ready);
+        });
     }
 }
 
