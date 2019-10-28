@@ -21,7 +21,10 @@ use qmetaobject::*;
 extern crate lazy_static;
 use std::cell::RefCell;
 use std::ffi::CStr;
+use std::io::Write;
 use std::rc::Rc;
+
+extern crate tempfile;
 
 mod common;
 use common::*;
@@ -758,5 +761,70 @@ fn test_future() {
         engine.exec();
 
         assert_eq!(result.borrow().as_ref().unwrap(), "Yop=88");
+    });
+}
+
+#[test]
+fn create_component() {
+    let _lock = lock_for_test();
+    let qml_text = "import QtQuick 2.0\nItem{}".to_owned();
+
+    let engine = QmlEngine::new();
+    let mut component = QmlComponent::new(&engine);
+
+    component.set_data(qml_text.into());
+
+    let obj = component.create();
+
+    assert!(!obj.is_null());
+}
+
+#[test]
+fn component_status_changed() {
+    if_rust_version::if_rust_version!(>= 1.39 {
+        let _lock = lock_for_test();
+        let engine = Rc::new(QmlEngine::new());
+        let o = Rc::new(RefCell::new(QmlComponent::new(&engine)));
+        let obj_ptr = o.borrow_mut().get_cpp_object();
+        let result = Rc::new(RefCell::new(None));
+
+        assert!(!obj_ptr.is_null());
+
+        {
+            let result2 = result.clone();
+            let engine2 = engine.clone();
+            let fut = unsafe {
+                future::wait_on_signal(
+                    obj_ptr,
+                    QmlComponent::status_changed_signal()
+                )
+            };
+
+            future::execute_async(async move {
+                let status = fut.await;
+
+                *result2.borrow_mut() = Some(status);
+                engine2.quit();
+            });
+        }
+
+        single_shot(std::time::Duration::new(0, 0), move || {
+            let mut tmpfile = tempfile::NamedTempFile::new().unwrap();
+
+            writeln!(tmpfile, "INVALID DATA").unwrap();
+
+            let mut url = "file://".to_string();
+            
+            url.push_str(tmpfile.path().to_str().unwrap());
+
+            let qstring_url: QString = url.into();
+
+            assert_eq!(o.borrow().status(), ComponentStatus::Null);
+            o.borrow_mut().load_url(qstring_url.into(), CompilationMode::Asynchronous);
+        });
+
+        engine.exec();
+
+        assert_eq!(result.borrow().as_ref().unwrap().0, ComponentStatus::Loading);
     });
 }

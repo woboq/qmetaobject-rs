@@ -278,67 +278,18 @@ impl QmlComponent {
         })}
     }
 
+    /// Performs QQmlComponent::status
+    pub fn status(&self) -> ComponentStatus {
+        unsafe { cpp!([self as "QQmlComponentHolder*"] -> ComponentStatus as "QQmlComponent::Status" {
+            return self->component->status();
+        })}
+    }
+
     /// See Qt documentation for QQmlComponent::statusChanged
     pub fn status_changed_signal() -> CppSignal<fn(status: ComponentStatus)> {
         unsafe { CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
             return &QQmlComponent::statusChanged;
         }))}
-    }
-}
-
-#[cfg(test)]
-mod qqmlcomponent_tests {
-    use crate::*;
-    use std::cell::RefCell;
-    use std::rc::Rc;
-
-    #[test]
-    fn create_component() {
-        let qml_text = "import QtQuick 2.0\nItem{}".to_owned();
-
-        let engine = QmlEngine::new();
-        let mut component = QmlComponent::new(&engine);
-
-        component.set_data(qml_text.into());
-
-        let obj = component.create();
-
-        assert!(!obj.is_null());
-    }
-
-    #[test]
-    fn component_status_changed() {
-        if_rust_version::if_rust_version!(>= 1.39 {
-            let qml_text = "import QtQuick 2.0\nItem{}".to_owned();
-            let engine = Rc::new(QmlEngine::new());
-            let o = RefCell::new(QmlComponent::new(&engine));
-            let obj_ptr = o.borrow_mut().get_cpp_object();
-
-            assert!(!obj_ptr.is_null());
-
-            let result = Rc::new(RefCell::new(None));
-
-            {
-                let result2 = result.clone();
-                let fut = unsafe {
-                    future::wait_on_signal(
-                        obj_ptr,
-                        QmlComponent::status_changed_signal()
-                    )
-                };
-
-                future::execute_async(async move {
-                    let status = fut.await.0;
-
-                    *result2.borrow_mut() = Some(status);
-                });
-            }
-
-            o.borrow_mut().set_data(qml_text.into());
-            engine.exec();
-
-            assert_eq!(result.borrow().as_ref().unwrap(), &ComponentStatus::Ready);
-        });
     }
 }
 
