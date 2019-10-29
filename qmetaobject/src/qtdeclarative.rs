@@ -18,6 +18,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use super::scenegraph::*;
 use super::*;
 
+/// Qt is not thread safe, and the engine can only be created once and in one thread.
+/// So this is a guard that will be used to panic if the engine is created twice
+static HAS_ENGINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 cpp! {{
     #include <memory>
     #include <QtQuick/QtQuick>
@@ -25,21 +29,42 @@ cpp! {{
     #include <QtWidgets/QApplication>
     #include <QtQml/QQmlComponent>
 
-    static int argc = 1;
-    static char name[] = "rust";
-    static char *argv[] = { name };
+    struct SingleApplicationGuard {
+        SingleApplicationGuard() {
+            rust!(Rust_QmlEngineHolder_ctor[] {
+                HAS_ENGINE.compare_exchange(false, true, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst)
+                        .expect("There can only be one QmlEngine in the process");
+            });
+        }
+        ~SingleApplicationGuard() {
+            rust!(Rust_QmlEngineHolder_dtor[] {
+                HAS_ENGINE.compare_exchange(true, false, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst)
+                    .unwrap();
+            });
+        }
+    };
 
-    struct QmlEngineHolder {
+    struct QmlEngineHolder : SingleApplicationGuard {
         std::unique_ptr<QApplication> app;
         std::unique_ptr<QQmlApplicationEngine> engine;
         std::unique_ptr<QQuickView> view;
 
-        QmlEngineHolder() : app(new QApplication(argc, argv)), engine(new QQmlApplicationEngine) { }
+        static QApplication* createApplication() {
+            static int argc = 1;
+            static char name[] = "rust";
+            static char *argv[] = { name };
+            return new QApplication(argc, argv);
+        }
+
+        QmlEngineHolder() : app(createApplication()), engine(new QQmlApplicationEngine) { }
     };
 }}
 
 cpp_class!(
     /// Wrap a Qt Application and a QmlEngine
+    ///
+    /// Note that since there can only be one Application in the process, creating two
+    /// QmlEngine at the same time is not allowed. Doing that will panic.
     pub unsafe struct QmlEngine as "QmlEngineHolder"
 );
 impl QmlEngine {
@@ -217,10 +242,10 @@ pub enum ComponentStatus {
     Null,
     Ready,
     Loading,
-    Error
+    Error,
 }
 
-cpp!{{
+cpp! {{
     struct QQmlComponentHolder {
         std::unique_ptr<QQmlComponent> component;
 
