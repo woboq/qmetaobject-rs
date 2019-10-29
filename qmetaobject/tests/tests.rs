@@ -612,6 +612,7 @@ fn panic_when_moved_setter() {
 #[test]
 #[should_panic(expected = "There can only be one QmlEngine in the process")]
 fn two_engines() {
+    let _lock = lock_for_test();
     let _a = QmlEngine::new();
     let _b = QmlEngine::new();
 }
