@@ -5,7 +5,7 @@ use std::ffi::CStr;
 
 mod implementation;
 
-qrc!(my_ressource,
+qrc!(my_resource,
     "todos/qml" {
       //  "../main.qml" as "main.qml",
         "main.qml",
@@ -13,7 +13,7 @@ qrc!(my_ressource,
 );
 
 fn main() {
-    my_ressource();
+    my_resource();
     qml_register_type::<implementation::Todos>(
         CStr::from_bytes_with_nul(b"RustCode\0").unwrap(),
         1,

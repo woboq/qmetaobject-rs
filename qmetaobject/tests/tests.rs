@@ -21,7 +21,6 @@ use qmetaobject::*;
 extern crate lazy_static;
 use std::cell::RefCell;
 use std::ffi::CStr;
-use std::io::Write;
 use std::rc::Rc;
 
 extern crate tempfile;
@@ -572,7 +571,7 @@ fn qpointer() {
     assert!(pt2.as_ref().is_none());
 }
 
-/* Panic test are a bad idea as the exception has to cross the C++ boundaries which does not work every time
+/* Panic test are a bad idea as the exception has to cross the C++ boundaries, and Qt is not exception safe
 #[derive(QObject, Default)]
 struct StupidObject {
     base: qt_base_class!(trait QObject),
@@ -609,6 +608,14 @@ fn panic_when_moved_setter() {
     do_test(my_obj, "Item { function doTest() { _obj.prop_y = 45; } }");
 }
 */
+
+#[test]
+#[should_panic(expected = "There can only be one QmlEngine in the process")]
+fn two_engines() {
+    let _lock = lock_for_test();
+    let _a = QmlEngine::new();
+    let _b = QmlEngine::new();
+}
 
 #[derive(QEnum)]
 #[repr(u8)]
@@ -809,12 +816,12 @@ fn component_status_changed() {
         }
 
         single_shot(std::time::Duration::new(0, 0), move || {
+            use std::io::Write;
             let mut tmpfile = tempfile::NamedTempFile::new().unwrap();
-
             writeln!(tmpfile, "INVALID DATA").unwrap();
 
             let mut url = "file://".to_string();
-            
+
             url.push_str(tmpfile.path().to_str().unwrap());
 
             let qstring_url: QString = url.into();
