@@ -33,10 +33,14 @@ fn qmake_query(var: &str) -> String {
 fn main() {
     let qt_include_path = qmake_query("QT_INSTALL_HEADERS");
     let qt_library_path = qmake_query("QT_INSTALL_LIBS");
+    let mut config = cpp_build::Config::new();
 
-    cpp_build::Config::new()
-        .include(qt_include_path.trim())
-        .build("src/lib.rs");
+    if cfg!(target_os = "macos") {
+        config.flag("-F");
+        config.flag(qt_library_path.trim());
+    }
+
+    config.include(qt_include_path.trim()).build("src/lib.rs");
 
     let macos_lib_search = if cfg!(target_os = "macos") {
         "=framework"
