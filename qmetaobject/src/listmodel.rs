@@ -259,7 +259,8 @@ impl<T: SimpleListItem> SimpleListModel<T> {
         self.values = data;
         (self as &mut dyn QAbstractListModel).end_reset_model();
     }
-    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+    /// Returns an iterator over the items in the model
+    pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.values.iter()
     }
 }

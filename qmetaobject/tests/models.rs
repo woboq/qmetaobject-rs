@@ -105,3 +105,32 @@ fn simple_model_remove() {
             }}"
     ));
 }
+
+#[test]
+fn simple_model_iter() {
+    #[derive(QObject, Default)]
+    pub struct Foo {
+        base: qt_base_class!(trait QObject),
+        pub list: qt_property!(RefCell<SimpleListModel<X>>; CONST),
+    }
+
+    #[derive(Debug, Clone, SimpleListItem, Default, PartialEq)]
+    pub struct X {
+        pub val: usize,
+    }
+
+    let original_items: Vec<X> = vec![
+        X { val: 10 },
+        X { val: 11 },
+        X { val: 12 },
+        X { val: 13 },
+    ];
+
+    let obj = Foo {
+        list: RefCell::new(FromIterator::from_iter(original_items.iter())),
+        ..Default::default()
+    };
+
+    let iterated_items = obj.list.borrow().iter().cloned().collect::<Vec<_>>();
+    assert_eq!(original_items, iterated_items);
+}
