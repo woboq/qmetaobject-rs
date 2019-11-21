@@ -44,19 +44,29 @@ cpp! {{
         }
     };
 
+    struct Arguments {
+        int argc;
+        char **argv;
+
+        ~Arguments() {
+            for (int i=0; i<argc; ++i) {
+                delete[] argv[i];
+            }
+            delete[] argv;
+        }
+    };
+
     struct QmlEngineHolder : SingleApplicationGuard {
         std::unique_ptr<QApplication> app;
         std::unique_ptr<QQmlApplicationEngine> engine;
         std::unique_ptr<QQuickView> view;
+        std::unique_ptr<Arguments> args;
 
-        static QApplication* createApplication() {
-            static int argc = 1;
-            static char name[] = "rust";
-            static char *argv[] = { name };
-            return new QApplication(argc, argv);
+        QmlEngineHolder(int argc, char **argv) {
+            args = std::unique_ptr<Arguments>(new Arguments { argc, argv });
+            app = std::unique_ptr<QApplication>(new QApplication(args->argc, args->argv));
+            engine = std::unique_ptr<QQmlApplicationEngine>(new QQmlApplicationEngine());
         }
-
-        QmlEngineHolder() : app(createApplication()), engine(new QQmlApplicationEngine) { }
     };
 }}
 
@@ -70,7 +80,31 @@ cpp_class!(
 impl QmlEngine {
     /// create a new QmlEngine
     pub fn new() -> QmlEngine {
-        Default::default()
+        Self::new_with_args(vec!["rust"])
+    }
+
+    /// Create a new QmlEngine with command line arguments for Qt
+    pub fn new_with_args<I: IntoIterator<Item=T>, T: Into<String>>(arguments: I) -> QmlEngine {
+        use std::ffi::CString;
+        use std::ptr::null_mut;
+
+        let arguments: Vec<*mut c_char> = arguments
+            .into_iter()
+            .map(|arg_string| CString::new(arg_string.into().into_bytes())
+                .expect("argument contains invalid c-string!")
+                .into_raw())
+            .chain(Some(null_mut()).into_iter())
+            .collect();
+
+        unsafe { 
+            // argv will be leaked this way, it should be cleaned up by the cpp side
+            let argc: i32 = arguments.len() as i32 - 1;
+            let argv: *mut *mut c_char = (*Box::into_raw(arguments.into_boxed_slice())).as_mut_ptr();
+
+            cpp!([argc as "int", argv as "char**"] -> QmlEngine as "QmlEngineHolder" { 
+                return QmlEngineHolder(argc, argv); 
+            }) 
+        }
     }
 
     /// Loads a file as a qml file (See QQmlApplicationEngine::load(const QString & filePath))
