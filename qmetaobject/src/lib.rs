@@ -98,7 +98,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Also, since the Qt code can be re-entrant, the object must be placed in a RefCell.
     The [QObjectPinned](struct.QObjectPinned.html) object is used to enforce the pinning.
 
-    If you want to keep pointer to reference, tou can use [QPointer](struct.QPointer.html).
+    If you want to keep pointer to reference, you can use [QPointer](struct.QPointer.html).
 
     # Threading
 
