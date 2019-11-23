@@ -228,6 +228,9 @@ macro_rules! qdeclare_builtin_metatype {
         }
     };
 }
+
+// See https://doc.qt.io/qt-5/qmetatype.html#Type-enum
+
 qdeclare_builtin_metatype! {()   => 43}
 qdeclare_builtin_metatype! {bool => 1}
 qdeclare_builtin_metatype! {i32  => 2}
@@ -247,6 +250,7 @@ qdeclare_builtin_metatype! {QByteArray => 12}
 qdeclare_builtin_metatype! {QDate => 14}
 qdeclare_builtin_metatype! {QTime => 15}
 qdeclare_builtin_metatype! {QDateTime => 16}
+qdeclare_builtin_metatype! {QUrl => 17}
 qdeclare_builtin_metatype! {QRectF => 20}
 qdeclare_builtin_metatype! {QPointF => 26}
 //qdeclare_builtin_metatype!{QVariant => 41}

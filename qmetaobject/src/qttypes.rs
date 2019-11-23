@@ -402,6 +402,21 @@ cpp_class!(
     #[derive(PartialEq, PartialOrd, Eq, Ord)]
     pub unsafe struct QUrl as "QUrl"
 );
+
+impl QUrl {
+    /// Returns a valid URL from a user supplied qstring if one can be deducted.
+    /// In the case that is not possible, an invalid QUrl is returned.
+    /// 
+    /// Refer to the documentation for QUrl::fromUserInput.
+    pub fn from_user_input(qstring: QString) -> QUrl {
+        unsafe {
+            cpp!([qstring as "QString"] -> QUrl as "QUrl" {
+                return QUrl::fromUserInput(qstring);
+            })
+        }
+    }
+}
+
 impl From<QString> for QUrl {
     fn from(qstring: QString) -> QUrl {
         unsafe { cpp!([qstring as "QString"] -> QUrl as "QUrl" {
@@ -503,6 +518,13 @@ impl From<QDateTime> for QVariant {
         unsafe { cpp!([a as "QDateTime"] -> QVariant as "QVariant" { return QVariant(a); }) }
     }
 }
+
+impl From<QUrl> for QVariant {
+    fn from(a: QUrl) -> QVariant {
+        unsafe { cpp!([a as "QUrl"] -> QVariant as "QVariant" { return QVariant(a); }) }
+    }
+}
+
 impl From<QVariantList> for QVariant {
     fn from(a: QVariantList) -> QVariant {
         unsafe { cpp!([a as "QVariantList"] -> QVariant as "QVariant" { return QVariant(a); }) }
