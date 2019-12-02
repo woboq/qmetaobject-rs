@@ -44,29 +44,14 @@ cpp! {{
         }
     };
 
-    struct Arguments {
-        int argc;
-        char **argv;
-
-        ~Arguments() {
-            for (int i=0; i<argc; ++i) {
-                delete[] argv[i];
-            }
-            delete[] argv;
-        }
-    };
-
     struct QmlEngineHolder : SingleApplicationGuard {
         std::unique_ptr<QApplication> app;
         std::unique_ptr<QQmlApplicationEngine> engine;
         std::unique_ptr<QQuickView> view;
-        std::unique_ptr<Arguments> args;
 
-        QmlEngineHolder(int argc, char **argv) {
-            args = std::unique_ptr<Arguments>(new Arguments { argc, argv });
-            app = std::unique_ptr<QApplication>(new QApplication(args->argc, args->argv));
-            engine = std::unique_ptr<QQmlApplicationEngine>(new QQmlApplicationEngine());
-        }
+        QmlEngineHolder(int &argc, char **argv)
+            : app(new QApplication(argc, argv))
+            , engine(new QQmlApplicationEngine()) { }
     };
 }}
 
@@ -78,33 +63,42 @@ cpp_class!(
     pub unsafe struct QmlEngine as "QmlEngineHolder"
 );
 impl QmlEngine {
-    /// create a new QmlEngine
+    /// Create a new QmlEngine
     pub fn new() -> QmlEngine {
-        Self::new_with_args(vec!["rust"])
-    }
-
-    /// Create a new QmlEngine with command line arguments for Qt
-    pub fn new_with_args<I: IntoIterator<Item=T>, T: Into<String>>(arguments: I) -> QmlEngine {
         use std::ffi::CString;
-        use std::ptr::null_mut;
 
-        let arguments: Vec<*mut c_char> = arguments
-            .into_iter()
-            .map(|arg_string| CString::new(arg_string.into().into_bytes())
-                .expect("argument contains invalid c-string!")
-                .into_raw())
-            .chain(Some(null_mut()).into_iter())
+        let mut arguments: Vec<*mut c_char> = std::env::args()
+            .map(|arg| CString::new(arg.into_bytes()).expect("argument contains invalid c-string!"))
+            .map(|arg| arg.into_raw())
             .collect();
+        let argc: i32 = arguments.len() as i32 - 1;
+        let argv: *mut *mut c_char = arguments.as_mut_ptr();
 
-        unsafe { 
-            // argv will be leaked this way, it should be cleaned up by the cpp side
-            let argc: i32 = arguments.len() as i32 - 1;
-            let argv: *mut *mut c_char = (*Box::into_raw(arguments.into_boxed_slice())).as_mut_ptr();
+        let result = unsafe {
+            cpp!([argc as "int", argv as "char**"] -> QmlEngine as "QmlEngineHolder" {
+                static int _argc  = argc;
+                static char **_argv = nullptr;
+                if (_argv == nullptr) {
+                    // copy the arguments
+                    _argv = new char*[argc + 1];
+                    // argv should be null terminated
+                    _argv[argc] = nullptr;
+                    for (int i=0; i<argc; ++i) {
+                        _argv[i] = new char[strlen(argv[i]) + 1];
+                        strcpy(_argv[i], argv[i]);
+                    }
+                }
+                return QmlEngineHolder(_argc, _argv);
+            })
+        };
 
-            cpp!([argc as "int", argv as "char**"] -> QmlEngine as "QmlEngineHolder" { 
-                return QmlEngineHolder(argc, argv); 
-            }) 
+        for arg in arguments {
+            unsafe {
+                CString::from_raw(arg);
+            }
         }
+
+        result
     }
 
     /// Loads a file as a qml file (See QQmlApplicationEngine::load(const QString & filePath))
@@ -304,51 +298,67 @@ impl QmlComponent {
 
     /// Returns a pointer to the underlying QQmlComponent. Similar to QObject::get_cpp_object()
     pub fn get_cpp_object(&self) -> *mut c_void {
-        unsafe { cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QQmlComponent*" {
-            return self->component.get();
-        })}
+        unsafe {
+            cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QQmlComponent*" {
+                return self->component.get();
+            })
+        }
     }
 
     /// Performs QQmlComponent::loadUrl
     pub fn load_url(&mut self, url: QUrl, compilation_mode: CompilationMode) {
-        unsafe { cpp!([self as "QQmlComponentHolder*", url as "QUrl", compilation_mode as "QQmlComponent::CompilationMode"]{
-            self->component->loadUrl(url, compilation_mode);
-        })}
+        unsafe {
+            cpp!([self as "QQmlComponentHolder*", url as "QUrl", compilation_mode as "QQmlComponent::CompilationMode"]{
+                self->component->loadUrl(url, compilation_mode);
+            })
+        }
     }
 
     /// Performs QQmlComponent::setData with a default url
     pub fn set_data(&mut self, data: QByteArray) {
-        unsafe { cpp!([self as "QQmlComponentHolder*", data as "QByteArray"]{
-            self->component->setData(data, QUrl());
-        })}
+        unsafe {
+            cpp!([self as "QQmlComponentHolder*", data as "QByteArray"]{
+                self->component->setData(data, QUrl());
+            })
+        }
     }
 
     /// Performs QQmlComponent::setData
     pub fn set_data_as(&mut self, data: QByteArray, url: QUrl) {
-        unsafe { cpp!([self as "QQmlComponentHolder*", data as "QByteArray", url as "QUrl"]{
-            self->component->setData(data, url);
-        })}
+        unsafe {
+            cpp!([self as "QQmlComponentHolder*", data as "QByteArray", url as "QUrl"]{
+                self->component->setData(data, url);
+            })
+        }
     }
 
     /// Performs QQmlComponent::create
     pub fn create(&mut self) -> *mut c_void {
-        unsafe { cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QObject*" {
-            return self->component->create();
-        })}
+        unsafe {
+            cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QObject*" {
+                return self->component->create();
+            })
+        }
     }
 
     /// Performs QQmlComponent::status
     pub fn status(&self) -> ComponentStatus {
-        unsafe { cpp!([self as "QQmlComponentHolder*"] -> ComponentStatus as "QQmlComponent::Status" {
-            return self->component->status();
-        })}
+        unsafe {
+            cpp!([self as "QQmlComponentHolder*"] -> ComponentStatus as "QQmlComponent::Status" {
+                return self->component->status();
+            })
+        }
     }
 
     /// See Qt documentation for QQmlComponent::statusChanged
     pub fn status_changed_signal() -> CppSignal<fn(status: ComponentStatus)> {
-        unsafe { CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
-            return &QQmlComponent::statusChanged;
-        }))}
+        unsafe {
+            CppSignal::new(
+                cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+                    return &QQmlComponent::statusChanged;
+                }),
+            )
+        }
     }
 }
 
@@ -381,47 +391,49 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 
     let size = T::cpp_size();
 
-    unsafe { cpp!([qml_name_ptr as "char*", uri_ptr as "char*", version_major as "int",
-                    version_minor as "int", meta_object as "const QMetaObject *",
-                    creator_fn as "CreatorFunction", size as "size_t"]{
+    unsafe {
+        cpp!([qml_name_ptr as "char*", uri_ptr as "char*", version_major as "int",
+                        version_minor as "int", meta_object as "const QMetaObject *",
+                        creator_fn as "CreatorFunction", size as "size_t"]{
 
-        const char *className = qml_name_ptr;
-        // BEGIN: From QML_GETTYPENAMES
-        const int nameLen = int(strlen(className));
-        QVarLengthArray<char,48> pointerName(nameLen+2);
-        memcpy(pointerName.data(), className, size_t(nameLen));
-        pointerName[nameLen] = '*';
-        pointerName[nameLen+1] = '\0';
-        /*const int listLen = int(strlen("QQmlListProperty<"));
-        QVarLengthArray<char,64> listName(listLen + nameLen + 2);
-        memcpy(listName.data(), "QQmlListProperty<", size_t(listLen));
-        memcpy(listName.data()+listLen, className, size_t(nameLen));
-        listName[listLen+nameLen] = '>';
-        listName[listLen+nameLen+1] = '\0';*/
-        //END
+            const char *className = qml_name_ptr;
+            // BEGIN: From QML_GETTYPENAMES
+            const int nameLen = int(strlen(className));
+            QVarLengthArray<char,48> pointerName(nameLen+2);
+            memcpy(pointerName.data(), className, size_t(nameLen));
+            pointerName[nameLen] = '*';
+            pointerName[nameLen+1] = '\0';
+            /*const int listLen = int(strlen("QQmlListProperty<"));
+            QVarLengthArray<char,64> listName(listLen + nameLen + 2);
+            memcpy(listName.data(), "QQmlListProperty<", size_t(listLen));
+            memcpy(listName.data()+listLen, className, size_t(nameLen));
+            listName[listLen+nameLen] = '>';
+            listName[listLen+nameLen+1] = '\0';*/
+            //END
 
-        auto ptrType = QMetaType::registerNormalizedType(pointerName.constData(),
-            QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
-            QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
-            int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
-            meta_object);
+            auto ptrType = QMetaType::registerNormalizedType(pointerName.constData(),
+                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
+                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
+                int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
+                meta_object);
 
-        int parserStatusCast = meta_object && meta_object->inherits(&QQuickItem::staticMetaObject)
-            ? QQmlPrivate::StaticCastSelector<QQuickItem,QQmlParserStatus>::cast() : -1;
+            int parserStatusCast = meta_object && meta_object->inherits(&QQuickItem::staticMetaObject)
+                ? QQmlPrivate::StaticCastSelector<QQuickItem,QQmlParserStatus>::cast() : -1;
 
-        QQmlPrivate::RegisterType type = {
-            0 /*version*/, ptrType, 0, /* FIXME?*/
-            int(size), creator_fn,
-            QString(),
-            uri_ptr, version_major, version_minor, qml_name_ptr, meta_object,
-            nullptr, nullptr, // attached properties
-            parserStatusCast, -1, -1,
-            nullptr, nullptr,
-            nullptr,
-            0
-        };
-        QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &type);
-    })}
+            QQmlPrivate::RegisterType type = {
+                0 /*version*/, ptrType, 0, /* FIXME?*/
+                int(size), creator_fn,
+                QString(),
+                uri_ptr, version_major, version_minor, qml_name_ptr, meta_object,
+                nullptr, nullptr, // attached properties
+                parserStatusCast, -1, -1,
+                nullptr, nullptr,
+                nullptr,
+                0
+            };
+            QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &type);
+        })
+    }
 }
 
 /// Register the given enum as a QML type
