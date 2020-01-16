@@ -23,10 +23,8 @@ cpp! {{
     #include <QtQuickControls2/QQuickStyle>
 }}
 
-cpp_class!(
 /// Wrapper around Qt's QQuickStyle class
-    pub unsafe struct QQuickStyle as "QQuickStyle"
-);
+pub struct QQuickStyle {}
 
 impl QQuickStyle {
     /// Refer to the Qt documentation for QQuickStyle::setStyle.
