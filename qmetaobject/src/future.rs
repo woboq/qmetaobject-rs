@@ -38,14 +38,18 @@ cpp! {{
     public:
         TraitObject future;
         bool woken = false;
+        bool completed = false;
         QAtomicInt ref = 0;
         void customEvent(QEvent *e) override {
             Q_UNUSED(e);
             woken = false;
-            rust!(ProcessQtEvent [this: *const() as "Waker*",
-                future : *mut dyn Future<Output=()> as "TraitObject"] {
-                poll_with_qt_waker(this, Pin::new_unchecked(&mut *future));
+            // future must not be polled after it returned `Poll::Ready`
+            if (completed) return;
+            completed = rust!(ProcessQtEvent [this: *const() as "Waker*",
+                future : *mut dyn Future<Output=()> as "TraitObject"] -> bool as "bool" {
+                poll_with_qt_waker(this, Pin::new_unchecked(&mut *future))
             });
+            if (completed) deref();
         }
         void deref() {
             if (!--ref) {
@@ -82,19 +86,16 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
             w->future = f;
             return w;
         });
-        poll_with_qt_waker(waker, Pin::new_unchecked(&mut *f))
+        poll_with_qt_waker(waker, Pin::new_unchecked(&mut *f));
     }
 }
 
-unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) {
+unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) -> bool {
     cpp!([waker as "Waker*"] { waker->ref++; });
     let waker = std::task::RawWaker::new(waker, &QTWAKERVTABLE);
     let waker = std::task::Waker::from_raw(waker);
     let mut context = std::task::Context::from_waker(&waker);
-    match future.poll(&mut context) {
-        std::task::Poll::Ready(()) => {}
-        std::task::Poll::Pending => {}
-    }
+    future.poll(&mut context).is_ready()
 }
 
 /// Create a future that waits on the emission of a signal.
