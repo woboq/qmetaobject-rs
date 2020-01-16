@@ -39,15 +39,13 @@ cpp! {{
         TraitObject future;
         bool woken = false;
         QAtomicInt ref = 0;
-        bool event(QEvent *e) override {
-            if (e->type() != QEvent::User)
-                return false;
+        void customEvent(QEvent *e) override {
+            Q_UNUSED(e);
             woken = false;
             rust!(ProcessQtEvent [this: *const() as "Waker*",
                 future : *mut dyn Future<Output=()> as "TraitObject"] {
                 poll_with_qt_waker(this, Pin::new_unchecked(&mut *future));
             });
-            return true;
         }
         void deref() {
             if (!--ref) {
