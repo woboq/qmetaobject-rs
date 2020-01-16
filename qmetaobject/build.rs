@@ -75,8 +75,10 @@ fn main() {
         macos_lib_search, macos_lib_framework
     );
 
-    println!(
-        "cargo:rustc-link-lib{}=Qt{}QuickControls2",
-        macos_lib_search, macos_lib_framework
-    );
+    if cfg!(feature = "qtquickcontrols2") {
+        println!(
+            "cargo:rustc-link-lib{}=Qt{}QuickControls2",
+            macos_lib_search, macos_lib_framework
+        );
+    }
 }

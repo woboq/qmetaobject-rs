@@ -17,8 +17,10 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#[cfg(feature = "qtquickcontrols2")]
 use crate::qttypes::QString;
 
+#[cfg(feature = "qtquickcontrols2")]
 cpp! {{
     #include <QtQuickControls2/QQuickStyle>
 }}
@@ -28,11 +30,13 @@ pub struct QQuickStyle {}
 
 impl QQuickStyle {
     /// Refer to the Qt documentation for QQuickStyle::setStyle.
+    #[cfg(not(feature = "qtquickcontrols2"))]
     pub fn set_style(style: &str) {
         std::env::set_var("QT_QUICK_CONTROLS_STYLE", style);
     }
 
     /// Refer to the Qt documentation for QQuickStyle::addStylePath.
+    #[cfg(feature = "qtquickcontrols2")]
     pub fn add_style_path(path: QString) {
         cpp!(unsafe [path as "QString"] {
             return QQuickStyle::addStylePath(path);
@@ -40,6 +44,7 @@ impl QQuickStyle {
     }
 
     /// Refer to the Qt documentation for QQuickStyle::name.
+    #[cfg(feature = "qtquickcontrols2")]
     pub fn name() -> QString {
         cpp!(unsafe [] -> QString as "QString" {
             return QQuickStyle::name();
@@ -47,6 +52,7 @@ impl QQuickStyle {
     }
 
     /// Refer to the Qt documentation for QQuickStyle::path.
+    #[cfg(feature = "qtquickcontrols2")]
     pub fn path() -> QString {
         cpp!(unsafe [] -> QString as "QString" {
             return QQuickStyle::path();
@@ -54,6 +60,7 @@ impl QQuickStyle {
     }
 
     /// Refer to the Qt documentation for QQuickStyle::setFallbackStyle.
+    #[cfg(feature = "qtquickcontrols2")]
     pub fn set_fallback_style(style: QString) {
         cpp!(unsafe [style as "QString"] {
             QQuickStyle::setFallbackStyle(style);
@@ -61,21 +68,24 @@ impl QQuickStyle {
     }
 
     /// Refer to the Qt documentation for QQuickStyle::setStyle.
-    pub fn set_style_with_qstring(style: QString) {
+    #[cfg(feature = "qtquickcontrols2")]
+    pub fn set_style(style: QString) {
         cpp!(unsafe [style as "QString"] {
             return QQuickStyle::setStyle(style);
         })
     }
 }
 
+#[cfg(feature = "qtquickcontrols2")]
 #[test]
 fn test_quickstyle_add_style_path() {
     // only tests for crashes right now, because of list limitations
     QQuickStyle::add_style_path("/tmp".into());
 }
 
+#[cfg(feature = "qtquickcontrols2")]
 #[test]
-fn test_quickstyle_set_style_with_qstring() {
-    QQuickStyle::set_style_with_qstring("Material".into());
+fn test_quickstyle_set_style() {
+    QQuickStyle::set_style("Material".into());
     assert_eq!(QQuickStyle::name(), QString::from("Material"))
 }
