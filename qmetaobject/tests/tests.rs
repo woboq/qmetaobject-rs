@@ -74,7 +74,7 @@ struct MyObject {
     prop_y: qt_property!(String; NOTIFY prop_y_changed),
     prop_y_changed: qt_signal!(),
     prop_z: qt_property!(QString; NOTIFY prop_z_changed),
-    prop_z_changed: qt_signal!(),
+    prop_z_changed: qt_signal!(v: QString),
 
     multiply_and_add1: qt_method!(fn multiply_and_add1(&self, a: u32, b:u32) -> u32 { a*b + 1 }),
 

@@ -563,8 +563,16 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 
             let mut notify = quote!{};
             if let Some(ref signal) = prop.notify_signal {
+                let args_count = methods.iter()
+                    .find(|x| x.name == *signal && (x.flags & 0x4) != 0)
+                    .map_or(0, |s| s.args.len());
                 let signal: syn::Ident = signal.clone();
-                notify = quote!{ obj.#signal() };
+                notify = match args_count {
+                    0 => quote!{ obj.#signal() },
+                    1 => quote!{ obj.#signal(obj.#property_name.clone()) },
+                    _ => panic!("NOTIFY signal {} for property {} has too many arguments",
+                        signal, property_name),
+                };
             }
 
             let register_type = if builtin_type(&prop.typ) == 0 {
