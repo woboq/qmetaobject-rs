@@ -436,6 +436,31 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     }
 }
 
+/// Register a default-constructed object of specified type as a singleton QML object.
+/// 
+/// Refer to the Qt documentation for qmlRegisterSingletonInstance.
+pub fn qml_register_singleton<T: QObject + Sized + Default>(
+     uri: &std::ffi::CStr,
+     version_major: u32,
+     version_minor: u32,
+     type_name: &std::ffi::CStr,  
+) {
+    let uri_ptr = uri.as_ptr();
+    let type_name_ptr = type_name.as_ptr();    
+
+    let obj: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
+    let obj_ptr = unsafe { T::cpp_construct(&obj) };
+    Box::into_raw(obj);
+
+    unsafe {
+        cpp!([uri_ptr as "char*", version_major as "int", version_minor as "int", 
+                type_name_ptr as "char*", obj_ptr as "QObject*"] {
+            qmlRegisterSingletonInstance(uri_ptr, version_major, version_minor, type_name_ptr,
+                obj_ptr);
+        })
+    }
+}
+
 /// Register the given enum as a QML type
 ///
 /// Refer to the Qt documentation for qmlRegisterUncreatableMetaObject.
