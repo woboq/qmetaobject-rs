@@ -750,6 +750,11 @@ impl QModelIndex {
 }
 
 #[allow(non_camel_case_types)]
+#[cfg(all(target_pointer_width = "32", target_arch = "arm"))]
+type qreal = f32;
+
+#[allow(non_camel_case_types)]
+#[cfg(any(target_pointer_width = "64", not(target_arch = "arm")))]
 type qreal = f64;
 
 /// Wrapper around QRectF
