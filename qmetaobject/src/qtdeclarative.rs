@@ -458,8 +458,10 @@ pub fn qml_register_singleton<T: QObject + Sized + Default>(
     unsafe {
         cpp!([uri_ptr as "char*", version_major as "int", version_minor as "int", 
                 type_name_ptr as "char*", obj_ptr as "QObject*"] {
+            #ifdef QT_5_14
             qmlRegisterSingletonInstance(uri_ptr, version_major, version_minor, type_name_ptr,
                 obj_ptr);
+            #endif
         })
     }
     

@@ -42,6 +42,11 @@ fn main() {
         config.flag(qt_library_path.trim());
     }
 
+    if qt_version >= Version::new(5, 14, 0) {
+        config.define("QT_5_14", None);
+        println!("cargo:rustc-cfg=qt_5_14");
+    }    
+
     config.include(qt_include_path.trim()).build("src/lib.rs");
 
     let macos_lib_search = if cfg!(target_os = "macos") {
@@ -76,8 +81,4 @@ fn main() {
         "cargo:rustc-link-lib{}=Qt{}Qml",
         macos_lib_search, macos_lib_framework
     );
-
-    if qt_version >= Version::new(5, 14, 0) {
-        println!("cargo:rustc-cfg=qt_5_14");
-    }
 }
