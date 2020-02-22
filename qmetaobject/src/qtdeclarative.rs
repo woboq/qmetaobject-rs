@@ -439,6 +439,8 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 /// Register a default-constructed object of specified type as a singleton QML object.
 /// 
 /// Refer to the Qt documentation for qmlRegisterSingletonInstance.
+/// Only avaiable in Qt 5.14 or above. 
+#[cfg(qt_5_14)]
 pub fn qml_register_singleton<T: QObject + Sized + Default>(
      uri: &std::ffi::CStr,
      version_major: u32,
