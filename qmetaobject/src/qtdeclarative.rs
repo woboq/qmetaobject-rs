@@ -444,12 +444,13 @@ pub fn qml_register_singleton<T: QObject + Sized + Default>(
      version_major: u32,
      version_minor: u32,
      type_name: &std::ffi::CStr,  
-) {
+) -> QPointer<T> {
     let uri_ptr = uri.as_ptr();
     let type_name_ptr = type_name.as_ptr();    
 
     let obj: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
     let obj_ptr = unsafe { T::cpp_construct(&obj) };
+    let qptr = QPointer::from(&*obj.borrow());
     Box::into_raw(obj);
 
     unsafe {
@@ -459,6 +460,8 @@ pub fn qml_register_singleton<T: QObject + Sized + Default>(
                 obj_ptr);
         })
     }
+    
+    qptr
 }
 
 /// Register the given enum as a QML type
