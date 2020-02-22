@@ -17,6 +17,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 extern crate cpp_build;
 use std::process::Command;
+use semver::Version;
 
 fn qmake_query(var: &str) -> String {
     String::from_utf8(
@@ -33,6 +34,7 @@ fn qmake_query(var: &str) -> String {
 fn main() {
     let qt_include_path = qmake_query("QT_INSTALL_HEADERS");
     let qt_library_path = qmake_query("QT_INSTALL_LIBS");
+    let qt_version = qmake_query("QT_VERSION").parse::<Version>().expect("Parsing Qt version failed");
     let mut config = cpp_build::Config::new();
 
     if cfg!(target_os = "macos") {
@@ -74,4 +76,8 @@ fn main() {
         "cargo:rustc-link-lib{}=Qt{}Qml",
         macos_lib_search, macos_lib_framework
     );
+
+    if qt_version >= Version::new(5, 14, 0) {
+        println!("cargo:rustc-cfg=qt_5_14");
+    }
 }
