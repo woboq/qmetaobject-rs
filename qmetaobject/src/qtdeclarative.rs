@@ -436,12 +436,53 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     }
 }
 
+cpp! {{
+    typedef QObject *(*QmlRegisterSingletonTypeCallback)(QQmlEngine *, QJSEngine *);
+}}
+
 /// Register a default-constructed object of specified type as a singleton QML object.
+/// 
+/// A new object will be created for each new instance of `QmlEngine`.
+/// 
+/// Refer to the Qt documentation for qmlRegisterSingletonType.
+pub fn qml_register_singleton_type<T: QObject + Sized + Default>(
+     uri: &std::ffi::CStr,
+     version_major: u32,
+     version_minor: u32,
+     type_name: &std::ffi::CStr,  
+) {
+    let uri_ptr = uri.as_ptr();
+    let type_name_ptr = type_name.as_ptr();    
+
+    extern "C" fn callback_fn<T: QObject + Default + Sized>(_qml_engine: *mut c_void, _js_engine: *mut c_void) -> *mut c_void {
+        let obj: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
+        let obj_ptr = unsafe { T::cpp_construct(&obj) };
+        Box::into_raw(obj);
+        obj_ptr
+    };
+    let callback_fn: extern "C" fn(_qml_engine: *mut c_void, _js_engine: *mut c_void) -> *mut c_void = callback_fn::<T>;
+
+    unsafe {
+        cpp!([uri_ptr as "const char*", version_major as "int", version_minor as "int", 
+                type_name_ptr as "const char*", callback_fn as "QmlRegisterSingletonTypeCallback"] {
+            qmlRegisterSingletonType<QObject>(uri_ptr, version_major, version_minor, type_name_ptr,
+                callback_fn);
+        })
+    }
+}
+
+
+/// Register a default-constructed object of specified type as a singleton QML object.
+/// 
+/// The object is shared between all instances of `QmlEngine`.
+/// 
+/// Returns a QPointer to the newly constructed singleton object. It can be used
+/// to modify the state of the object before the QML engine is started.
 /// 
 /// Refer to the Qt documentation for qmlRegisterSingletonInstance.
 /// Only avaiable in Qt 5.14 or above. 
 #[cfg(qt_5_14)]
-pub fn qml_register_singleton<T: QObject + Sized + Default>(
+pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
      uri: &std::ffi::CStr,
      version_major: u32,
      version_minor: u32,
