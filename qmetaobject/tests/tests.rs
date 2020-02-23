@@ -201,6 +201,7 @@ struct RegisterSingletonInstanceObj {
 }
 
 #[test]
+#[cfg(qt_5_14)]
 fn register_singleton_instance() {
     let singleton = qml_register_singleton_instance::<RegisterSingletonInstanceObj>(
         CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
