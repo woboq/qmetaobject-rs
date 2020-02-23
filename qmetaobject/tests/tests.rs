@@ -203,13 +203,15 @@ struct RegisterSingletonInstanceObj {
 #[test]
 #[cfg(qt_5_14)]
 fn register_singleton_instance() {
-    let singleton = qml_register_singleton_instance::<RegisterSingletonInstanceObj>(
+    let mut myobj = RegisterSingletonInstanceObj::default();
+    myobj.value = 123;
+    qml_register_singleton_instance(
         CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
         1,
         0,
         CStr::from_bytes_with_nul(b"RegisterSingletonInstanceObj\0").unwrap(),
+        myobj
     );
-    singleton.as_pinned().unwrap().borrow_mut().value = 123;
 
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(

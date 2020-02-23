@@ -477,12 +477,9 @@ pub fn qml_register_singleton_type<T: QObject + Sized + Default>(
     }
 }
 
-/// Register a default-constructed object of specified type as a singleton QML object.
+/// Register the passed object as a singleton QML object.
 ///
 /// The object is shared between all instances of `QmlEngine`.
-///
-/// Returns a QPointer to the newly constructed singleton object. It can be used
-/// to modify the state of the object before the QML engine is started.
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonInstance.
 /// Only avaiable in Qt 5.14 or above.
@@ -492,14 +489,14 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
     version_major: u32,
     version_minor: u32,
     type_name: &std::ffi::CStr,
-) -> QPointer<T> {
+    obj: T,
+) {
     let uri_ptr = uri.as_ptr();
     let type_name_ptr = type_name.as_ptr();
 
-    let obj: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
-    let obj_ptr = unsafe { T::cpp_construct(&obj) };
-    let qptr = QPointer::from(&*obj.borrow());
-    Box::into_raw(obj);
+    let obj_box = Box::new(RefCell::new(obj));
+    let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
+    Box::into_raw(obj_box);
 
     unsafe {
         cpp!([uri_ptr as "char*", version_major as "int", version_minor as "int",
@@ -510,8 +507,6 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
             #endif
         })
     }
-
-    qptr
 }
 
 /// Register the given enum as a QML type
