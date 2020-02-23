@@ -222,7 +222,6 @@ fn register_singleton_instance() {
     ));
 }
 
-
 #[derive(Default, QObject)]
 struct RegisterSingletonTypeObj {
     base: qt_base_class!(trait QObject),
@@ -250,8 +249,6 @@ fn register_singleton_type() {
         }"
     ));
 }
-
-
 
 #[test]
 fn simple_gadget() {
