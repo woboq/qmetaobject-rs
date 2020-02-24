@@ -20,15 +20,16 @@ use semver::Version;
 use std::process::Command;
 
 fn qmake_query(var: &str) -> String {
+    let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
     String::from_utf8(
-        Command::new("qmake")
+        Command::new(qmake)
             .env("QT_SELECT", "qt5")
             .args(&["-query", var])
             .output()
             .expect("Failed to execute qmake. Make sure 'qmake' is in your path")
             .stdout,
     )
-    .expect("UTF-8 conversion failed")
+        .expect("UTF-8 conversion failed")
 }
 
 fn main() {
