@@ -210,7 +210,7 @@ fn register_singleton_instance() {
         1,
         0,
         CStr::from_bytes_with_nul(b"RegisterSingletonInstanceObj\0").unwrap(),
-        myobj
+        myobj,
     );
 
     let obj = MyObject::default(); // not used but needed for do_test
@@ -247,7 +247,7 @@ impl RegisterSingletonTypeObj {
             value: 789,
             get_value2: Default::default(),
         }
-    }    
+    }
 }
 
 #[test]
@@ -257,15 +257,15 @@ fn register_singleton_type() {
         1,
         0,
         CStr::from_bytes_with_nul(b"RegisterSingletonTypeObj\0").unwrap(),
-        RegisterSingletonTypeObj::new
+        RegisterSingletonTypeObj::new,
     );
     qml_register_singleton_type(
         CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
         1,
         0,
         CStr::from_bytes_with_nul(b"RegisterSingletonTypeObj2\0").unwrap(),
-        RegisterSingletonTypeObj::new2
-    );    
+        RegisterSingletonTypeObj::new2,
+    );
 
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(

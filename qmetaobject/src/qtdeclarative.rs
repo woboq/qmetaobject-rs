@@ -441,16 +441,17 @@ cpp! {{
 }}
 
 lazy_static! {
-    static ref REGISTERED_SINGLETON_CREATE_FN: std::sync::Mutex<Vec<Box<dyn Fn() -> *mut c_void + Send>>> = std::sync::Mutex::new(Vec::new());
+    static ref REGISTERED_SINGLETON_CREATE_FN: std::sync::Mutex<Vec<Box<dyn Fn() -> *mut c_void + Send>>> =
+        std::sync::Mutex::new(Vec::new());
 }
 
 /// Register the specified type as a singleton QML object.
 ///
 /// A new object will be created for each new instance of `QmlEngine` by calling
-/// the provided `create_fn`. 
+/// the provided `create_fn`.
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonType.
-/// 
+///
 /// # Panics
 /// The process will be aborted when `create_fn` panics.
 pub fn qml_register_singleton_type<T: QObject + Sized + Default, F: Fn() -> T + Send + 'static>(
@@ -458,7 +459,7 @@ pub fn qml_register_singleton_type<T: QObject + Sized + Default, F: Fn() -> T + 
     version_major: u32,
     version_minor: u32,
     type_name: &std::ffi::CStr,
-    create_fn: F
+    create_fn: F,
 ) {
     let uri_ptr = uri.as_ptr();
     let type_name_ptr = type_name.as_ptr();
@@ -468,32 +469,31 @@ pub fn qml_register_singleton_type<T: QObject + Sized + Default, F: Fn() -> T + 
         let obj_box: Box<RefCell<T>> = Box::new(RefCell::new(obj));
         let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
         Box::into_raw(obj_box);
-        obj_ptr        
+        obj_ptr
     };
 
-    let create_fn_id; 
+    let create_fn_id;
     {
         let mut create_fns = REGISTERED_SINGLETON_CREATE_FN.lock().unwrap();
         create_fn_id = create_fns.len();
         create_fns.push(Box::new(create_wrapper));
     }
 
-    extern "C" fn callback_fn<T: QObject + Default + Sized>(
-        create_fn_id: usize,
-    ) -> *mut c_void {
+    extern "C" fn callback_fn<T: QObject + Default + Sized>(create_fn_id: usize) -> *mut c_void {
         let create_fns = REGISTERED_SINGLETON_CREATE_FN.lock().unwrap();
         let create_fn = &create_fns[create_fn_id];
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(create_fn)) {
             Ok(obj_ptr) => obj_ptr,
             Err(panic) => {
-                eprintln!("qml_register_singleton_type create_fn panicked: {:?}", panic);
+                eprintln!(
+                    "qml_register_singleton_type create_fn panicked: {:?}",
+                    panic
+                );
                 std::process::abort()
             }
         }
     };
-    let callback_fn: extern "C" fn(
-        create_fn_id: usize,
-    ) -> *mut c_void = callback_fn::<T>;
+    let callback_fn: extern "C" fn(create_fn_id: usize) -> *mut c_void = callback_fn::<T>;
 
     unsafe {
         cpp!([uri_ptr as "const char*", version_major as "int", version_minor as "int",
