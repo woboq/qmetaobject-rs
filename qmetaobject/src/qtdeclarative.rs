@@ -440,15 +440,28 @@ cpp! {{
     typedef QObject *(*QmlRegisterSingletonTypeCallback)(QQmlEngine *, QJSEngine *);
 }}
 
+/// Initialization for singleton QML objects.
+pub trait QSingletonInit {
+    /// Initialize the singleton QML object.
+    /// 
+    /// Will be called on a default-constructed object after the C++ object
+    /// has been created.
+    /// 
+    /// # Panics
+    /// The process will be aborted when the method panics.
+    fn init(&mut self);
+}
+
 /// Register the specified type as a singleton QML object.
 ///
 /// A new object will be default-constructed for each new instance of `QmlEngine`.
+/// After construction the QSingleInit::init() function will be called on the object.
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonType.
 ///
 /// # Panics
-/// The process will be aborted when the Default::default() method panics.
-pub fn qml_register_singleton_type<T: QObject + Sized + Default>(
+/// The process will be aborted when the T::default() or T::init() method panics.
+pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default>(
     uri: &std::ffi::CStr,
     version_major: u32,
     version_minor: u32,
@@ -458,24 +471,24 @@ pub fn qml_register_singleton_type<T: QObject + Sized + Default>(
     let qml_name_ptr = qml_name.as_ptr();
     let meta_object = T::static_meta_object();
 
-    extern "C" fn callback_fn<T: QObject + Default + Sized>(
+    extern "C" fn callback_fn<T: QObject + Default + Sized + QSingletonInit>(
         _qml_engine: *mut c_void,
         _js_engine: *mut c_void,
     ) -> *mut c_void {
-        let obj = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(T::default)) {
-            Ok(obj) => obj,
-            Err(panic) => {
-                eprintln!(
-                    "qml_register_singleton_type T::default panicked: {:?}",
-                    panic
-                );
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+            let obj_box: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
+            let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
+            obj_box.borrow_mut().init();
+            Box::into_raw(obj_box);
+            obj_ptr
+        }));
+        match result {
+            Ok(value) => value,
+            Err(_panic) => {
+                eprintln!("qml_register_singleton_type T::default or T::init panicked.");
                 std::process::abort()
             }
-        };
-        let obj_box: Box<RefCell<T>> = Box::new(RefCell::new(obj));
-        let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
-        Box::into_raw(obj_box);
-        obj_ptr
+        }
     };
     let callback_fn: extern "C" fn(
         _qml_engine: *mut c_void,

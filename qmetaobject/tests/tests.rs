@@ -225,20 +225,16 @@ fn register_singleton_instance() {
     ));
 }
 
-#[derive(QObject)]
+#[derive(QObject, Default)]
 struct RegisterSingletonTypeObj {
     base: qt_base_class!(trait QObject),
     value: u32,
     get_value2: qt_method!(fn get_value2(&self) -> u32 { self.value } ),
 }
 
-impl Default for RegisterSingletonTypeObj {
-    fn default() -> Self {
-        Self {
-            base: Default::default(),
-            value: 456,
-            get_value2: Default::default(),
-        }
+impl QSingletonInit for RegisterSingletonTypeObj {
+    fn init(&mut self) {
+        self.value = 456;
     }
 }
 
