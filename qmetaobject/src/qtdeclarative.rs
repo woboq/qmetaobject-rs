@@ -443,10 +443,10 @@ cpp! {{
 /// Initialization for singleton QML objects.
 pub trait QSingletonInit {
     /// Initialize the singleton QML object.
-    /// 
+    ///
     /// Will be called on a default-constructed object after the C++ object
     /// has been created.
-    /// 
+    ///
     /// # Panics
     /// The process will be aborted when the method panics.
     fn init(&mut self);
