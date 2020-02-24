@@ -193,6 +193,72 @@ fn register_type() {
     ));
 }
 
+#[derive(Default, QObject)]
+struct RegisterSingletonInstanceObj {
+    base: qt_base_class!(trait QObject),
+    value: u32,
+    get_value: qt_method!(fn get_value(&self) -> u32 { self.value } ),
+}
+
+#[test]
+#[cfg(qt_5_14)]
+fn register_singleton_instance() {
+    let mut myobj = RegisterSingletonInstanceObj::default();
+    myobj.value = 123;
+    qml_register_singleton_instance(
+        CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"RegisterSingletonInstanceObj\0").unwrap(),
+        myobj,
+    );
+
+    let obj = MyObject::default(); // not used but needed for do_test
+    assert!(do_test(
+        obj,
+        "import TestRegister 1.0;
+        Item {
+            function doTest() {
+                return RegisterSingletonInstanceObj.get_value() === 123;
+            }
+        }"
+    ));
+}
+
+#[derive(QObject, Default)]
+struct RegisterSingletonTypeObj {
+    base: qt_base_class!(trait QObject),
+    value: u32,
+    get_value2: qt_method!(fn get_value2(&self) -> u32 { self.value } ),
+}
+
+impl QSingletonInit for RegisterSingletonTypeObj {
+    fn init(&mut self) {
+        self.value = 456;
+    }
+}
+
+#[test]
+fn register_singleton_type() {
+    qml_register_singleton_type::<RegisterSingletonTypeObj>(
+        CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"RegisterSingletonTypeObj\0").unwrap(),
+    );
+
+    let obj = MyObject::default(); // not used but needed for do_test
+    assert!(do_test(
+        obj,
+        "import TestRegister 1.0;
+        Item {
+            function doTest() {
+                return RegisterSingletonTypeObj.get_value2() === 456;
+            }
+        }"
+    ));
+}
+
 #[test]
 fn simple_gadget() {
     #[derive(Default, Clone, QGadget)]

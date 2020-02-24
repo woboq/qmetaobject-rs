@@ -16,7 +16,7 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 extern crate cpp_build;
-
+use semver::Version;
 use std::process::Command;
 
 fn qmake_query(var: &str) -> String {
@@ -35,11 +35,18 @@ fn qmake_query(var: &str) -> String {
 fn main() {
     let qt_include_path = qmake_query("QT_INSTALL_HEADERS");
     let qt_library_path = qmake_query("QT_INSTALL_LIBS");
+    let qt_version = qmake_query("QT_VERSION")
+        .parse::<Version>()
+        .expect("Parsing Qt version failed");
     let mut config = cpp_build::Config::new();
 
     if cfg!(target_os = "macos") {
         config.flag("-F");
         config.flag(qt_library_path.trim());
+    }
+
+    if qt_version >= Version::new(5, 14, 0) {
+        println!("cargo:rustc-cfg=qt_5_14");
     }
 
     config.include(qt_include_path.trim()).build("src/lib.rs");
