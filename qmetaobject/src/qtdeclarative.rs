@@ -503,9 +503,9 @@ pub fn qml_register_singleton_type<T: QObject + Sized + Default>(
                 meta_object);
 
             QQmlPrivate::RegisterSingletonType api = {
-                QmlCurrentSingletonTypeRegistrationVersion,
+                2, // version
                 uri_ptr, version_major, version_minor, qml_name_ptr,
-                nullptr, nullptr, meta_object, ptrType, 0, callback_fn
+                nullptr, callback_fn, meta_object, ptrType, 0
             };
 
             QQmlPrivate::qmlregister(QQmlPrivate::SingletonRegistration, &api);
