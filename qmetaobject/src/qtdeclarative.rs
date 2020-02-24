@@ -437,42 +437,72 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 }
 
 cpp! {{
-    typedef QObject *(*QmlRegisterSingletonTypeCallback)(QQmlEngine *, QJSEngine *);
+    typedef QObject *(*QmlRegisterSingletonTypeCallback)(size_t);
 }}
 
-/// Register a default-constructed object of specified type as a singleton QML object.
+lazy_static! {
+    static ref REGISTERED_SINGLETON_CREATE_FN: std::sync::Mutex<Vec<Box<dyn Fn() -> *mut c_void + Send>>> = std::sync::Mutex::new(Vec::new());
+}
+
+/// Register the specified type as a singleton QML object.
 ///
-/// A new object will be created for each new instance of `QmlEngine`.
+/// A new object will be created for each new instance of `QmlEngine` by calling
+/// the provided `create_fn`. 
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonType.
-pub fn qml_register_singleton_type<T: QObject + Sized + Default>(
+/// 
+/// # Panics
+/// The process will be aborted when `create_fn` panics.
+pub fn qml_register_singleton_type<T: QObject + Sized + Default, F: Fn() -> T + Send + 'static>(
     uri: &std::ffi::CStr,
     version_major: u32,
     version_minor: u32,
     type_name: &std::ffi::CStr,
+    create_fn: F
 ) {
     let uri_ptr = uri.as_ptr();
     let type_name_ptr = type_name.as_ptr();
 
+    let create_wrapper = move || {
+        let obj = create_fn();
+        let obj_box: Box<RefCell<T>> = Box::new(RefCell::new(obj));
+        let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
+        Box::into_raw(obj_box);
+        obj_ptr        
+    };
+
+    let create_fn_id; 
+    {
+        let mut create_fns = REGISTERED_SINGLETON_CREATE_FN.lock().unwrap();
+        create_fn_id = create_fns.len();
+        create_fns.push(Box::new(create_wrapper));
+    }
+
     extern "C" fn callback_fn<T: QObject + Default + Sized>(
-        _qml_engine: *mut c_void,
-        _js_engine: *mut c_void,
+        create_fn_id: usize,
     ) -> *mut c_void {
-        let obj: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
-        let obj_ptr = unsafe { T::cpp_construct(&obj) };
-        Box::into_raw(obj);
-        obj_ptr
+        let create_fns = REGISTERED_SINGLETON_CREATE_FN.lock().unwrap();
+        let create_fn = &create_fns[create_fn_id];
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(create_fn)) {
+            Ok(obj_ptr) => obj_ptr,
+            Err(panic) => {
+                eprintln!("qml_register_singleton_type create_fn panicked: {:?}", panic);
+                std::process::abort()
+            }
+        }
     };
     let callback_fn: extern "C" fn(
-        _qml_engine: *mut c_void,
-        _js_engine: *mut c_void,
+        create_fn_id: usize,
     ) -> *mut c_void = callback_fn::<T>;
 
     unsafe {
         cpp!([uri_ptr as "const char*", version_major as "int", version_minor as "int",
-                type_name_ptr as "const char*", callback_fn as "QmlRegisterSingletonTypeCallback"] {
-            qmlRegisterSingletonType<QObject>(uri_ptr, version_major, version_minor, type_name_ptr,
-                callback_fn);
+                type_name_ptr as "const char*", create_fn_id as "size_t", callback_fn as "QmlRegisterSingletonTypeCallback"] {
+            auto callback_wrapper = [create_fn_id, callback_fn] (QQmlEngine *, QJSEngine *) -> QObject * {
+                return callback_fn(create_fn_id);
+            };
+            qmlRegisterSingletonType<QObject, std::function<QObject *(QQmlEngine *, QJSEngine *)>>
+              (uri_ptr, version_major, version_minor, type_name_ptr, std::move(callback_wrapper));
         })
     }
 }

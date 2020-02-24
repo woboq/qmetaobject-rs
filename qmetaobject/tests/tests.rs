@@ -232,14 +232,40 @@ struct RegisterSingletonTypeObj {
     get_value2: qt_method!(fn get_value2(&self) -> u32 { self.value } ),
 }
 
+impl RegisterSingletonTypeObj {
+    fn new() -> Self {
+        Self {
+            base: Default::default(),
+            value: 456,
+            get_value2: Default::default(),
+        }
+    }
+
+    fn new2() -> Self {
+        Self {
+            base: Default::default(),
+            value: 789,
+            get_value2: Default::default(),
+        }
+    }    
+}
+
 #[test]
 fn register_singleton_type() {
-    qml_register_singleton_type::<RegisterSingletonTypeObj>(
+    qml_register_singleton_type(
         CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
         1,
         0,
         CStr::from_bytes_with_nul(b"RegisterSingletonTypeObj\0").unwrap(),
+        RegisterSingletonTypeObj::new
     );
+    qml_register_singleton_type(
+        CStr::from_bytes_with_nul(b"TestRegister\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"RegisterSingletonTypeObj2\0").unwrap(),
+        RegisterSingletonTypeObj::new2
+    );    
 
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(
@@ -247,7 +273,10 @@ fn register_singleton_type() {
         "import TestRegister 1.0;
         Item {
             function doTest() {
-                return RegisterSingletonTypeObj.get_value2() === 0;
+                console.log(\"1 is \" + RegisterSingletonTypeObj.get_value2());
+                console.log(\"2 is \" + RegisterSingletonTypeObj2.get_value2());
+                return RegisterSingletonTypeObj.get_value2() === 456 &&
+                    RegisterSingletonTypeObj2.get_value2() === 789;
             }
         }"
     ));
