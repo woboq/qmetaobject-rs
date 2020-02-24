@@ -437,72 +437,78 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 }
 
 cpp! {{
-    typedef QObject *(*QmlRegisterSingletonTypeCallback)(size_t);
+    typedef QObject *(*QmlRegisterSingletonTypeCallback)(QQmlEngine *, QJSEngine *);
 }}
-
-lazy_static! {
-    static ref REGISTERED_SINGLETON_CREATE_FN: std::sync::Mutex<Vec<Box<dyn Fn() -> *mut c_void + Send>>> =
-        std::sync::Mutex::new(Vec::new());
-}
 
 /// Register the specified type as a singleton QML object.
 ///
-/// A new object will be created for each new instance of `QmlEngine` by calling
-/// the provided `create_fn`.
+/// A new object will be default-constructed for each new instance of `QmlEngine`.
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonType.
 ///
 /// # Panics
-/// The process will be aborted when `create_fn` panics.
-pub fn qml_register_singleton_type<T: QObject + Sized + Default, F: Fn() -> T + Send + 'static>(
+/// The process will be aborted when the Default::default() method panics.
+pub fn qml_register_singleton_type<T: QObject + Sized + Default>(
     uri: &std::ffi::CStr,
     version_major: u32,
     version_minor: u32,
-    type_name: &std::ffi::CStr,
-    create_fn: F,
+    qml_name: &std::ffi::CStr,
 ) {
     let uri_ptr = uri.as_ptr();
-    let type_name_ptr = type_name.as_ptr();
+    let qml_name_ptr = qml_name.as_ptr();
+    let meta_object = T::static_meta_object();
 
-    let create_wrapper = move || {
-        let obj = create_fn();
+    extern "C" fn callback_fn<T: QObject + Default + Sized>(
+        _qml_engine: *mut c_void,
+        _js_engine: *mut c_void,
+    ) -> *mut c_void {
+        let obj = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(T::default)) {
+            Ok(obj) => obj,
+            Err(panic) => {
+                eprintln!(
+                    "qml_register_singleton_type T::default panicked: {:?}",
+                    panic
+                );
+                std::process::abort()
+            }
+        };
         let obj_box: Box<RefCell<T>> = Box::new(RefCell::new(obj));
         let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
         Box::into_raw(obj_box);
         obj_ptr
     };
-
-    let create_fn_id;
-    {
-        let mut create_fns = REGISTERED_SINGLETON_CREATE_FN.lock().unwrap();
-        create_fn_id = create_fns.len();
-        create_fns.push(Box::new(create_wrapper));
-    }
-
-    extern "C" fn callback_fn<T: QObject + Default + Sized>(create_fn_id: usize) -> *mut c_void {
-        let create_fns = REGISTERED_SINGLETON_CREATE_FN.lock().unwrap();
-        let create_fn = &create_fns[create_fn_id];
-        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(create_fn)) {
-            Ok(obj_ptr) => obj_ptr,
-            Err(panic) => {
-                eprintln!(
-                    "qml_register_singleton_type create_fn panicked: {:?}",
-                    panic
-                );
-                std::process::abort()
-            }
-        }
-    };
-    let callback_fn: extern "C" fn(create_fn_id: usize) -> *mut c_void = callback_fn::<T>;
+    let callback_fn: extern "C" fn(
+        _qml_engine: *mut c_void,
+        _js_engine: *mut c_void,
+    ) -> *mut c_void = callback_fn::<T>;
 
     unsafe {
         cpp!([uri_ptr as "const char*", version_major as "int", version_minor as "int",
-                type_name_ptr as "const char*", create_fn_id as "size_t", callback_fn as "QmlRegisterSingletonTypeCallback"] {
-            auto callback_wrapper = [create_fn_id, callback_fn] (QQmlEngine *, QJSEngine *) -> QObject * {
-                return callback_fn(create_fn_id);
+                    qml_name_ptr as "const char*", meta_object as "const QMetaObject *",
+                    callback_fn as "QmlRegisterSingletonTypeCallback"] {
+
+            const char *className = qml_name_ptr;
+            // BEGIN: From QML_GETTYPENAMES
+            const int nameLen = int(strlen(className));
+            QVarLengthArray<char,48> pointerName(nameLen+2);
+            memcpy(pointerName.data(), className, size_t(nameLen));
+            pointerName[nameLen] = '*';
+            pointerName[nameLen+1] = '\0';
+            //END
+
+            auto ptrType = QMetaType::registerNormalizedType(pointerName.constData(),
+                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
+                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
+                int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
+                meta_object);
+
+            QQmlPrivate::RegisterSingletonType api = {
+                QmlCurrentSingletonTypeRegistrationVersion,
+                uri_ptr, version_major, version_minor, qml_name_ptr,
+                nullptr, nullptr, meta_object, ptrType, 0, callback_fn
             };
-            qmlRegisterSingletonType<QObject, std::function<QObject *(QQmlEngine *, QJSEngine *)>>
-              (uri_ptr, version_major, version_minor, type_name_ptr, std::move(callback_wrapper));
+
+            QQmlPrivate::qmlregister(QQmlPrivate::SingletonRegistration, &api);
         })
     }
 }
@@ -511,7 +517,7 @@ pub fn qml_register_singleton_type<T: QObject + Sized + Default, F: Fn() -> T + 
 ///
 /// As there is currently no method to unregister a singleton object, the
 /// passed object is leaked and cannot be dropped.
-/// 
+///
 /// The object is shared between all instances of `QmlEngine`.
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonInstance.
