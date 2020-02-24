@@ -509,6 +509,9 @@ pub fn qml_register_singleton_type<T: QObject + Sized + Default, F: Fn() -> T + 
 
 /// Register the passed object as a singleton QML object.
 ///
+/// As there is currently no method to unregister a singleton object, the
+/// passed object is leaked and cannot be dropped.
+/// 
 /// The object is shared between all instances of `QmlEngine`.
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonInstance.
