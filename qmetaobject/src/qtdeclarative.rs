@@ -455,12 +455,13 @@ pub trait QSingletonInit {
 /// Register the specified type as a singleton QML object.
 ///
 /// A new object will be default-constructed for each new instance of `QmlEngine`.
-/// After construction the QSingleInit::init() function will be called on the object.
+/// After construction of the corresponding C++ object the `QSingletonInit::init()` function 
+/// will be called.
 ///
 /// Refer to the Qt documentation for qmlRegisterSingletonType.
 ///
 /// # Panics
-/// The process will be aborted when the T::default() or T::init() method panics.
+/// The process will be aborted when the default or init functions panic.
 pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default>(
     uri: &std::ffi::CStr,
     version_major: u32,
