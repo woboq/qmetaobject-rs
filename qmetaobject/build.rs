@@ -45,7 +45,6 @@ fn main() {
     }
 
     if qt_version >= Version::new(5, 14, 0) {
-        config.define("QT_5_14", None);
         println!("cargo:rustc-cfg=qt_5_14");
     }
 
