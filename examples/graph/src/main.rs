@@ -93,7 +93,7 @@ impl QQuickItem for Graph {
 fn main() {
     qml_register_type::<Graph>(cstr!("Graph"), 1, 0, cstr!("Graph"));
     let mut view = QQuickView::new();
-    view.set_source("src/main.qml".into());
+    view.set_source(format!("{}/src/main.qml", env!("CARGO_MANIFEST_DIR")).into());
     view.show();
     view.engine().exec();
 }
