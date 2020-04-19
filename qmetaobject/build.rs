@@ -18,6 +18,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern crate cpp_build;
 use semver::Version;
 use std::process::Command;
+use std::path::Path;
+use std::io::prelude::*;
+use std::io::BufReader;
 
 fn qmake_query(var: &str) -> String {
     let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
@@ -30,6 +33,28 @@ fn qmake_query(var: &str) -> String {
             .stdout,
     )
         .expect("UTF-8 conversion failed")
+}
+
+// qreal is a double, unless QT_COORD_TYPE says otherwise:
+// https://doc.qt.io/qt-5/qtglobal.html#qreal-typedef
+fn detect_qreal_size(qt_include_path: &str) {
+    let path = Path::new(qt_include_path).join("QtCore").join("qconfig.h");
+    let f = std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path));
+    let b = BufReader::new(f);
+
+    // Find declaration of QT_COORD_TYPE
+    for line in b.lines() {
+        let line = line.expect("qconfig.h is valid UTF-8");
+        if line.contains("QT_COORD_TYPE") {
+            if line.contains("float") {
+                println!("cargo:rustc-cfg=feature=\"qreal-is-float\"");
+                return;
+            } else {
+                panic!("QT_COORD_TYPE with unknown declaration {}", line);
+            }
+        }
+    }
+
 }
 
 fn main() {
@@ -48,6 +73,8 @@ fn main() {
     if qt_version >= Version::new(5, 14, 0) {
         println!("cargo:rustc-cfg=qt_5_14");
     }
+
+    detect_qreal_size(&qt_include_path.trim());
 
     config.include(qt_include_path.trim()).build("src/lib.rs");
 
