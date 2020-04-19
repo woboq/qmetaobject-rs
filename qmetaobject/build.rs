@@ -47,7 +47,7 @@ fn detect_qreal_size(qt_include_path: &str) {
         let line = line.expect("qconfig.h is valid UTF-8");
         if line.contains("QT_COORD_TYPE") {
             if line.contains("float") {
-                println!("cargo:rustc-cfg=feature=\"qreal-is-float\"");
+                println!("cargo:rustc-cfg=qreal_is_float");
                 return;
             } else {
                 panic!("QT_COORD_TYPE with unknown declaration {}", line);

@@ -12,7 +12,6 @@ repository = "https://github.com/woboq/qmetaobject-rs"
 
 [features]
 chrono_qdatetime = ["chrono"]
-qreal-is-float = []
 
 [dependencies]
 qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.1.4"}

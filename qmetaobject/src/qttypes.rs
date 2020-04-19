@@ -750,11 +750,11 @@ impl QModelIndex {
 }
 
 #[allow(non_camel_case_types)]
-#[cfg(feature = "qreal-is-float")]
+#[cfg(qreal_is_float)]
 type qreal = f32;
 
 #[allow(non_camel_case_types)]
-#[cfg(not(feature = "qreal-is-float"))]
+#[cfg(not(qreal_is_float))]
 type qreal = f64;
 
 /// Wrapper around QRectF
