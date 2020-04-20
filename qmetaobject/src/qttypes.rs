@@ -119,8 +119,8 @@ impl QDate {
     /// Returns the year, month and day components.
     /// Refer to the Qt documentation for QDate::getDate.
     pub fn get_y_m_d(&self) -> (i32, i32, i32) {
-        let res = (0, 0, 0);
-        let (ref y, ref m, ref d) = res;
+        let mut res = (0, 0, 0);
+        let (ref mut y, ref mut m, ref mut d) = res;
         cpp!(unsafe [self as "const QDate*", y as "int*", m as "int*", d as "int*"] {
             return self->getDate(y, m, d);
         });
