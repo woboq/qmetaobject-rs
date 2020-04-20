@@ -33,7 +33,7 @@ cpp! {{
         SingleApplicationGuard() {
             rust!(Rust_QmlEngineHolder_ctor[] {
                 HAS_ENGINE.compare_exchange(false, true, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst)
-                        .expect("There can only be one QmlEngine in the process");
+                    .expect("There can only be one QmlEngine in the process");
             });
         }
         ~SingleApplicationGuard() {
@@ -183,7 +183,7 @@ impl QmlEngine {
         }
     }
 
-    /// Give a QObject to the engine by wraping it in a QJSValue
+    /// Give a QObject to the engine by wrapping it in a QJSValue
     ///
     /// This will create the C++ object.
     /// Panic if the C++ object was already created.

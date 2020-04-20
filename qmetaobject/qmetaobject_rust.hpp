@@ -27,7 +27,7 @@ union SignalCppRepresentation {
 
     SignalCppRepresentation() = default;
 
-    // Construct the object from an arbirary signal.
+    // Construct the object from an arbitrary signal.
     // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
     template<typename R, typename Object, typename ...Args>
     SignalCppRepresentation(R (Object::*cpp_signal)(Args...))

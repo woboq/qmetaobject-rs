@@ -136,7 +136,7 @@ impl TreeNode {
             // insert into iteself
             contents.extend(match node {
                 TreeNode::Directory(contents, _) => contents,
-                _ => panic!("merge file and direcotry?"),
+                _ => panic!("merge file and directory?"),
             });
             return;
         }
@@ -323,7 +323,7 @@ fn expand_macro(func: &syn::Ident, data: Data) -> TokenStream {
         files,
     } = data;
 
-    // Workaround performence issue with proc_macro2 and Rust 1.29:
+    // Workaround performance issue with proc_macro2 and Rust 1.29:
     // quote!(#(#payload),*) uses proc_macro2::TokenStream::extend, which is O(n²) with rust 1.29
     // since the payload array can be quite large, this is completely unacceptable.
     let payload = ::proc_macro2::TokenStream::from_iter(payload.iter().map(|x| quote!(#x,)));

@@ -611,7 +611,7 @@ impl IndexMut<usize> for QVariantList {
     }
 }
 
-/// Iternal class used to iterate over a QVariantList
+/// Internal class used to iterate over a QVariantList
 pub struct QVariantListIterator<'a> {
     list: &'a QVariantList,
     index: usize,
@@ -683,7 +683,7 @@ mod tests {
     }
 
     #[test]
-    fn test_qstring_and_qbytearrazy() {
+    fn test_qstring_and_qbytearray() {
         let qba1: QByteArray = (b"hello" as &[u8]).into();
         let qba2: QByteArray = "hello".into();
         let s: String = "hello".into();
@@ -838,7 +838,6 @@ impl QColor {
             return QColor::fromRgbF(r, g, b, a);
         })
     }
-
     /// Returns the individual component as floating point.
     /// Refer to the Qt documentation of QColor::getRgbF.
     pub fn get_rgba(&self) -> (qreal, qreal, qreal, qreal) {

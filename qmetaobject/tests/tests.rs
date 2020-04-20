@@ -376,7 +376,7 @@ fn qpointer_properties_incompatible() {
 }
 
 #[test]
-fn singleshot() {
+fn test_single_shot() {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let engine = Rc::new(QmlEngine::new());
@@ -388,7 +388,7 @@ fn singleshot() {
 }
 
 #[test]
-fn test_queud_callback() {
+fn test_queued_callback() {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let engine = Rc::new(QmlEngine::new());
@@ -742,7 +742,7 @@ fn threading() {
                 });
             });
             std::thread::spawn(move || {
-                // do stuff asynchroniously ...
+                // do stuff asynchronously ...
                 let r = QString::from("Hello ".to_owned() + &name);
                 set_value(r);
             }).join().unwrap();
