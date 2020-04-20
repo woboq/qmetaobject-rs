@@ -191,7 +191,7 @@ impl Drop for QObjectCppWrapper {
         unsafe {
             cpp!([ptr as "QObject*"] {
                 // The event 513 is caught by RustObject and deletes the object.
-                QEvent e(QEvent::Type(513));
+                QEvent e(QEvent::Type(QtJambi_EventType_DeleteOnMainThread));
                 if (ptr)
                     ptr->event(&e);
             })

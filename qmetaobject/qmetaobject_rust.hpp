@@ -43,6 +43,12 @@ struct TraitObject {
 extern "C" QMetaObject *RustObject_metaObject(TraitObject);
 extern "C" void RustObject_destruct(TraitObject);
 
+/// "513 reserved for Qt Jambi's DeleteOnMainThread event"
+/// We are just re-using this event type for our purposes.
+///
+/// Source: https://github.com/qtjambi/qtjambi/blob/8ef99da63315945e6ab540cc31d66e5b021b69e4/src/cpp/qtjambi/qtjambidebugevent.cpp#L857
+#define QtJambi_EventType_DeleteOnMainThread 513
+
 template <typename Base>
 struct RustObject : Base {
     TraitObject rust_object;  // A QObjectPinned<XXX> where XXX is the base trait
@@ -71,8 +77,7 @@ struct RustObject : Base {
         return _id;
     }
     bool event(QEvent *event) override {
-        if (ptr_qobject && event->type() == 513) {
-            // "513 reserved for Qt Jambi's DeleteOnMainThread event"
+        if (ptr_qobject && event->type() == QtJambi_EventType_DeleteOnMainThread) {
             // This event is sent by rust when we are deleted.
             ptr_qobject = { nullptr, nullptr }; // so the destructor don't recurse
             delete this;
