@@ -292,6 +292,10 @@ impl<T: QMetaType> PropertyType for T
 where
     T: QMetaType,
 {
+    fn register_type(name: &std::ffi::CStr) -> i32 {
+        <T as QMetaType>::register(Some(name))
+    }
+
     unsafe fn pass_to_qt(&mut self, a: *mut c_void) {
         let r = a as *mut Self;
         if !r.is_null() {
@@ -302,10 +306,6 @@ where
     unsafe fn read_from_qt(a: *const c_void) -> Self {
         let r = a as *const Self;
         (*r).clone()
-    }
-
-    fn register_type(name: &std::ffi::CStr) -> i32 {
-        <T as QMetaType>::register(Some(name))
     }
 }
 
