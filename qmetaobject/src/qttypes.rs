@@ -396,7 +396,7 @@ fn test_qdatetime_is_valid() {
 }
 
 cpp_class!(
-/// Wrapper around Qt's QUrl class
+    /// Wrapper around Qt's QUrl class
     #[derive(PartialEq, PartialOrd, Eq, Ord)]
     pub unsafe struct QUrl as "QUrl"
 );
@@ -420,9 +420,10 @@ impl From<QString> for QUrl {
 }
 
 cpp_class!(
-/// Wrapper around Qt's QString class
-#[derive(PartialEq, PartialOrd, Eq, Ord)]
-pub unsafe struct QString as "QString");
+    /// Wrapper around Qt's QString class
+    #[derive(PartialEq, PartialOrd, Eq, Ord)]
+    pub unsafe struct QString as "QString"
+);
 impl QString {
     /// Return a slice containing the UTF-16 data
     pub fn to_slice(&self) -> &[u16] {
@@ -473,9 +474,12 @@ impl std::fmt::Debug for QString {
         write!(f, "{}", self)
     }
 }
+
 cpp_class!(
-/// Wrapper around a QVariant
-#[derive(PartialEq)] pub unsafe struct QVariant as "QVariant");
+    /// Wrapper around a QVariant
+    #[derive(PartialEq)]
+    pub unsafe struct QVariant as "QVariant"
+);
 impl QVariant {
     pub fn to_qbytearray(&self) -> QByteArray {
         cpp!(unsafe [self as "const QVariant*"] -> QByteArray as "QByteArray" {
@@ -585,8 +589,9 @@ where
 }
 
 cpp_class!(
-/// Wrapper around QVariantList
-pub unsafe struct QVariantList as "QVariantList");
+    /// Wrapper around QVariantList
+    pub unsafe struct QVariantList as "QVariantList"
+);
 impl QVariantList {
     pub fn push(&mut self, value: QVariant) {
         cpp!(unsafe [self as "QVariantList*", value as "QVariant"] {
@@ -749,8 +754,10 @@ mod tests {
 }
 
 cpp_class!(
-/// Wrapper around Qt's QModelIndex
-#[derive(PartialEq, Eq)] pub unsafe struct QModelIndex as "QModelIndex");
+    /// Wrapper around Qt's QModelIndex
+    #[derive(PartialEq, Eq)]
+    pub unsafe struct QModelIndex as "QModelIndex"
+);
 impl QModelIndex {
     /// Return the QModelIndex::internalId
     pub fn id(&self) -> usize {
@@ -833,8 +840,10 @@ fn test_qpointf_qrectf() {
 }
 
 cpp_class!(
-/// Wrapper around QColor
-#[derive(Default, Clone, Copy, PartialEq)] pub unsafe struct QColor as "QColor");
+    /// Wrapper around QColor
+    #[derive(Default, Clone, Copy, PartialEq)]
+    pub unsafe struct QColor as "QColor"
+);
 impl QColor {
     /// Construct a QColor from a string. Refer to the Qt documentation of QColor::setNamedColor
     pub fn from_name(name: &str) -> Self {
@@ -923,8 +932,9 @@ pub enum ImageFormat {
     Grayscale8,
 }
 cpp_class!(
-/// Wrapper around QImage
-pub unsafe struct QImage as "QImage");
+    /// Wrapper around QImage
+    pub unsafe struct QImage as "QImage"
+);
 impl QImage {
     pub fn load_from_file(filename: QString) -> Self {
         cpp!(unsafe [filename as "QString"] -> QImage as "QImage" {
