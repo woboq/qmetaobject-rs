@@ -23,7 +23,7 @@ cpp! {{
 #include <QtCore/QObject>
 #include "qmetaobject_rust.hpp"
 
-//Access private function of QObject. Pretend to define QObjectPrivate.
+// Access private function of QObject. Pretend to define QObjectPrivate.
 // This rely on QObjectPrivate being a friend of QObject.
 class QObjectPrivate {
     public:
@@ -45,9 +45,10 @@ class RustSlotOject : public QtPrivate::QSlotObjectBase
             break;
         case Call: {
             auto slot = static_cast<RustSlotOject*>(this_)->slot;
-            rust!(RustSlotObject_call[slot : *mut dyn FnMut(*const *const c_void) as "TraitObject", a : *const *const c_void as "void**"] {
+            rust!(RustSlotObject_call[slot : *mut dyn FnMut(*const *const c_void) as "TraitObject",
+                                      a : *const *const c_void as "void**"] {
                    unsafe { (*slot)(a); }
-                });
+            });
             break;
         }
         case Compare: // not implemented
@@ -57,23 +58,27 @@ class RustSlotOject : public QtPrivate::QSlotObjectBase
     }
 public:
     explicit RustSlotOject(TraitObject slot) : QSlotObjectBase(&impl), slot(slot) {}
-    ~RustSlotOject() { rust!(RustSlotOject_destruct [slot : *mut dyn FnMut(*const *const c_void) as "TraitObject"] { unsafe { let _ = Box::from_raw(slot); } }); }
+    ~RustSlotOject() {
+        rust!(RustSlotOject_destruct [slot : *mut dyn FnMut(*const *const c_void) as "TraitObject"] {
+            let _ = unsafe { Box::from_raw(slot) };
+        });
+    }
     Q_DISABLE_COPY(RustSlotOject);
 };
 
 
-} }
+}}
 
 cpp_class!(
-/// Wrapper around Qt's QMetaObject::Connection
-///
-/// Can be used to detect if a connection is valid, and to disconnect a connection
+    /// Wrapper around Qt's QMetaObject::Connection
+    ///
+    /// Can be used to detect if a connection is valid, and to disconnect a connection.
     pub unsafe struct ConnectionHandle as "QMetaObject::Connection"
 );
 impl ConnectionHandle {
     /// Disconnect this connection.
     ///
-    /// After this function is called, all ConnectionHandle refering to this connection will be invalided.
+    /// After this function is called, all ConnectionHandle referring to this connection will be invalided.
     /// Calling disconnect on an invalided connection does nothing.
     pub fn disconnect(&mut self) {
         unsafe { cpp!([self as "const QMetaObject::Connection*"] { QObject::disconnect(*self);  }) }
@@ -88,10 +93,10 @@ impl ConnectionHandle {
 }
 
 cpp_class!(
-/// Internal class that can be used to construct C++ signal.  Should only be used as an implementation
-/// details when writing bindings to Qt signals to construct a `CppSignal<...>`
-///
-/// It has the same size as a `void(QObject::*)()` and can be constructed from signals.
+    /// Internal class that can be used to construct C++ signal.  Should only be used as an implementation
+    /// details when writing bindings to Qt signals to construct a `CppSignal<...>`
+    ///
+    /// It has the same size as a `void(QObject::*)()` and can be constructed from signals.
     pub unsafe struct SignalCppRepresentation as "SignalCppRepresentation"
 );
 

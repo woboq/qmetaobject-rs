@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     struct Greeter {
         // Specify the base class with the qt_base_class macro
         base : qt_base_class!(trait QObject),
-        // Decalare `name` as a property usable from Qt
+        // Declare `name` as a property usable from Qt
         name : qt_property!(QString; NOTIFY name_changed),
         // Declare a signal
         name_changed : qt_signal!(),
@@ -125,7 +125,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 });
             });
             std::thread::spawn(move || {
-                // do stuff asynchroniously ...
+                // do stuff asynchronously ...
                 let r = QString::from("Hello ".to_owned() + &name);
                 set_value(r);
             }).join();
@@ -190,8 +190,8 @@ impl Drop for QObjectCppWrapper {
         let ptr = self.ptr;
         unsafe {
             cpp!([ptr as "QObject*"] {
-                // The event 513 is catched by RustObject and deletes the object.
-                QEvent e(QEvent::Type(513));
+                // The event 513 is caught by RustObject and deletes the object.
+                QEvent e = QEvent(QEvent::Type(QtJambi_EventType_DeleteOnMainThread));
                 if (ptr)
                     ptr->event(&e);
             })
@@ -279,7 +279,7 @@ pub trait QObject {
     fn get_object_description() -> &'static QObjectDescription where Self:Sized {
         unsafe { &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
             return rustObjectDescription<RustObject<QObject>>();
-        } ) }
+        })}
     }
 }
 impl dyn QObject {
@@ -295,7 +295,6 @@ impl dyn QObject {
             return QVariant::fromValue(self_);
         }}
     }
-
 
     /// See Qt documentation for QObject::destroyed
     pub fn destroyed_signal() -> CppSignal<fn()> {
@@ -334,7 +333,7 @@ impl<T: QObject + ?Sized> QPointer<T> {
         })
     }
 
-    /// Returns a reference to the opbject, or None if it was deleted
+    /// Returns a reference to the `QObject`, or None if it was deleted
     pub fn as_ref(&self) -> Option<&T> {
         let x = self.cpp_ptr();
         if x.is_null() {
@@ -351,7 +350,7 @@ impl<T: QObject + ?Sized> QPointer<T> {
     }
 }
 impl<T: QObject> QPointer<T> {
-    /// Returns a pinned reference to the opbject, or None if it was deleted
+    /// Returns a pinned reference to the QObject, or None if it was deleted
     pub fn as_pinned(&self) -> Option<QObjectPinned<T>> {
         let x = self.cpp_ptr();
         if x.is_null() {
@@ -385,7 +384,7 @@ impl<T: QObject + ?Sized> Clone for QPointer<T> {
     }
 }
 
-/// Same as std::cell::RefMut,  but does not allow to move from
+/// Same as std::cell::RefMut, but does not allow to move from
 pub struct QObjectRefMut<'b, T: QObject + ?Sized + 'b> {
     old_value: *mut c_void,
     inner: std::cell::RefMut<'b, T>,
@@ -427,7 +426,7 @@ impl<'pin, T: QObject + ?Sized + 'pin> Copy for QObjectPinned<'pin, T> {}
 
 impl<'pin, T: QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
     /// Borrow the object
-    // FIXME: there are too many case for which we want re-entrency after borrowing
+    // FIXME: there are too many cases for which we want reentrance after borrowing
     //pub fn borrow(&self) -> std::cell::Ref<T> { self.0.borrow() }
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::should_implement_trait))]
     pub fn borrow(&self) -> &T {
@@ -765,7 +764,7 @@ pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(
     unsafe impl<T> Send for UnsafeSendFn<T> {}
     unsafe impl<T> Sync for UnsafeSendFn<T> {}
     // put func in an arc because we need to keep it alive as long as the internal Box<FnMut> is
-    // alive. (And we can't just move it there because the returned closure can be called serveral
+    // alive. (And we can't just move it there because the returned closure can be called several
     // times.
     let func = std::sync::Arc::new(UnsafeSendFn(RefCell::new(func)));
 
@@ -810,8 +809,9 @@ fn add_to_hash(hash: *mut c_void, key: i32, value: QByteArray) {
 pub const USER_ROLE: i32 = 0x0100;
 
 cpp_class!(
-/// Wrapper for Qt's QMessageLogContext
-pub unsafe struct QMessageLogContext as "QMessageLogContext");
+    /// Wrapper for Qt's QMessageLogContext
+    pub unsafe struct QMessageLogContext as "QMessageLogContext"
+);
 impl QMessageLogContext {
     // Return QMessageLogContext::line
     pub fn line(&self) -> i32 {

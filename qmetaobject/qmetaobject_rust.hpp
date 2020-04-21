@@ -27,7 +27,7 @@ union SignalCppRepresentation {
 
     SignalCppRepresentation() = default;
 
-    // Construct the object from an arbirary signal.
+    // Construct the object from an arbitrary signal.
     // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
     template<typename R, typename Object, typename ...Args>
     SignalCppRepresentation(R (Object::*cpp_signal)(Args...))
@@ -42,6 +42,12 @@ struct TraitObject {
 
 extern "C" QMetaObject *RustObject_metaObject(TraitObject);
 extern "C" void RustObject_destruct(TraitObject);
+
+/// "513 reserved for Qt Jambi's DeleteOnMainThread event"
+/// We are just re-using this event type for our purposes.
+///
+/// Source: https://github.com/qtjambi/qtjambi/blob/8ef99da63315945e6ab540cc31d66e5b021b69e4/src/cpp/qtjambi/qtjambidebugevent.cpp#L857
+static constexpr int QtJambi_EventType_DeleteOnMainThread = 513;
 
 template <typename Base>
 struct RustObject : Base {
@@ -71,8 +77,7 @@ struct RustObject : Base {
         return _id;
     }
     bool event(QEvent *event) override {
-        if (ptr_qobject && event->type() == 513) {
-            // "513 reserved for Qt Jambi's DeleteOnMainThread event"
+        if (ptr_qobject && event->type() == QtJambi_EventType_DeleteOnMainThread) {
             // This event is sent by rust when we are deleted.
             ptr_qobject = { nullptr, nullptr }; // so the destructor don't recurse
             delete this;

@@ -33,7 +33,7 @@ cpp! {{
         SingleApplicationGuard() {
             rust!(Rust_QmlEngineHolder_ctor[] {
                 HAS_ENGINE.compare_exchange(false, true, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst)
-                        .expect("There can only be one QmlEngine in the process");
+                    .expect("There can only be one QmlEngine in the process");
             });
         }
         ~SingleApplicationGuard() {
@@ -183,7 +183,7 @@ impl QmlEngine {
         }
     }
 
-    /// Give a QObject to the engine by wraping it in a QJSValue
+    /// Give a QObject to the engine by wrapping it in a QJSValue
     ///
     /// This will create the C++ object.
     /// Panic if the C++ object was already created.
@@ -458,10 +458,13 @@ pub trait QSingletonInit {
 /// After construction of the corresponding C++ object the `QSingletonInit::init()` function 
 /// will be called.
 ///
-/// Refer to the Qt documentation for qmlRegisterSingletonType.
+/// Refer to the Qt documentation for [qmlRegisterSingletonType][].
 ///
 /// # Panics
+///
 /// The process will be aborted when the default or init functions panic.
+///
+/// [qmlRegisterSingletonType]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterSingletonType-3
 pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default>(
     uri: &std::ffi::CStr,
     version_major: u32,
@@ -534,8 +537,14 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
 ///
 /// The object is shared between all instances of `QmlEngine`.
 ///
-/// Refer to the Qt documentation for qmlRegisterSingletonInstance.
-/// Only avaiable in Qt 5.14 or above.
+/// Refer to the Qt documentation for [qmlRegisterSingletonInstance][] (not documented at the time of writing).
+///
+/// # Availability
+///
+/// Only available in Qt 5.14 or above.
+///
+/// [qmlRegisterSingletonInstance]: https://doc.qt.io/qt-5/qtqml-cppintegration-overview.html
+// XXX: replace link with real documentation, when it will be generated.
 #[cfg(qt_5_14)]
 pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
     uri: &std::ffi::CStr,
@@ -562,9 +571,11 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
     }
 }
 
-/// Register the given enum as a QML type
+/// Register the given enum as a QML type.
 ///
-/// Refer to the Qt documentation for qmlRegisterUncreatableMetaObject.
+/// Refer to the Qt documentation for [qmlRegisterUncreatableMetaObject][].
+///
+/// [qmlRegisterUncreatableMetaObject]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterUncreatableMetaObject
 pub fn qml_register_enum<T: QEnum>(
     uri: &std::ffi::CStr,
     version_major: u32,

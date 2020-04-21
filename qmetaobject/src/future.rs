@@ -74,7 +74,7 @@ cpp! {{
 /// Waking the waker will post an event to the Qt event loop which will poll the future
 /// from the event handler
 ///
-/// Note that this function returns immediatly. A Qt event loop need to be running
+/// Note that this function returns immediately. A Qt event loop need to be running
 /// on the current thread so the future can be executed. (It is Ok if the Qt event
 /// loop hasn't started yet when this function is called)
 pub fn execute_async(f: impl Future<Output = ()> + 'static) {

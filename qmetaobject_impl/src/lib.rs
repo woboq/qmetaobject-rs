@@ -58,13 +58,13 @@ fn get_crate(input: &syn::DeriveInput) -> impl quote::ToTokens {
     quote!(::qmetaobject)
 }
 
-/// Implementation of #[derice(QObject)]
+/// Implementation of #[derive(QObject)]
 #[proc_macro_derive(QObject, attributes(QMetaObjectCrate, qt_base_class))]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
     qobject_impl::generate(input, true)
 }
 
-/// Implementation of #[derice(QGadget)]
+/// Implementation of #[derive(QGadget)]
 #[proc_macro_derive(QGadget, attributes(QMetaObjectCrate))]
 pub fn qgadget_impl(input: TokenStream) -> TokenStream {
     qobject_impl::generate(input, false)
@@ -82,7 +82,7 @@ pub fn qrc_internal(input: TokenStream) -> TokenStream {
     qrc_impl::process_qrc(input)
 }
 
-/// Implementation of #[derice(SimpleListItem)]
+/// Implementation of #[derive(SimpleListItem)]
 #[proc_macro_derive(SimpleListItem, attributes(QMetaObjectCrate))]
 pub fn simplelistitem(input: TokenStream) -> TokenStream {
     simplelistitem_impl::derive(input)

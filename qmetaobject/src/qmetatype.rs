@@ -283,7 +283,7 @@ qdeclare_builtin_metatype! {usize  => 5} // That's QMetaType::ULongLong
 /// Don't implement this trait, implement the QMetaType trait.
 pub trait PropertyType {
     fn register_type(name: &std::ffi::CStr) -> i32;
-    // Note: this is &mut self becauser of the lazy initialization of the QObject* for the QObject impl
+    // Note: this is &mut self because of the lazy initialization of the QObject* for the QObject impl
     unsafe fn pass_to_qt(&mut self, a: *mut c_void);
     unsafe fn read_from_qt(a: *const c_void) -> Self;
 }
@@ -292,6 +292,10 @@ impl<T: QMetaType> PropertyType for T
 where
     T: QMetaType,
 {
+    fn register_type(name: &std::ffi::CStr) -> i32 {
+        <T as QMetaType>::register(Some(name))
+    }
+
     unsafe fn pass_to_qt(&mut self, a: *mut c_void) {
         let r = a as *mut Self;
         if !r.is_null() {
@@ -302,10 +306,6 @@ where
     unsafe fn read_from_qt(a: *const c_void) -> Self {
         let r = a as *const Self;
         (*r).clone()
-    }
-
-    fn register_type(name: &std::ffi::CStr) -> i32 {
-        <T as QMetaType>::register(Some(name))
     }
 }
 
