@@ -47,7 +47,7 @@ extern "C" void RustObject_destruct(TraitObject);
 /// We are just re-using this event type for our purposes.
 ///
 /// Source: https://github.com/qtjambi/qtjambi/blob/8ef99da63315945e6ab540cc31d66e5b021b69e4/src/cpp/qtjambi/qtjambidebugevent.cpp#L857
-#define QtJambi_EventType_DeleteOnMainThread 513
+static constexpr int QtJambi_EventType_DeleteOnMainThread = 513;
 
 template <typename Base>
 struct RustObject : Base {
