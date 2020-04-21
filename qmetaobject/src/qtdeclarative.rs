@@ -353,11 +353,9 @@ impl QmlComponent {
     /// See Qt documentation for QQmlComponent::statusChanged
     pub fn status_changed_signal() -> CppSignal<fn(status: ComponentStatus)> {
         unsafe {
-            CppSignal::new(
-                cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
-                    return &QQmlComponent::statusChanged;
-                }),
-            )
+            CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+                return &QQmlComponent::statusChanged;
+            }))
         }
     }
 }
@@ -455,7 +453,7 @@ pub trait QSingletonInit {
 /// Register the specified type as a singleton QML object.
 ///
 /// A new object will be default-constructed for each new instance of `QmlEngine`.
-/// After construction of the corresponding C++ object the `QSingletonInit::init()` function 
+/// After construction of the corresponding C++ object the `QSingletonInit::init()` function
 /// will be called.
 ///
 /// Refer to the Qt documentation for [qmlRegisterSingletonType][].

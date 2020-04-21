@@ -119,13 +119,7 @@ impl Todos {
     fn add(&mut self, description: String) {
         let end = self.list.len();
         (self as &mut dyn QAbstractListModel).begin_insert_rows(end as i32, end as i32);
-        self.list.insert(
-            end,
-            TodosItem {
-                completed: false,
-                description,
-            },
-        );
+        self.list.insert(end, TodosItem { completed: false, description });
         (self as &mut dyn QAbstractListModel).end_insert_rows();
         self.activeCount += 1;
         self.active_count_changed();

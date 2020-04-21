@@ -200,9 +200,7 @@ impl Drop for QObjectCppWrapper {
 }
 impl Default for QObjectCppWrapper {
     fn default() -> QObjectCppWrapper {
-        QObjectCppWrapper {
-            ptr: std::ptr::null_mut(),
-        }
+        QObjectCppWrapper { ptr: std::ptr::null_mut() }
     }
 }
 impl QObjectCppWrapper {
@@ -276,10 +274,15 @@ pub trait QObject {
     // Copy/paste this code replacing QObject with the type.
 
     /// Returns a QObjectDescription for this type
-    fn get_object_description() -> &'static QObjectDescription where Self:Sized {
-        unsafe { &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-            return rustObjectDescription<RustObject<QObject>>();
-        })}
+    fn get_object_description() -> &'static QObjectDescription
+    where
+        Self: Sized,
+    {
+        unsafe {
+            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
+                return rustObjectDescription<RustObject<QObject>>();
+            })
+        }
     }
 }
 impl dyn QObject {
@@ -291,31 +294,37 @@ impl dyn QObject {
     /// QVariant is unsafe as it does not manage life time
     pub unsafe fn as_qvariant(&self) -> QVariant {
         let self_ = self.get_cpp_object();
-        cpp!{[self_ as "QObject*"] -> QVariant as "QVariant"  {
+        cpp! {[self_ as "QObject*"] -> QVariant as "QVariant"  {
             return QVariant::fromValue(self_);
         }}
     }
 
     /// See Qt documentation for QObject::destroyed
     pub fn destroyed_signal() -> CppSignal<fn()> {
-        unsafe { CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
-            return &QObject::destroyed;
-        }))}
+        unsafe {
+            CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+                return &QObject::destroyed;
+            }))
+        }
     }
 
     /// See Qt documentation for QObject::setObjectName
     // FIXME. take self by special reference?  panic if cpp_object does not exist?
     pub fn set_object_name(&self, name: QString) {
         let self_ = self.get_cpp_object();
-        unsafe {cpp!([self_ as "QObject*", name as "QString"] {
-            if (self_) self_->setObjectName(std::move(name));
-        })}
+        unsafe {
+            cpp!([self_ as "QObject*", name as "QString"] {
+                if (self_) self_->setObjectName(std::move(name));
+            })
+        }
     }
     /// See Qt documentation for QObject::objectNameChanged
     pub fn object_name_changed_signal() -> CppSignal<fn(QString)> {
-        unsafe {CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
-            return &QObject::objectNameChanged;
-        }))}
+        unsafe {
+            CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+                return &QObject::objectNameChanged;
+            }))
+        }
     }
 }
 
@@ -366,9 +375,12 @@ impl<'a, T: QObject + ?Sized> From<&'a T> for QPointer<T> {
     /// The corresponding C++ object must have already been created.
     fn from(obj: &'a T) -> Self {
         let cpp_obj = obj.get_cpp_object();
-        QPointer(cpp!(unsafe [cpp_obj as "QObject *"] -> QPointerImpl  as "QPointer<QObject>" {
-            return cpp_obj;
-        }), obj as *const T)
+        QPointer(
+            cpp!(unsafe [cpp_obj as "QObject *"] -> QPointerImpl  as "QPointer<QObject>" {
+                return cpp_obj;
+            }),
+            obj as *const T,
+        )
     }
 }
 
@@ -434,10 +446,7 @@ impl<'pin, T: QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
     }
     pub fn borrow_mut(&self) -> QObjectRefMut<T> {
         let x = self.0.borrow_mut();
-        QObjectRefMut {
-            old_value: x.get_cpp_object(),
-            inner: x,
-        }
+        QObjectRefMut { old_value: x.get_cpp_object(), inner: x }
     }
     pub fn as_ptr(&self) -> *mut T {
         self.0.as_ptr()

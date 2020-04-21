@@ -38,32 +38,20 @@ fn self_test() {
 
     let mut obj = Basic::default();
     obj.value = true;
-    assert!(do_test(
-        obj,
-        "Item { function doTest() { return _obj.value  } }"
-    ));
+    assert!(do_test(obj, "Item { function doTest() { return _obj.value  } }"));
 
     let mut obj = Basic::default();
     obj.value = false;
-    assert!(!do_test(
-        obj,
-        "Item { function doTest() { return _obj.value  } }"
-    ));
+    assert!(!do_test(obj, "Item { function doTest() { return _obj.value  } }"));
 }
 
 #[test]
 fn self_test_variant() {
     let obj = QVariant::from(true);
-    assert!(do_test_variant(
-        obj,
-        "Item { function doTest() { return _obj  } }"
-    ));
+    assert!(do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
 
     let obj = QVariant::from(false);
-    assert!(!do_test_variant(
-        obj,
-        "Item { function doTest() { return _obj  } }"
-    ));
+    assert!(!do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
 }
 
 #[derive(QObject, Default)]
@@ -754,9 +742,7 @@ fn threading() {
     unsafe {
         qmetaobject::connect(
             QObject::cpp_construct(&obj),
-            obj.borrow()
-                .result_changed
-                .to_cpp_representation(&*obj.borrow()),
+            obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),
             || engine.quit(),
         )
     };

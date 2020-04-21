@@ -119,10 +119,7 @@ fn register_metatype_common<T: QMetaType>(
             }
             return QMetaType::registerTypedef(name, id);
         });
-        assert_eq!(
-            x, id,
-            "Attempt to register the same type with different name"
-        );
+        assert_eq!(x, id, "Attempt to register the same type with different name");
         e.1.insert(unsafe { CStr::from_ptr(name) }.to_owned());
     }
     id
@@ -362,21 +359,12 @@ fn test_qmetatype() {
     };
     impl QMetaType for MyInt {};
 
-    assert_eq!(
-        MyInt::register(Some(&std::ffi::CString::new("MyInt").unwrap())),
-        MyInt::id()
-    );
+    assert_eq!(MyInt::register(Some(&std::ffi::CString::new("MyInt").unwrap())), MyInt::id());
     let m42 = MyInt { x: 42 };
     let m43 = MyInt { x: 43 };
 
-    assert_eq!(
-        Some(m42.clone()),
-        MyInt::from_qvariant(m42.clone().to_qvariant())
-    );
-    assert_eq!(
-        Some(m43.clone()),
-        MyInt::from_qvariant(m43.clone().to_qvariant())
-    );
+    assert_eq!(Some(m42.clone()), MyInt::from_qvariant(m42.clone().to_qvariant()));
+    assert_eq!(Some(m43.clone()), MyInt::from_qvariant(m43.clone().to_qvariant()));
 
     assert_eq!(None, u32::from_qvariant(m43.to_qvariant()));
     assert_eq!(None, MyInt::from_qvariant(45u32.to_qvariant()));

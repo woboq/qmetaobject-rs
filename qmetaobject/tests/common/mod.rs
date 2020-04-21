@@ -80,10 +80,7 @@ pub fn do_test_error_with_url<T: QObject + Sized>(obj: T, qml: &str, url: &str) 
     engine.load_data_as(qml_text.into(), QString::from(url).into());
     engine.invoke_method("doTest".into(), &[]);
     let errors = QML_LOGS.lock().unwrap_or_else(|e| e.into_inner());
-    errors
-        .last()
-        .expect("An error from QmlEngine was expected")
-        .clone()
+    errors.last().expect("An error from QmlEngine was expected").clone()
 }
 
 pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {

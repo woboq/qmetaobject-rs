@@ -185,11 +185,7 @@ impl MetaObject {
             methods.len() as u32,
             if methods.is_empty() { 0 } else { offset }, // method count and offset
             properties.len() as u32,
-            if properties.is_empty() {
-                0
-            } else {
-                property_offset
-            }, // properties count and offset
+            if properties.is_empty() { 0 } else { property_offset }, // properties count and offset
             enums.len() as u32,
             if enums.is_empty() { 0 } else { enum_offset }, // enum count and offset
             0,
@@ -270,11 +266,7 @@ impl MetaObject {
     }
 
     fn add_string(&mut self, string: String) -> u32 {
-        if let Some((pos, _)) = self
-            .string_data
-            .iter()
-            .enumerate()
-            .find(|(_, val)| *val == &string)
+        if let Some((pos, _)) = self.string_data.iter().enumerate().find(|(_, val)| *val == &string)
         {
             return pos as u32;
         }
@@ -307,10 +299,7 @@ fn map_method_parameters2(
     args.iter()
         .filter_map(|x| {
             if let Some(ref name) = x.name {
-                Some(MetaMethodParameter {
-                    name: Some(name.0.clone()),
-                    typ: x.ty.clone(),
-                })
+                Some(MetaMethodParameter { name: Some(name.0.clone()), typ: x.ty.clone() })
             } else {
                 None
             }
@@ -458,12 +447,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                                 syn::ReturnType::Default => parse_quote! {()},
                                 syn::ReturnType::Type(_, ref typ) => (**typ).clone(),
                             };
-                            methods.push(MetaMethod {
-                                name,
-                                args,
-                                flags: 0x2,
-                                ret_type,
-                            });
+                            methods.push(MetaMethod { name, args, flags: 0x2, ret_type });
                         }
                         "qt_signal" => {
                             let parser = syn::punctuated::Punctuated::<syn::FnArg, Token![,]>::parse_terminated;
@@ -971,10 +955,7 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
     }
 
     let crate_ = super::get_crate(&ast);
-    let mut meta_enum = MetaEnum {
-        name: name.clone(),
-        variants: Vec::new(),
-    };
+    let mut meta_enum = MetaEnum { name: name.clone(), variants: Vec::new() };
 
     if let syn::Data::Enum(ref data) = ast.data {
         for variant in data.variants.iter() {

@@ -32,10 +32,7 @@ impl<T> SGNode<T> {
         /*let t = T::TYPE;
         debug_assert!(cpp!([raw as "QSGNode*", t as "QSGNode::NodeType"]
             -> bool as "bool" { return raw->type() == t; }));*/
-        Self {
-            raw,
-            _phantom: Default::default(),
-        }
+        Self { raw, _phantom: Default::default() }
     }
 
     /// "leak" the QSGNode* pointer, so the caller must take ownership
@@ -250,11 +247,7 @@ impl SGNode<ContainerNode> {
             })
         };
         let node = update_fn(node);
-        *mask = if node.is_null() {
-            *mask & !*bit
-        } else {
-            *mask | *bit
-        };
+        *mask = if node.is_null() { *mask & !*bit } else { *mask | *bit };
         if !node.is_null() {
             cpp!(unsafe [raw as "QSGNode*", node as "QSGNode*", before_iter as "QSGNode*"] {
                 if (!node->parent()) {
@@ -403,12 +396,12 @@ impl SGNode<TransformNode> {
         let raw = self.raw;
         let sub = unsafe {
             SGNode::<ContainerNode>::from_raw(cpp!([raw as "QSGNode*"]
-                -> *mut c_void as "QSGNode*" {
-            auto n = raw->firstChild();
-            if (n)
-                n->setFlag(QSGNode::OwnedByParent, false); // now we own it;
-            return n;
-        }))
+                    -> *mut c_void as "QSGNode*" {
+                auto n = raw->firstChild();
+                if (n)
+                    n->setFlag(QSGNode::OwnedByParent, false); // now we own it;
+                return n;
+            }))
         };
         let sub = f(sub);
         let node = sub.into_raw();

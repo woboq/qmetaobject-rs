@@ -227,11 +227,7 @@ where
         }
     }
     fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
-        T::names()
-            .iter()
-            .enumerate()
-            .map(|(i, x)| (i as i32 + USER_ROLE, x.clone()))
-            .collect()
+        T::names().iter().enumerate().map(|(i, x)| (i as i32 + USER_ROLE, x.clone())).collect()
     }
 }
 impl<T: SimpleListItem> SimpleListModel<T> {
@@ -260,7 +256,7 @@ impl<T: SimpleListItem> SimpleListModel<T> {
         (self as &mut dyn QAbstractListModel).end_reset_model();
     }
     /// Returns an iterator over the items in the model
-    pub fn iter(&self) -> impl Iterator<Item=&T> {
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.values.iter()
     }
 }

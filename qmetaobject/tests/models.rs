@@ -33,12 +33,8 @@ fn simple_model() {
         pub b: u32,
     }
     // FIXME! why vec! here?
-    let model: qmetaobject::listmodel::SimpleListModel<TM> = (vec![TM {
-        a: "hello".into(),
-        b: 1,
-    }])
-    .into_iter()
-    .collect();
+    let model: qmetaobject::listmodel::SimpleListModel<TM> =
+        (vec![TM { a: "hello".into(), b: 1 }]).into_iter().collect();
     assert!(do_test(
         model,
         "Item {
@@ -119,12 +115,7 @@ fn simple_model_iter() {
         pub val: usize,
     }
 
-    let original_items: Vec<X> = vec![
-        X { val: 10 },
-        X { val: 11 },
-        X { val: 12 },
-        X { val: 13 },
-    ];
+    let original_items: Vec<X> = vec![X { val: 10 }, X { val: 11 }, X { val: 12 }, X { val: 13 }];
 
     let obj = Foo {
         list: RefCell::new(FromIterator::from_iter(original_items.iter())),

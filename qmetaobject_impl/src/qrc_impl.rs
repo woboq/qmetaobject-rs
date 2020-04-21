@@ -38,10 +38,7 @@ impl Parse for Resource {
             files: {
                 let content;
                 braced!(content in input);
-                content
-                    .parse_terminated::<File, Token![,]>(File::parse)?
-                    .into_iter()
-                    .collect()
+                content.parse_terminated::<File, Token![,]>(File::parse)?.into_iter().collect()
             },
         })
     }
@@ -57,11 +54,9 @@ impl Parse for File {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(File {
             file: input.parse::<LitStr>()?.value(),
-            alias: input
-                .parse::<Option<Token![as]>>()?
-                .map_or(Ok(None), |_| -> Result<_> {
-                    Ok(Some(input.parse::<LitStr>()?.value()))
-                })?,
+            alias: input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> {
+                Ok(Some(input.parse::<LitStr>()?.value()))
+            })?,
         })
     }
 }
@@ -90,11 +85,7 @@ fn qt_hash(key: &str) -> u32 {
     let mut h = 0u32;
 
     for p in key.chars() {
-        assert_eq!(
-            p.len_utf16(),
-            1,
-            "Surrogate pair not supported by the hash function"
-        );
+        assert_eq!(p.len_utf16(), 1, "Surrogate pair not supported by the hash function");
         h = (h << 4) + p as u32;
         h ^= (h & 0xf0000000) >> 23;
         h &= 0x0fffffff;
@@ -241,12 +232,7 @@ impl Data {
             .unwrap_or_else(|_| panic!("Cannot open file {}", filepath.display()));
         push_u32_be(&mut self.payload, data.len() as u32);
         self.payload.append(&mut data);
-        self.files.push(
-            filepath
-                .to_str()
-                .expect("File path contains invalid Unicode")
-                .into(),
-        );
+        self.files.push(filepath.to_str().expect("File path contains invalid Unicode").into());
     }
 
     fn insert_directory(&mut self, contents: &BTreeMap<HashedString, TreeNode>) {
@@ -316,12 +302,7 @@ fn generate_data(root: &TreeNode) -> Data {
 }
 
 fn expand_macro(func: &syn::Ident, data: Data) -> TokenStream {
-    let Data {
-        payload,
-        names,
-        tree_data,
-        files,
-    } = data;
+    let Data { payload, names, tree_data, files } = data;
 
     // Workaround performance issue with proc_macro2 and Rust 1.29:
     // quote!(#(#payload),*) uses proc_macro2::TokenStream::extend, which is O(n²) with rust 1.29

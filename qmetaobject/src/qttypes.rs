@@ -86,11 +86,7 @@ impl Display for QByteArray {
             let c_ptr = cpp!([self as "const QByteArray*"] -> *const c_char as "const char*" {
                 return self->constData();
             });
-            f.write_str(
-                std::ffi::CStr::from_ptr(c_ptr)
-                    .to_str()
-                    .map_err(|_| Default::default())?,
-            )
+            f.write_str(std::ffi::CStr::from_ptr(c_ptr).to_str().map_err(|_| Default::default())?)
         }
     }
 }
@@ -246,12 +242,7 @@ impl QTime {
 
     /// Convenience function for obtaining the hour, minute, second and millisecond components.
     pub fn get_h_m_s_ms(&self) -> (i32, i32, i32, i32) {
-        (
-            self.get_hour(),
-            self.get_minute(),
-            self.get_second(),
-            self.get_msec(),
-        )
+        (self.get_hour(), self.get_minute(), self.get_second(), self.get_msec())
     }
 
     /// Wrapper around [`QTime::isValid()`][method] method.
@@ -736,9 +727,11 @@ impl Index<usize> for QVariantList {
     /// [method]: https://doc.qt.io/qt-5/qlist.html#at
     fn index(&self, index: usize) -> &QVariant {
         assert!(index < self.len());
-        unsafe { &*cpp!([self as "QVariantList*", index as "size_t"] -> *const QVariant as "const QVariant*" {
-            return &self->at(index);
-        })}
+        unsafe {
+            &*cpp!([self as "QVariantList*", index as "size_t"] -> *const QVariant as "const QVariant*" {
+                return &self->at(index);
+            })
+        }
     }
 }
 impl IndexMut<usize> for QVariantList {
@@ -747,9 +740,11 @@ impl IndexMut<usize> for QVariantList {
     /// [method]: https://doc.qt.io/qt-5/qlist.html#operator-5b-5d
     fn index_mut(&mut self, index: usize) -> &mut QVariant {
         assert!(index < self.len());
-        unsafe { &mut *cpp!([self as "QVariantList*", index as "size_t"] -> *mut QVariant as "QVariant*" {
-            return &(*self)[index];
-        })}
+        unsafe {
+            &mut *cpp!([self as "QVariantList*", index as "size_t"] -> *mut QVariant as "QVariant*" {
+                return &(*self)[index];
+            })
+        }
     }
 }
 
@@ -779,11 +774,7 @@ impl<'a> IntoIterator for &'a QVariantList {
     type IntoIter = QVariantListIterator<'a>;
 
     fn into_iter(self) -> QVariantListIterator<'a> {
-        QVariantListIterator::<'a> {
-            list: self,
-            index: 0,
-            size: self.len(),
-        }
+        QVariantListIterator::<'a> { list: self, index: 0, size: self.len() }
     }
 }
 
@@ -943,10 +934,7 @@ impl QRectF {
 
     // XXX: shouldn't it be a wrapper for cpp call?
     pub fn top_left(&self) -> QPointF {
-        QPointF {
-            x: self.x,
-            y: self.y,
-        }
+        QPointF { x: self.x, y: self.y }
     }
 }
 
@@ -965,10 +953,7 @@ impl std::ops::Add for QPointF {
     ///
     /// [func]: https://doc.qt.io/qt-5/qpointf.html#operator-2b
     fn add(self, other: QPointF) -> QPointF {
-        QPointF {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
+        QPointF { x: self.x + other.x, y: self.y + other.y }
     }
 }
 impl std::ops::AddAssign for QPointF {
@@ -976,21 +961,13 @@ impl std::ops::AddAssign for QPointF {
     ///
     /// [method]: https://doc.qt.io/qt-5/qpointf.html#operator-2b-eq
     fn add_assign(&mut self, other: QPointF) {
-        *self = QPointF {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        };
+        *self = QPointF { x: self.x + other.x, y: self.y + other.y };
     }
 }
 
 #[test]
 fn test_qpointf_qrectf() {
-    let rect = QRectF {
-        x: 200.,
-        y: 150.,
-        width: 60.,
-        height: 75.,
-    };
+    let rect = QRectF { x: 200., y: 150., width: 60., height: 75. };
     let pt = QPointF { x: 12., y: 5.5 };
     assert!(!rect.contains(pt));
     assert!(rect.contains(pt + rect.top_left()));

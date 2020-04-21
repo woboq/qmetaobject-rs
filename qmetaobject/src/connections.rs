@@ -110,10 +110,7 @@ pub struct CppSignal<Args> {
 }
 impl<Args> CppSignal<Args> {
     pub unsafe fn new(inner: SignalCppRepresentation) -> Self {
-        CppSignal {
-            inner,
-            phantom: Default::default(),
-        }
+        CppSignal { inner, phantom: Default::default() }
     }
 }
 impl<Args> Clone for CppSignal<Args> {
@@ -134,10 +131,7 @@ pub struct RustSignal<Args> {
 }
 impl<Args> Default for RustSignal<Args> {
     fn default() -> Self {
-        RustSignal {
-            phantom: Default::default(),
-            _u: false,
-        }
+        RustSignal { phantom: Default::default(), _u: false }
     }
 }
 impl<Args> RustSignal<Args> {
@@ -159,10 +153,7 @@ impl<Args> RustSignal<Args> {
                 return u;
             })
         };
-        CppSignal {
-            inner,
-            phantom: Default::default(),
-        }
+        CppSignal { inner, phantom: Default::default() }
     }
 }
 

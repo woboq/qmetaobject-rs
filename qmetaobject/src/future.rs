@@ -111,17 +111,9 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
     signal: crate::connections::CppSignal<Args>,
 ) -> impl Future<Output = <Args as SignalArgArrayToTuple>::Tuple> {
     enum ConnectionFutureState<Args: SignalArgArrayToTuple> {
-        Init {
-            sender: *const c_void,
-            signal: crate::connections::CppSignal<Args>,
-        },
-        Started {
-            handle: crate::connections::ConnectionHandle,
-            waker: std::task::Waker,
-        },
-        Finished {
-            result: <Args as SignalArgArrayToTuple>::Tuple,
-        },
+        Init { sender: *const c_void, signal: crate::connections::CppSignal<Args> },
+        Started { handle: crate::connections::ConnectionHandle, waker: std::task::Waker },
+        Finished { result: <Args as SignalArgArrayToTuple>::Tuple },
         Invalid,
     }
     impl<Args: SignalArgArrayToTuple> std::marker::Unpin for ConnectionFutureState<Args> {}
@@ -148,10 +140,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
                     let s_ptr = state as *mut ConnectionFutureState<_>;
                     let handle = unsafe { crate::connections::connect(sender, signal, s_ptr) };
                     debug_assert!(handle.is_valid());
-                    ConnectionFutureState::Started {
-                        handle,
-                        waker: ctx.waker().clone(),
-                    }
+                    ConnectionFutureState::Started { handle, waker: ctx.waker().clone() }
                 }
                 s @ ConnectionFutureState::Started { .. } => s,
                 ConnectionFutureState::Invalid => unreachable!(),
@@ -166,9 +155,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
         unsafe fn apply(&mut self, a: *const *const c_void) {
             if let ConnectionFutureState::Started { mut handle, waker } = std::mem::replace(
                 &mut **self,
-                ConnectionFutureState::Finished {
-                    result: Args::args_array_to_tuple(a),
-                },
+                ConnectionFutureState::Finished { result: Args::args_array_to_tuple(a) },
             ) {
                 handle.disconnect();
                 waker.wake();
