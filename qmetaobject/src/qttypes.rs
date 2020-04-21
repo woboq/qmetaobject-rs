@@ -51,10 +51,9 @@ impl<'a> From<&'a [u8]> for QByteArray {
     fn from(s: &'a [u8]) -> QByteArray {
         let len = s.len();
         let ptr = s.as_ptr();
-        unsafe {
-            cpp!([len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray"
-        { return QByteArray(ptr, len); })
-        }
+        cpp!(unsafe [len as "size_t", ptr as "char*"] -> QByteArray as "QByteArray" {
+            return QByteArray(ptr, len);
+        })
     }
 }
 impl<'a> From<&'a str> for QByteArray {
@@ -73,10 +72,9 @@ impl From<String> for QByteArray {
 impl From<QString> for QByteArray {
     /// Converts a QString to a QByteArray
     fn from(s: QString) -> QByteArray {
-        unsafe {
-            cpp!([s as "QString"] -> QByteArray as "QByteArray"
-            { return std::move(s).toUtf8(); })
-        }
+        cpp!(unsafe [s as "QString"] -> QByteArray as "QByteArray" {
+            return std::move(s).toUtf8();
+        })
     }
 }
 impl Display for QByteArray {
@@ -407,21 +405,17 @@ impl QUrl {
     /// Returns a valid URL from a user supplied qstring if one can be deducted.
     /// In the case that is not possible, an invalid QUrl is returned.
     /// 
-    /// Refer to the documentation for QUrl::fromUserInput.
-    pub fn from_user_input(qstring: QString) -> QUrl {
-        unsafe {
-            cpp!([qstring as "QString"] -> QUrl as "QUrl" {
-                return QUrl::fromUserInput(qstring);
-            })
-        }
+    pub fn from_user_input(user_input: QString) -> QUrl {
+        cpp!(unsafe [user_input as "QString"] -> QUrl as "QUrl" {
+            return QUrl::fromUserInput(user_input);
+        })
     }
 }
-
 impl From<QString> for QUrl {
     fn from(qstring: QString) -> QUrl {
-        unsafe { cpp!([qstring as "QString"] -> QUrl as "QUrl" {
+        cpp!(unsafe [qstring as "QString"] -> QUrl as "QUrl" {
             return QUrl(qstring);
-        })}
+        })
     }
 }
 
@@ -444,9 +438,9 @@ impl QString {
 }
 impl From<QUrl> for QString {
     fn from(qurl: QUrl) -> QString {
-        unsafe { cpp!([qurl as "QUrl"] -> QString as "QString" {
+        cpp!(unsafe [qurl as "QUrl"] -> QString as "QString" {
             return qurl.toString();
-        })}
+        })
     }
 }
 impl<'a> From<&'a str> for QString {
@@ -454,8 +448,9 @@ impl<'a> From<&'a str> for QString {
     fn from(s: &'a str) -> QString {
         let len = s.len();
         let ptr = s.as_ptr();
-        unsafe { cpp!([len as "size_t", ptr as "char*"] -> QString as "QString"
-        { return QString::fromUtf8(ptr, len); })}
+        cpp!(unsafe [len as "size_t", ptr as "char*"] -> QString as "QString" {
+            return QString::fromUtf8(ptr, len);
+        })
     }
 }
 impl From<String> for QString {
@@ -483,76 +478,101 @@ cpp_class!(
 #[derive(PartialEq)] pub unsafe struct QVariant as "QVariant");
 impl QVariant {
     pub fn to_qbytearray(&self) -> QByteArray {
-        // FIXME
-        unsafe {
-            cpp!([self as "const QVariant*"] -> QByteArray as "QByteArray" { return self->toByteArray(); })
-        }
+        cpp!(unsafe [self as "const QVariant*"] -> QByteArray as "QByteArray" {
+            return self->toByteArray();
+        })
     }
 
     pub fn to_bool(&self) -> bool {
-        unsafe { cpp!([self as "const QVariant*"] -> bool as "bool" { return self->toBool(); }) }
+        cpp!(unsafe [self as "const QVariant*"] -> bool as "bool" {
+            return self->toBool();
+        })
     }
+
+    // FIXME: do more wrappers
 }
 impl From<QString> for QVariant {
     fn from(a: QString) -> QVariant {
-        unsafe { cpp!([a as "QString"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "QString"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<QByteArray> for QVariant {
     fn from(a: QByteArray) -> QVariant {
-        unsafe { cpp!([a as "QByteArray"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "QByteArray"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<QDate> for QVariant {
     fn from(a: QDate) -> QVariant {
-        unsafe { cpp!([a as "QDate"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "QDate"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<QTime> for QVariant {
     fn from(a: QTime) -> QVariant {
-        unsafe { cpp!([a as "QTime"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "QTime"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<QDateTime> for QVariant {
     fn from(a: QDateTime) -> QVariant {
-        unsafe { cpp!([a as "QDateTime"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "QDateTime"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
-
 impl From<QUrl> for QVariant {
     fn from(a: QUrl) -> QVariant {
-        unsafe { cpp!([a as "QUrl"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "QUrl"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
-
 impl From<QVariantList> for QVariant {
     fn from(a: QVariantList) -> QVariant {
-        unsafe { cpp!([a as "QVariantList"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "QVariantList"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<i32> for QVariant {
     fn from(a: i32) -> QVariant {
-        unsafe { cpp!([a as "int"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "int"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<u32> for QVariant {
     fn from(a: u32) -> QVariant {
-        unsafe { cpp!([a as "uint"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "uint"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<f32> for QVariant {
     fn from(a: f32) -> QVariant {
-        unsafe { cpp!([a as "float"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "float"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<f64> for QVariant {
     fn from(a: f64) -> QVariant {
-        unsafe { cpp!([a as "double"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "double"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl From<bool> for QVariant {
     fn from(a: bool) -> QVariant {
-        unsafe { cpp!([a as "bool"] -> QVariant as "QVariant" { return QVariant(a); }) }
+        cpp!(unsafe [a as "bool"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
     }
 }
 impl<'a, T> From<&'a T> for QVariant
@@ -569,24 +589,24 @@ cpp_class!(
 pub unsafe struct QVariantList as "QVariantList");
 impl QVariantList {
     pub fn push(&mut self, value: QVariant) {
-        cpp!(unsafe [self as "QVariantList*", value as "QVariant"]
-            { self->append(std::move(value)); }
-        )
+        cpp!(unsafe [self as "QVariantList*", value as "QVariant"] {
+            self->append(std::move(value));
+        })
     }
     pub fn insert(&mut self, index: usize, element: QVariant) {
-        cpp!(unsafe [self as "QVariantList*", index as "size_t", element as "QVariant"]
-            { self->insert(index, std::move(element)); }
-        )
+        cpp!(unsafe [self as "QVariantList*", index as "size_t", element as "QVariant"] {
+            self->insert(index, std::move(element));
+        })
     }
     pub fn remove(&mut self, index: usize) -> QVariant {
-        cpp!(unsafe [self as "QVariantList*", index as "size_t"] -> QVariant as "QVariant"
-            { return self->takeAt(index); }
-        )
+        cpp!(unsafe [self as "QVariantList*", index as "size_t"] -> QVariant as "QVariant" {
+            return self->takeAt(index);
+        })
     }
     pub fn len(&self) -> usize {
-        unsafe {cpp!([self as "QVariantList*"] -> usize as "size_t"
-            { return self->size(); }
-        )}
+        cpp!(unsafe [self as "QVariantList*"] -> usize as "size_t" {
+            return self->size();
+        })
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -597,17 +617,17 @@ impl Index<usize> for QVariantList {
     type Output = QVariant;
     fn index(&self, index: usize) -> &QVariant {
         assert!(index < self.len());
-        unsafe { &*cpp!([self as "QVariantList*", index as "size_t"] -> *const QVariant as "const QVariant*"
-            { return &self->at(index); }
-        )}
+        unsafe { &*cpp!([self as "QVariantList*", index as "size_t"] -> *const QVariant as "const QVariant*" {
+            return &self->at(index);
+        })}
     }
 }
 impl IndexMut<usize> for QVariantList {
     fn index_mut(&mut self, index: usize) -> &mut QVariant {
         assert!(index < self.len());
-        unsafe { &mut *cpp!([self as "QVariantList*", index as "size_t"] -> *mut QVariant as "QVariant*"
-            { return &(*self)[index]; }
-        )}
+        unsafe { &mut *cpp!([self as "QVariantList*", index as "size_t"] -> *mut QVariant as "QVariant*" {
+            return &(*self)[index];
+        })}
     }
 }
 
@@ -734,18 +754,16 @@ cpp_class!(
 impl QModelIndex {
     /// Return the QModelIndex::internalId
     pub fn id(&self) -> usize {
-        unsafe {
-            cpp!([self as "const QModelIndex*"] -> usize as "uintptr_t" { return self->internalId(); })
-        }
+        cpp!(unsafe [self as "const QModelIndex*"] -> usize as "uintptr_t" { return self->internalId(); })
     }
     pub fn column(&self) -> i32 {
-        unsafe { cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->column(); }) }
+        cpp!(unsafe [self as "const QModelIndex*"] -> i32 as "int" { return self->column(); })
     }
     pub fn row(&self) -> i32 {
-        unsafe { cpp!([self as "const QModelIndex*"] -> i32 as "int" { return self->row(); }) }
+        cpp!(unsafe [self as "const QModelIndex*"] -> i32 as "int" { return self->row(); })
     }
     pub fn is_valid(&self) -> bool {
-        unsafe { cpp!([self as "const QModelIndex*"] -> bool as "bool" { return self->isValid(); }) }
+        cpp!(unsafe [self as "const QModelIndex*"] -> bool as "bool" { return self->isValid(); })
     }
 }
 
