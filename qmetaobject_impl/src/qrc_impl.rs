@@ -147,7 +147,7 @@ impl TreeNode {
         };
 
         if rel_path == "" {
-            // insert into iteself
+            // insert into itself
             contents.extend(match node {
                 TreeNode::Directory(contents, _) => contents,
                 _ => panic!("merge file and directory?"),

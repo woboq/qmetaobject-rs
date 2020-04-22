@@ -849,7 +849,7 @@ mod tests {
         let qstring = QString::from_qvariant(v.clone()).unwrap();
         let mut s = qstring.to_string();
         if s.ends_with(".100") {
-            // Old version of qt did not include the miliseconds, so remove it
+            // Old version of qt did not include the milliseconds, so remove it
             s.truncate(s.len() - 4);
         }
         assert_eq!(s, "2019-10-23T10:30:40");
