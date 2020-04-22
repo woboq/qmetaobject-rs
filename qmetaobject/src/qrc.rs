@@ -57,7 +57,9 @@ Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
 ///     └── main.rs
 /// ```
 /// then the following Rust code:
-/// ```no_run
+/// ```
+/// # #[macro_use] extern crate qmetaobject;
+/// # // For maintainers: this is actually tested against read files.
 /// qrc!(my_resource,
 ///     "foo" {
 ///         "main.qml",
