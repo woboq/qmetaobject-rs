@@ -21,34 +21,67 @@ Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
                                          const unsigned char *, const unsigned char *);
 }}
 
-/// Macro to embed files and made them available to the Qt resource system
+/// Embed files and made them available to the Qt resource system.
 ///
-/// ```ignore
-/// qrc!(my_resource,
-///     "qml" {
-///         "main.qml",
-///         "Foo.qml" as "foo/Foo.qml",
-///      }
-/// );
+/// The macro accepts an identifier with optional preceding visibility modifier,
+/// and a comma-separated list of resources. Then macro generates a function
+/// with given name and visibility, which can be used to register all the
+/// resources.
 ///
-/// //...
-/// my_resource(); // registers the resource to Qt
-/// ```
+/// # Input
 ///
-/// corresponds to the .qrc file:
-/// ```ignore
-///    <RCC>
-///        <qresource prefix="/qml">
-///            <file>main.qml</file>
-///            <file alias="foo/Foo.qml">Foo.qml</file>
-///        </qresource>
-///    </RCC>
-/// ```
+/// The macro accepts an identifier with optional preceding visibility modifier
+/// and a comma-separated list of _resources_. Each _resource_ consists of a prefix
+/// path and a braced list of comma-separated _files_. Each _file_ is specified as
+/// a path with optional alias path after `as` keyword.
 ///
 /// The paths are relative to the location in which cargo runs.
 ///
-/// The macro creates a function that needs to be run in order to register the
-/// resource. Calling the function more than once has no effect.
+/// It does not matter if the prefix has leading '/' or not.
+///
+/// # Output
+///
+/// The macro creates a function with given name and visibility modifier,
+/// that needs to be run in order to register the resource. Calling the
+/// function more than once has no effect.
+///
+/// # Example
+///
+/// Consider this project files structure:
+/// ```text
+/// .
+/// ├── Cargo.toml
+/// ├── main.qml
+/// ├── Bar.qml
+/// └── src
+///     └── main.rs
+/// ```
+/// then the following Rust code:
+/// ```no_run
+/// qrc!(my_resource,
+///     "foo" {
+///         "main.qml",
+///         "Bar.qml" as "baz/Foo.qml",
+///      }
+/// );
+///
+/// # fn use_resource(_r: &str) {}
+/// # fn main() {
+/// // registers the resource to Qt
+/// my_resource();
+/// // do something with resources
+/// use_resource("qrc:/foo/baz/Foo.qml");
+/// # }
+/// ```
+/// corresponds to the .qrc file:
+/// ```xml
+/// <RCC>
+///     <qresource prefix="/qml">
+///         <file>main.qml</file>
+///         <file alias="foo/Foo.qml">Foo.qml</file>
+///     </qresource>
+/// </RCC>
+/// ```
 #[macro_export]
 macro_rules! qrc {
     // Due to a bug in Rust compiler, empty visibility modifier passed to proc macro breaks parsing
