@@ -50,10 +50,20 @@ Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
 /// The macro creates a function that needs to be run in order to register the
 /// resource. Calling the function more than once has no effect.
 #[macro_export]
-macro_rules! qrc { // This is just a forwarding marco so it is documented
-    ($fn_name:ident, $($tokens:tt)* ) => {
-        qrc_internal!($fn_name, $($tokens)*);
-    }
+macro_rules! qrc {
+    // Due to a bug in Rust compiler, empty visibility modifier passed to proc macro breaks parsing
+    // by syn, so until [this][issue-rust] is fixed in minimal stable Rust or [this][issue-syn]
+    // is fixed in sym dependency, macro rules have to be expressed as mostly duplicated arms with
+    // and without :vis meta-variable, 'without' goes first.
+    //
+    // [issue-rust]: https://github.com/rust-lang/rust/issues/71422
+    // [issue-syn]: https://github.com/dtolnay/syn/issues/783
+    ($fn_name:ident, $($resources:tt)*) => {
+        qrc_internal!($fn_name, $($resources)*);
+    };
+    ($visibility:vis $fn_name:ident, $($resources:tt)*) => {
+        qrc_internal!($visibility $fn_name, $($resources)*);
+    };
 }
 
 /// Internal function used from qrc procedural macro.
