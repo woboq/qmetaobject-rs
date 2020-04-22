@@ -16,14 +16,14 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 use proc_macro::TokenStream;
-
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::iter::FromIterator;
 use std::path::PathBuf;
+
+use syn::{Ident, LitStr, Token, Visibility};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::LitStr;
 
 #[derive(Debug)]
 struct Resource {
@@ -33,13 +33,15 @@ struct Resource {
 
 impl Parse for Resource {
     fn parse(input: ParseStream) -> Result<Self> {
+        let prefix = input.parse::<LitStr>()?.value();
+        let files = {
+            let content;
+            braced!(content in input);
+            content.parse_terminated::<File, Token![,]>(File::parse)?.into_iter().collect()
+        };
         Ok(Resource {
-            prefix: input.parse::<LitStr>()?.value(),
-            files: {
-                let content;
-                braced!(content in input);
-                content.parse_terminated::<File, Token![,]>(File::parse)?.into_iter().collect()
-            },
+            prefix,
+            files,
         })
     }
 }
@@ -52,11 +54,13 @@ struct File {
 
 impl Parse for File {
     fn parse(input: ParseStream) -> Result<Self> {
+        let file = input.parse::<LitStr>()?.value();
+        let alias = input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> {
+            Ok(Some(input.parse::<LitStr>()?.value()))
+        })?;
         Ok(File {
-            file: input.parse::<LitStr>()?.value(),
-            alias: input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> {
-                Ok(Some(input.parse::<LitStr>()?.value()))
-            })?,
+            file,
+            alias,
         })
     }
 }
@@ -68,15 +72,16 @@ struct QrcMacro {
 
 impl Parse for QrcMacro {
     fn parse(input: ParseStream) -> Result<Self> {
+        let func = input.parse()?;
+        input.parse::<Option<Token![,]>>()?;
+        // Rest of tokens are `Resource`s separated by comma
+        let data = input
+            .parse_terminated::<Resource, Token![,]>(Resource::parse)?
+            .into_iter()
+            .collect();
         Ok(QrcMacro {
-            func: input.parse()?,
-            data: {
-                input.parse::<Option<Token![,]>>()?;
-                input
-                    .parse_terminated::<Resource, Token![,]>(Resource::parse)?
-                    .into_iter()
-                    .collect()
-            },
+            func,
+            data,
         })
     }
 }
