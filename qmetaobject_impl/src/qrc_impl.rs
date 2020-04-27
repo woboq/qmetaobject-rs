@@ -43,15 +43,31 @@ impl Parse for TargetFunc {
     }
 }
 
+/// Parse string literal entity with optional string alias.
+/// Valid syntax examples are:
+/// ```txt
+/// "foo"
+/// "bar" as "baz"
+/// ```
+fn entity_with_alias(input: &ParseStream) -> Result<(String, Option<String>)> {
+    let prefix = input.parse::<LitStr>()?.value();
+    let alias = input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> {
+        Ok(Some(input.parse::<LitStr>()?.value()))
+    })?;
+    Ok((prefix, alias))
+}
+
 #[derive(Debug)]
 struct Resource {
     prefix: String,
+    /// File paths in this resource are relative to this base directory.
+    base_dir: Option<String>,
     files: Vec<File>,
 }
 
 impl Parse for Resource {
     fn parse(input: ParseStream) -> Result<Self> {
-        let prefix = input.parse::<LitStr>()?.value();
+        let (prefix, base_dir) = entity_with_alias(&input)?;
         let files = {
             let content;
             braced!(content in input);
@@ -59,6 +75,7 @@ impl Parse for Resource {
         };
         Ok(Resource {
             prefix,
+            base_dir,
             files,
         })
     }
@@ -72,10 +89,7 @@ struct File {
 
 impl Parse for File {
     fn parse(input: ParseStream) -> Result<Self> {
-        let file = input.parse::<LitStr>()?.value();
-        let alias = input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> {
-            Ok(Some(input.parse::<LitStr>()?.value()))
-        })?;
+        let (file, alias) = entity_with_alias(&input)?;
         Ok(File {
             file,
             alias,
@@ -212,9 +226,16 @@ fn build_tree(resources: Vec<Resource>) -> TreeNode {
     for r in resources {
         let mut node = TreeNode::new_dir();
         for f in r.files {
+            // TODO: this is responsibility of Resource to provide resolved paths
+            let mut real = f.alias.as_ref().unwrap_or(&f.file).clone();
+            let mut virt = f.file.clone();
+            if let Some(base_dir) = r.base_dir.as_ref() {
+                real = format!("{}/{}", base_dir, real);
+                virt = format!("{}/{}", base_dir, virt);
+            }
             node.insert_node(
-                f.alias.as_ref().unwrap_or(&f.file),
-                TreeNode::new_file(f.file.clone()),
+                &real,
+                TreeNode::new_file(virt),
             );
         }
         root.insert_node(&simplify_prefix(r.prefix), node);

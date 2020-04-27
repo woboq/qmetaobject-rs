@@ -890,12 +890,24 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 ///
 /// # Input
 ///
-/// The macro accepts an identifier with optional preceding visibility modifier
-/// and a comma-separated list of _resources_. Each _resource_ consists of a prefix
-/// path and a braced list of comma-separated _files_. Each _file_ is specified as
-/// a path with optional alias path after `as` keyword.
+/// The macro accepts:
+///  - an identifier with optional preceding visibility modifier
+///  - and a comma-separated list of _resources_.
 ///
-/// The paths are relative to the location in which cargo runs.
+/// Each _resource_ consists of a
+///  - prefix path (corresponds to qrc format)
+///  - optional base directory path after an `as` keyword
+///    (custom extention which does not interfere with qrc format,
+///    but merely act as if `cd path/to/dir` was invoked before processing
+///    the resource)
+///  - and a braced list of comma-separated _files_.
+///
+/// Each _file_ is specified as
+///  - a path to the file (corresponds to qrc format)
+///  - with an optional alias path after an `as` keyword (corresponds to qrc format).
+///
+/// The file paths are relative to the directory in which cargo runs plus the
+/// optional base directory path of a particular resource.
 ///
 /// It does not matter if the prefix has leading '/' or not.
 ///
@@ -911,17 +923,20 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 /// ```text
 /// .
 /// ├── Cargo.toml
-/// ├── main.qml
-/// ├── Bar.qml
+/// └── tests/qml
+/// │   ├── qml.qrc
+/// │   ├── main.qml
+/// │   └── Bar.qml
 /// └── src
 ///     └── main.rs
 /// ```
 /// then the following Rust code:
 /// ```
-/// # #[macro_use] extern crate qmetaobject;
-/// # // For maintainers: this is actually tested against read files.
+/// # extern crate qmetaobject;
+/// # use qmetaobject::qrc;
 /// qrc!(my_resource,
-///     "foo" {
+/// # // For maintainers: this is actually tested against read files.
+///     "foo" as "tests/qml" {
 ///         "main.qml",
 ///         "Bar.qml" as "baz/Foo.qml",
 ///      }
@@ -935,7 +950,7 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 /// use_resource("qrc:/foo/baz/Foo.qml");
 /// # }
 /// ```
-/// corresponds to the .qrc file:
+/// corresponds to the .qrc (`tests/qml/qml.qrc`) file:
 /// ```xml
 /// <RCC>
 ///     <qresource prefix="/foo">
