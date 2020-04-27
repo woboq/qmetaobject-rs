@@ -881,6 +881,72 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
     cpp!(unsafe [logger as "QtMessageHandler"] { qInstallMessageHandler(logger); })
 }
 
+/// Embed files and made them available to the Qt resource system.
+///
+/// The macro accepts an identifier with optional preceding visibility modifier,
+/// and a comma-separated list of resources. Then macro generates a function
+/// with given name and visibility, which can be used to register all the
+/// resources.
+///
+/// # Input
+///
+/// The macro accepts an identifier with optional preceding visibility modifier
+/// and a comma-separated list of _resources_. Each _resource_ consists of a prefix
+/// path and a braced list of comma-separated _files_. Each _file_ is specified as
+/// a path with optional alias path after `as` keyword.
+///
+/// The paths are relative to the location in which cargo runs.
+///
+/// It does not matter if the prefix has leading '/' or not.
+///
+/// # Output
+///
+/// The macro creates a function with given name and visibility modifier,
+/// that needs to be run in order to register the resource. Calling the
+/// function more than once has no effect.
+///
+/// # Example
+///
+/// Consider this project files structure:
+/// ```text
+/// .
+/// ├── Cargo.toml
+/// ├── main.qml
+/// ├── Bar.qml
+/// └── src
+///     └── main.rs
+/// ```
+/// then the following Rust code:
+/// ```
+/// # #[macro_use] extern crate qmetaobject;
+/// # // For maintainers: this is actually tested against read files.
+/// qrc!(my_resource,
+///     "foo" {
+///         "main.qml",
+///         "Bar.qml" as "baz/Foo.qml",
+///      }
+/// );
+///
+/// # fn use_resource(_r: &str) {}
+/// # fn main() {
+/// // registers the resource to Qt
+/// my_resource();
+/// // do something with resources
+/// use_resource("qrc:/foo/baz/Foo.qml");
+/// # }
+/// ```
+/// corresponds to the .qrc file:
+/// ```xml
+/// <RCC>
+///     <qresource prefix="/foo">
+///         <file>main.qml</file>
+///         <file alias="baz/Foo.qml">Bar.qml</file>
+///     </qresource>
+/// </RCC>
+/// ```
+pub use qmetaobject_impl::qrc_internal as qrc;
+// XXX: The line above re-exports the macro with proper documentation and doctests.
+
 pub mod itemmodel;
 pub use itemmodel::*;
 pub mod listmodel;
@@ -889,7 +955,6 @@ pub mod qtdeclarative;
 pub use qtdeclarative::*;
 pub mod qmetatype;
 pub use qmetatype::*;
-#[macro_use]
 pub mod qrc;
 pub mod connections;
 pub use connections::RustSignal;
