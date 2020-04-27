@@ -318,7 +318,6 @@ impl Data {
             assert_eq!(p.len_utf16(), 1, "Surrogate pair not supported");
             push_u16_be(&mut self.names, p as u16);
         }
-        //println!("NAME {} -> {}", offset, name.string);
         offset as u32
     }
 }
@@ -368,7 +367,6 @@ fn expand_macro(func: TargetFunc, data: Data) -> TokenStream {
             });
         }
     };
-    //println!("{}", q.to_string());
     q.into()
 }
 

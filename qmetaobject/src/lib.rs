@@ -168,9 +168,6 @@ pub use lazy_static::*;
 #[macro_export]
 macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 
-//#[macro_use]
-//extern crate bitflags;
-
 use std::cell::RefCell;
 use std::os::raw::{c_char, c_void};
 
