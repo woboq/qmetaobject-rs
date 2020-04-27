@@ -1,5 +1,5 @@
-This example is showing that you can use plugins with qml builder.
-It is base on the `qmlextensionplugins` example found in the qtdeclarative
+This example shows how you can use plugins with qml builder.
+It is based on the `qmlextensionplugins` example found in the qtdeclarative
 source code. It needs the QML files from that example in the Qt source tree.
 
 Build with:

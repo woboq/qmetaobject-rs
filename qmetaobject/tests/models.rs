@@ -32,23 +32,25 @@ fn simple_model() {
         pub a: QString,
         pub b: u32,
     }
-    // FIXME! why vec! here?
     let model: qmetaobject::listmodel::SimpleListModel<TM> =
-        (vec![TM { a: "hello".into(), b: 1 }]).into_iter().collect();
+        std::iter::once(TM { a: "hello".into(), b: 42 }).collect();
     assert!(do_test(
         model,
-        "Item {
-            Repeater{
+        "
+        Item {
+            Repeater {
                 id: rep;
-                model:_obj;
+                model: _obj
                 Text {
-                    text: a + b;
+                    text: a + b
                 }
             }
             function doTest() {
                 console.log('simple_model:', rep.count, rep.itemAt(0).text);
-                return rep.count === 1 && rep.itemAt(0).text === 'hello1';
-            }}"
+                return rep.count === 1 && rep.itemAt(0).text === 'hello42';
+            }
+        }
+        "
     ));
 }
 
@@ -86,19 +88,25 @@ fn simple_model_remove() {
 
     assert!(do_test(
         obj,
-        "Item {
+        "
+        Item {
             Repeater{
-                id: rep;
-                model:_obj.list;
+                id: rep
+                model: _obj.list
                 Text {
-                    text: val;
+                    text: val
                 }
             }
             function doTest() {
                 _obj.remove(1);
                 console.log('simple_model_remove', rep.count, rep.itemAt(0).text, rep.itemAt(1).text, rep.itemAt(2).text);
-                return rep.count === 3 && rep.itemAt(0).text === '10' && rep.itemAt(1).text === '12'  && rep.itemAt(2).text === '13';
-            }}"
+                return rep.count === 3
+                    && rep.itemAt(0).text === '10'
+                    && rep.itemAt(1).text === '12'
+                    && rep.itemAt(2).text === '13';
+            }
+        }
+        "
     ));
 }
 

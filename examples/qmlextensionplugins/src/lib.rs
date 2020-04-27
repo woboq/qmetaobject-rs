@@ -46,7 +46,7 @@ impl TimeModel {
                 if *lock {
                     break;
                 }
-                // We just wait on the condition variable for 1 second to similate a one second timer
+                // We just wait on the condition variable for 1 second to simulate a one second timer
                 let lock = arc2
                     .abort_condvar
                     .wait_timeout(lock, std::time::Duration::from_millis(1000))

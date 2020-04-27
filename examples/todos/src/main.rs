@@ -7,7 +7,6 @@ mod implementation;
 
 qrc!(my_resource,
     "todos/qml" {
-      //  "../main.qml" as "main.qml",
         "main.qml",
     },
 );

@@ -123,29 +123,38 @@ fn call_method() {
     let obj = MyObject::default();
     assert!(do_test(
         obj,
-        "Item {
-        function doTest() {
-            return _obj.concatenate_strings('abc', 'def', 'hij') == 'abcdefhij';
-        }}"
+        r"
+        Item {
+            function doTest() {
+                return _obj.concatenate_strings('abc', 'def', 'hij') == 'abcdefhij';
+            }
+        }
+        "
     ));
 
     let obj = MyObject::default();
     assert!(do_test(
         obj,
-        "Item {
-        function doTest() {
-            return _obj.concatenate_strings(123, 456, 789) == '123456789';
-        }}"
+        r"
+        Item {
+            function doTest() {
+                return _obj.concatenate_strings(123, 456, 789) == '123456789';
+            }
+        }
+        "
     ));
 
     let obj = MyObject::default();
     assert!(do_test(
         obj,
-        "Item {
-        function doTest() {
-            _obj.prop_y = '8887'
-            return _obj.method_out_of_line('hello') == '8887hello';
-        }}"
+        r"
+        Item {
+            function doTest() {
+                _obj.prop_y = '8887';
+                return _obj.method_out_of_line('hello') == '8887hello';
+            }
+        }
+        "
     ));
 }
 
@@ -168,16 +177,19 @@ fn register_type() {
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(
         obj,
-        "import TestRegister 1.0;
+        r"
+        import TestRegister 1.0
+
         Item {
             RegisteredObj {
-                id: test;
-                value: 55;
+                id: test
+                value: 55
             }
             function doTest() {
-                return test.square(66) === 55*66;
+                return test.square(66) === 55 * 66;
             }
-        }"
+        }
+        "
     ));
 }
 
@@ -204,12 +216,15 @@ fn register_singleton_instance() {
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(
         obj,
-        "import TestRegister 1.0;
+        r"
+        import TestRegister 1.0;
+
         Item {
             function doTest() {
                 return RegisterSingletonInstanceObj.get_value() === 123;
             }
-        }"
+        }
+        "
     ));
 }
 
@@ -238,12 +253,15 @@ fn register_singleton_type() {
     let obj = MyObject::default(); // not used but needed for do_test
     assert!(do_test(
         obj,
-        "import TestRegister 1.0;
+        r"
+        import TestRegister 1.0;
+
         Item {
             function doTest() {
                 return RegisterSingletonTypeObj.get_value2() === 456;
             }
-        }"
+        }
+        "
     ));
 }
 
@@ -264,10 +282,15 @@ fn simple_gadget() {
 
     assert!(do_test_variant(
         my_gadget.to_qvariant(),
-        "Item { function doTest() {
-        return _obj.strValue == 'plop' && _obj.numValue == 33
-            && _obj.concat(':') == 'plop:33';
-    }}"
+        r"
+        Item {
+            function doTest() {
+                return _obj.strValue == 'plop'
+                    && _obj.numValue == 33
+                    && _obj.concat(':') == 'plop:33';
+            }
+        }
+        "
     ));
 }
 
@@ -285,20 +308,23 @@ fn qobject_properties() {
     my_obj.prop_object.borrow_mut().prop_x = 56;
     assert!(do_test(
         my_obj,
-        "Item {
-        property int yo: _obj.prop_object.prop_x;
-        function doTest() {
-            if (yo !== 56) {
-                console.log('ERROR #1: 56 != ' +  yo)
-                return false;
+        r"
+        Item {
+            property int yo: _obj.prop_object.prop_x;
+            function doTest() {
+                if (yo !== 56) {
+                    console.log('ERROR #1: 56 != ' +  yo);
+                    return false;
+                }
+                _obj.prop_object.prop_x = 4545;
+                if (yo !== 4545) {
+                    console.log('ERROR #2: 4545 != ' +  yo);
+                    return false;
+                }
+                return _obj.subx() === 4545;
             }
-            _obj.prop_object.prop_x = 4545;
-            if (yo !== 4545) {
-                console.log('ERROR #2: 4545 != ' +  yo)
-                return false;
-            }
-            return _obj.subx() === 4545;
-        }}"
+        }
+        "
     ));
 }
 
@@ -325,23 +351,27 @@ fn qpointer_properties() {
     );
     assert!(do_test(
         my_obj,
-        "import SomeObjectLib 1.0
+        "
+        import SomeObjectLib 1.0
+
         Item {
-        SomeObject { id: some }
-        function doTest() {
-            if(_obj.prop != null) {
-                return false
+            SomeObject { id: some }
+            function doTest() {
+                if(_obj.prop !== null) {
+                    return false;
+                }
+                _obj.prop = some;
+                if(_obj.prop !== some) {
+                    return false;
+                }
+                _obj.prop = null;
+                if(_obj.prop !== null) {
+                    return false;
+                }
+                return true;
             }
-            _obj.prop = some
-            if(_obj.prop != some) {
-                return false
-            }
-            _obj.prop = null
-            if(_obj.prop != null) {
-                return false
-            }
-            return true
-        }}"
+        }
+        "
     ));
 }
 
@@ -354,11 +384,14 @@ fn qpointer_properties_incompatible() {
         CStr::from_bytes_with_nul(b"ObjectWithSome\0").unwrap(),
     );
     assert!(test_loading_logs(
-        "import SomeObjectLib 1.0
+        "
+        import SomeObjectLib 1.0
+
         Item {
-        Text { id: some }
-        ObjectWithSome { prop: some }
-        }",
+            Text { id: some }
+            ObjectWithSome { prop: some }
+        }
+        ",
         "Unable to assign QQuickText to SomeObject"
     ));
 }
@@ -411,11 +444,14 @@ fn getter() {
     let my_obj = ObjectWithGetter::default();
     assert!(do_test(
         my_obj,
-        "Item {
-        function doTest() {
-            return _obj.prop_x === 85 && _obj.prop_y == 'foo'
+        "
+        Item {
+            function doTest() {
+                return _obj.prop_x === 85
+                    && _obj.prop_y == 'foo';
+            }
         }
-    }"
+        "
     ));
 }
 
@@ -447,34 +483,34 @@ fn setter() {
     let my_obj = ObjectWithGetter::default();
     assert!(do_test(
         my_obj,
-        "Item {
-        property var test: '' + _obj.prop_x + _obj.prop_y;
-        function doTest() {
-            if (test != '0') {
-                console.log('FAILURE #1', test);
-                return false;
+        "
+        Item {
+            property var test: '' + _obj.prop_x + _obj.prop_y;
+            function doTest() {
+                if (test !== '0') {
+                    console.log('FAILURE #1', test);
+                    return false;
+                }
+                _obj.prop_x = 96;
+                if (test !== '96') {
+                    console.log('FAILURE #2', test);
+                    return false;
+                }
+                _obj.prop_y = 'hello';
+                if (test !== '96hello') {
+                    console.log('FAILURE #3', test);
+                    return false;
+                }
+                _obj.prop_x_setter(88);
+                _obj.prop_y_setter('world');
+                if (test !== '88world') {
+                    console.log('FAILURE #4', test);
+                    return false;
+                }
+                return true;
             }
-            _obj.prop_x = 96;
-            if (test != '96') {
-                console.log('FAILURE #2', test);
-                return false;
-            }
-            _obj.prop_y = 'hello';
-            if (test != '96hello') {
-                console.log('FAILURE #3', test);
-                return false;
-            }
-
-            _obj.prop_x_setter(88);
-            _obj.prop_y_setter('world');
-            if (test != '88world') {
-                console.log('FAILURE #4', test);
-                return false;
-            }
-
-            return true;
         }
-    }"
+        "
     ));
 }
 
@@ -695,20 +731,24 @@ fn enum_properties() {
     let my_obj = MyObject::default();
     assert!(do_test(
         my_obj,
-        "import MyEnumLib 1.0
+        "
+        import MyEnumLib 1.0
+
         Item {
-        function doTest() {
-            if(MyEnum.None != 0) {
-                return false;
+            function doTest() {
+                if(MyEnum.None !== 0) {
+                    return false;
+                }
+                if(MyEnum.First !== 1) {
+                    return false;
+                }
+                if(MyEnum.Four !== 4) {
+                    return false;
+                }
+                return true;
             }
-            if(MyEnum.First != 1) {
-                return false;
-            }
-            if(MyEnum.Four != 4) {
-                return false;
-            }
-            return true;
-        }}"
+        }
+        "
     ));
 }
 
@@ -826,7 +866,11 @@ fn test_future() {
 #[test]
 fn create_component() {
     let _lock = lock_for_test();
-    let qml_text = "import QtQuick 2.0\nItem{}".to_owned();
+    let qml_text = "
+        import QtQuick 2.0
+
+        Item {}
+    ";
 
     let engine = QmlEngine::new();
     let mut component = QmlComponent::new(&engine);

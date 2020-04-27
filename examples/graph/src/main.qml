@@ -49,7 +49,6 @@
 ****************************************************************************/
 
 import QtQuick 2.0
-
 import Graph 1.0
 
 Item {
@@ -70,7 +69,7 @@ Item {
                 appendSample(newSample(i));
         }
 
-        property int offset: 100;
+        property int offset: 100
     }
 
     Timer {
@@ -82,7 +81,6 @@ Item {
             graph.removeFirstSample();
             graph.appendSample(graph.newSample(++graph.offset));
         }
-
     }
 
     Rectangle {
@@ -91,5 +89,4 @@ Item {
         border.color: "black"
         border.width: 2
     }
-
 }
