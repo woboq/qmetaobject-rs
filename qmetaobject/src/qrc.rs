@@ -78,9 +78,9 @@ Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
 /// corresponds to the .qrc file:
 /// ```xml
 /// <RCC>
-///     <qresource prefix="/qml">
+///     <qresource prefix="/foo">
 ///         <file>main.qml</file>
-///         <file alias="foo/Foo.qml">Foo.qml</file>
+///         <file alias="baz/Foo.qml">Bar.qml</file>
 ///     </qresource>
 /// </RCC>
 /// ```
