@@ -935,7 +935,7 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 ///    separated from the physical path by the `as` keyword.
 ///    By default, virtual path of a file is the same as its phisycal path.
 ///    (Corresponds to qrc format).
-///  - *Note* about physical path: _resource_'s base directory is prepended to
+///  - **Note** about physical path: _resource_'s base directory is prepended to
 ///    the file's physical path before looking for the file on the local file
 ///    system, but after the physical path is cloned to the virtual counterpart
 ///    (if the later one was omitted, i.e. no explicit alias was given).
@@ -987,7 +987,15 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 /// );
 /// # }
 ///
-/// # fn use_resource(_r: &str) {}
+/// # fn use_resource(_r: &str) {
+/// #     // at the time of writing, it is the only way to test the existence of a resource.
+/// #     use qmetaobject::*;
+/// #     let mut engine = QmlEngine::new();
+/// #     let mut c = QmlComponent::new(&engine);
+/// #     c.load_url(QUrl::from(QString::from("qrc:/foo2/baz/Foo.qml")), CompilationMode::PreferSynchronous);
+/// #     assert_eq!(ComponentStatus::Ready, c.status());
+/// #     engine.quit();
+/// # }
 /// # fn main() {
 /// // registers the resource to Qt
 /// my_resource_1();

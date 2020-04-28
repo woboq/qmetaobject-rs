@@ -48,10 +48,38 @@ impl Parse for TargetFunc {
 /// ```
 #[derive(Debug)]
 struct Resource {
-    /// File paths in this resource are relative to this base directory.
+    /// Local file system paths in this resource are relative to this base directory.
     base_dir: Option<String>,
+    /// Virtual file system paths in qrc are prefixed with this path.
     prefix: String,
+    /// Vector of files inside this resource.
+    ///
+    /// Their aliases (virtual paths) will be prefixed by the `prefix` path,
+    /// and their location on the local file system will be prefixed by `base_dir`.
     files: Vec<File>,
+}
+
+impl Resource {
+    ///  - **Note** about physical path: _resource_'s base directory is prepended to
+    ///    the file's physical path before looking for the file on the local file
+    ///    system, but after the physical path is cloned to the virtual counterpart
+    ///    (if the later one was omitted, i.e. no explicit alias was given).
+    pub fn files<'a>(&'a self) -> impl Iterator<Item=File> + 'a {
+        self.files.iter().map(move |f| self.resolve(f))
+    }
+
+    fn resolve(&self, file: &File) -> File {
+        match self.base_dir.as_ref() {
+            Some(base_dir) => {
+                let f = File {
+                    path: format!("./{}/{}", base_dir, file.path.clone()),
+                    alias: Some(file.resolved_alias().to_owned()),
+                };
+                f
+            }
+            None => file.clone(),
+        }
+    }
 }
 
 impl Parse for Resource {
@@ -79,7 +107,7 @@ impl Parse for Resource {
 /// ```txt
 /// File       ::= $path:physical $( as $alias:virtual )?
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct File {
     /// Physical path on local file system
     path: String,
@@ -98,6 +126,13 @@ impl Parse for File {
             path: file,
             alias,
         })
+    }
+}
+
+impl File {
+    // use alias, if one was explicitly provided, else physical path.
+    pub fn resolved_alias(&self) -> &str {
+        &*self.alias.as_ref().unwrap_or(&self.path)
     }
 }
 
@@ -134,6 +169,9 @@ fn qt_hash(key: &str) -> u32 {
     h
 }
 
+/// Special string class used to represent Qt strings with pre-computed stable hash.
+///
+/// Here it is used to represent paths (directories and files) in qrc virtual file system.
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone)]
 struct HashedString {
     hash: u32,
@@ -146,36 +184,53 @@ impl HashedString {
     }
 }
 
+/// Virtual file system tree, where leafs (files) are pointing to
+/// real files on the local file system.
+#[derive(Debug)]
 enum TreeNode {
-    File(String), // The FileName
-    Directory(BTreeMap<HashedString, TreeNode>, u32),
+    /// Path to a file on a local file system.
+    File(String),
+    /// Content of a directory for a qrc virtual file system.
+    ///
+    /// Directory doesn't know its own name, but rather its parent directory knows.
+    ///
+    /// Maps qrc virtual paths onto other virtual directories and eventually
+    /// onto files on the local file system.
+    Directory {
+        contents: BTreeMap<HashedString, TreeNode>,
+        offset: u32
+    },
 }
 impl TreeNode {
+    /// Create new directory on the qrc virtual file system.
     fn new_dir() -> TreeNode {
-        TreeNode::Directory(Default::default(), 0)
+        TreeNode::Directory { contents: Default::default(), offset: 0 }
     }
+
+    /// Create new reference to the path on the local file system.
     fn new_file(file: String) -> TreeNode {
         TreeNode::File(file)
     }
 
-    fn insert_node(&mut self, rel_path: &str, node: TreeNode) {
+    /// `virtual_rel_path` is a path in qrc virtual file system, relative to the `node`.
+    fn insert_node(&mut self, virtual_rel_path: &str, node: TreeNode) {
         let contents = match self {
-            TreeNode::Directory(ref mut contents, _) => contents,
+            TreeNode::Directory { contents, .. } => contents,
             _ => panic!("root not a dir?"),
         };
 
-        if rel_path == "" {
+        if virtual_rel_path == "" {
             // insert into itself
             contents.extend(match node {
-                TreeNode::Directory(contents, _) => contents,
+                TreeNode::Directory { contents, .. } => contents,
                 _ => panic!("merge file and directory?"),
             });
             return;
         }
 
-        match rel_path.find('/') {
+        match virtual_rel_path.find('/') {
             Some(idx) => {
-                let (name, rest) = rel_path.split_at(idx);
+                let (name, rest) = virtual_rel_path.split_at(idx);
                 let hashed = HashedString::new(name.into());
                 contents
                     .entry(hashed)
@@ -183,7 +238,7 @@ impl TreeNode {
                     .insert_node(&rest[1..], node);
             }
             None => {
-                let hashed = HashedString::new(rel_path.into());
+                let hashed = HashedString::new(virtual_rel_path.into());
                 contents
                     .insert(hashed, node)
                     .and_then(|_| -> Option<()> { panic!("Several time the same file?") });
@@ -192,10 +247,10 @@ impl TreeNode {
     }
 
     fn compute_offsets(&mut self, mut offset: u32) -> u32 {
-        if let TreeNode::Directory(ref mut dir, ref mut o) = self {
+        if let TreeNode::Directory { contents, offset: o } = self {
             *o = offset;
-            offset += dir.len() as u32;
-            for node in dir.values_mut() {
+            offset += contents.len() as u32;
+            for node in contents.values_mut() {
                 offset = node.compute_offsets(offset);
             }
         }
@@ -229,17 +284,12 @@ fn build_tree(resources: Vec<Resource>) -> TreeNode {
     let mut root = TreeNode::new_dir();
     for r in resources {
         let mut node = TreeNode::new_dir();
-        for f in r.files {
-            // TODO: this is responsibility of Resource to provide resolved paths
-            let mut real = f.alias.as_ref().unwrap_or(&f.path).clone();
-            let mut virt = f.path.clone();
-            if let Some(base_dir) = r.base_dir.as_ref() {
-                real = format!("{}/{}", base_dir, real);
-                virt = format!("{}/{}", base_dir, virt);
-            }
+        for f in r.files() {
+            let local_file = TreeNode::new_file(f.path.clone());
+            let virt_path = f.resolved_alias().to_owned();
             node.insert_node(
-                &real,
-                TreeNode::new_file(virt),
+                &*virt_path,
+                local_file,
             );
         }
         root.insert_node(&simplify_prefix(r.prefix), node);
@@ -296,9 +346,9 @@ impl Data {
                     push_u32_be(&mut self.tree_data, offset as u32);
                     self.insert_file(filename);
                 }
-                TreeNode::Directory(ref c, offset) => {
+                TreeNode::Directory { ref contents, offset } => {
                     push_u16_be(&mut self.tree_data, 2); // directory flag
-                    push_u32_be(&mut self.tree_data, c.len() as u32);
+                    push_u32_be(&mut self.tree_data, contents.len() as u32);
                     push_u32_be(&mut self.tree_data, *offset);
                 }
             }
@@ -307,8 +357,8 @@ impl Data {
             push_u32_be(&mut self.tree_data, 0);
         }
         for val in contents.values() {
-            if let TreeNode::Directory(ref c, _) = val {
-                self.insert_directory(c)
+            if let TreeNode::Directory { ref contents, .. } = val {
+                self.insert_directory(contents)
             }
         }
     }
@@ -331,7 +381,7 @@ fn generate_data(root: &TreeNode) -> Data {
     let mut d = Data::default();
 
     let contents = match root {
-        TreeNode::Directory(ref contents, _) => contents,
+        TreeNode::Directory { ref contents, .. } => contents,
         _ => panic!("root not a dir?"),
     };
 
