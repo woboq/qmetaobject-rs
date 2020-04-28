@@ -43,55 +43,59 @@ impl Parse for TargetFunc {
     }
 }
 
-/// Parse string literal entity with optional string alias.
-/// Valid syntax examples are:
 /// ```txt
-/// "foo"
-/// "bar" as "baz"
+/// Resource   ::= $( $base_dir:physical as )? $prefix:virtual { $( $f:File ),* }
 /// ```
-fn entity_with_alias(input: &ParseStream) -> Result<(String, Option<String>)> {
-    let prefix = input.parse::<LitStr>()?.value();
-    let alias = input.parse::<Option<Token![as]>>()?.map_or(Ok(None), |_| -> Result<_> {
-        Ok(Some(input.parse::<LitStr>()?.value()))
-    })?;
-    Ok((prefix, alias))
-}
-
 #[derive(Debug)]
 struct Resource {
-    prefix: String,
     /// File paths in this resource are relative to this base directory.
     base_dir: Option<String>,
+    prefix: String,
     files: Vec<File>,
 }
 
 impl Parse for Resource {
     fn parse(input: ParseStream) -> Result<Self> {
-        let (prefix, base_dir) = entity_with_alias(&input)?;
+        // Mutable horror of grammars with optional prefix
+        let mut base_dir = None;
+        let mut prefix = input.parse::<LitStr>()?.value();
+        if let Some(_) = input.parse::<Option<Token![as]>>()? {
+            base_dir = Some(prefix);
+            prefix = input.parse::<LitStr>()?.value();
+        }
         let files = {
             let content;
             braced!(content in input);
             content.parse_terminated::<File, Token![,]>(File::parse)?.into_iter().collect()
         };
         Ok(Resource {
-            prefix,
             base_dir,
+            prefix,
             files,
         })
     }
 }
 
+/// ```txt
+/// File       ::= $path:physical $( as $alias:virtual )?
+/// ```
 #[derive(Debug)]
 struct File {
-    file: String,
+    /// Physical path on local file system
+    path: String,
+    /// Virtual path in qrc:/// file system
     alias: Option<String>,
 }
 
 impl Parse for File {
     fn parse(input: ParseStream) -> Result<Self> {
-        let (file, alias) = entity_with_alias(&input)?;
+        let file = input.parse::<LitStr>()?.value();
+        let mut alias = None;
+        if let Some(_) = input.parse::<Option<Token![as]>>()? {
+            alias = Some(input.parse::<LitStr>()?.value());
+        }
         Ok(File {
-            file,
+            path: file,
             alias,
         })
     }
@@ -227,8 +231,8 @@ fn build_tree(resources: Vec<Resource>) -> TreeNode {
         let mut node = TreeNode::new_dir();
         for f in r.files {
             // TODO: this is responsibility of Resource to provide resolved paths
-            let mut real = f.alias.as_ref().unwrap_or(&f.file).clone();
-            let mut virt = f.file.clone();
+            let mut real = f.alias.as_ref().unwrap_or(&f.path).clone();
+            let mut virt = f.path.clone();
             if let Some(base_dir) = r.base_dir.as_ref() {
                 real = format!("{}/{}", base_dir, real);
                 virt = format!("{}/{}", base_dir, virt);
