@@ -887,32 +887,63 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 ///
 /// # Input
 ///
-/// The macro accepts:
-///  - an identifier with optional preceding visibility modifier
-///  - and a comma-separated list of _resources_.
+/// The macro accepts the following formal grammar in pseudo [rust macro syntax][macro-doc]:
+/// ```txt
+/// macro call ::= qrc!( $f:Function $( $r:Recource ),* )
+/// Function   ::= $v:vis $name:ident
+/// Resource   ::= $( $base_dir:physical as )? $prefix:virtual { $( $f:File ),* }
+/// File       ::= $path:physical $( as $alias:virtual )?
 ///
-/// Each _resource_ consists of a
-///  - prefix path (corresponds to qrc format)
-///  - optional base directory path after an `as` keyword
-///    (custom extention which does not interfere with qrc format,
-///    but merely act as if `cd path/to/dir` was invoked before processing
-///    the resource)
-///  - and a braced list of comma-separated _files_.
+/// physical   ::= $path:literal
+/// virtual    ::= $path:literal
+/// ```
 ///
-/// Each _file_ is specified as
-///  - a path to the file (corresponds to qrc format)
-///  - with an optional alias path after an `as` keyword (corresponds to qrc format).
+/// _Function_ is the name for the generated function, optionally preceded by
+/// the visibility modifier (`pub(crate)` etc.)
 ///
-/// The file paths are relative to the directory in which cargo runs plus the
-/// optional base directory path of a particular resource.
+/// _Physical_ path literal represents path on a local file system;
+/// _virtual_ path represents virtual path in the generated qrc
+/// resource tree accessible at `qrc:///virtual/path` URI.
+///
+/// **Note** that for _Resource_ physical part is optional,
+/// meanwhile _File_ has optional _Virtual_ part.
+///
+/// _Resources_ and _Files_ are comma-separated lists.
+///
+/// _Resources_ consist of a
+///  - `$base_dir:physical`: optional path to base directory on local file
+///    system, separated from the prefix by the `as` keyword.
+///    By default, base directory is the cargo project's root - directory with
+///    Cargo.toml, a.k.a. [`$CARGO_MANIFEST_DIR`][].
+///    (Custom extention which does not interfere with qrc format,
+///    but merely resolves physical path of files in this resource relative
+///    to the base directory, and helps keeping both project's root directory
+///    and resource definitions clean and short.)
+///  - `$prefix:virtual`: prefix directory path in qrc's virtual file system.
+///    It will be prepended to every file's virtual path.
+///    (Corresponds to qrc format.)
+///  - A curly-braced list of comma-separated _Files_.
+///
+/// _Files_ are specified as
+///  - `$path:physical`: path to the file on local file system.
+///    Relative to the resource's base directory.
+///    (Corresponds to qrc format, with the exception below.)
+///  - `$alias:virtual`: an optional alias in qrc's virtual file system,
+///    separated from the physical path by the `as` keyword.
+///    By default, virtual path of a file is the same as its phisycal path.
+///    (Corresponds to qrc format).
+///  - **Note** about physical path: _resource_'s base directory is prepended to
+///    the file's physical path before looking for the file on the local file
+///    system, but after the physical path is cloned to the virtual counterpart
+///    (if the later one was omitted, i.e. no explicit alias was given).
 ///
 /// It does not matter if the prefix has leading '/' or not.
 ///
 /// # Output
 ///
 /// The macro creates a function with given name and visibility modifier,
-/// that needs to be run in order to register the resource. Calling the
-/// function more than once has no effect.
+/// that needs to be run in order to register the resource. Function is
+/// idempotent, i.e. calling it more than once is allowed but has no effect.
 ///
 /// # Example
 ///
@@ -931,20 +962,45 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 /// ```
 /// # extern crate qmetaobject;
 /// # use qmetaobject::qrc;
-/// qrc!(my_resource,
-/// # // For maintainers: this is actually tested against read files.
-///     "foo" as "tests/qml" {
+/// # // For maintainers: this is actually tested against real files.
+/// // private fn, and base directory shortcut
+/// qrc!(my_resource_1,
+///     "tests/qml" as "foo1" {
 ///         "main.qml",
 ///         "Bar.qml" as "baz/Foo.qml",
 ///      }
 /// );
 ///
-/// # fn use_resource(_r: &str) {}
+/// # // this is a test of visibility modifier
+/// # mod private {
+/// # use super::*;
+/// // public fn, no shortcuts
+/// qrc!(pub my_resource_2,
+///     "foo2" {
+///         // either use file alias or re-organize files
+///         "tests/qml/main.qml" as "main.qml",
+///         "tests/qml/Bar.qml" as "baz/Foo.qml",
+///      }
+/// );
+/// # }
+///
+/// # fn use_resource(_r: &str) {
+/// #     // at the time of writing, it is the only way to test the existence of a resource.
+/// #     use qmetaobject::*;
+/// #     let mut engine = QmlEngine::new();
+/// #     let mut c = QmlComponent::new(&engine);
+/// #     c.load_url(QUrl::from(QString::from("qrc:/foo2/baz/Foo.qml")), CompilationMode::PreferSynchronous);
+/// #     assert_eq!(ComponentStatus::Ready, c.status());
+/// #     engine.quit();
+/// # }
 /// # fn main() {
 /// // registers the resource to Qt
-/// my_resource();
+/// my_resource_1();
+/// # private::
+/// my_resource_2();
 /// // do something with resources
-/// use_resource("qrc:/foo/baz/Foo.qml");
+/// use_resource("qrc:/foo1/baz/Foo.qml");
+/// use_resource("qrc:/foo2/baz/Foo.qml");
 /// # }
 /// ```
 /// corresponds to the .qrc (`tests/qml/qml.qrc`) file:
@@ -956,6 +1012,9 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 ///     </qresource>
 /// </RCC>
 /// ```
+///
+/// [macro-doc]: https://doc.rust-lang.org/reference/macros-by-example.html#metavariables
+/// [`$CARGO_MANIFEST_DIR`]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
 pub use qmetaobject_impl::qrc_internal as qrc;
 // XXX: The line above re-exports the macro with proper documentation and doctests.
 
