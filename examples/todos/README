@@ -2,5 +2,3 @@ This example is based on a rust-qt-binding-generator example from Jos van den Oe
 https://github.com/KDE/rust-qt-binding-generator/tree/9822dcef071f8c6d6ec2f6b39bab436613493221/examples/todos
 The file main.qml is imported unmodified, and the file implementation.rs was used and adapted to
 the qmetaobject crate
-
-

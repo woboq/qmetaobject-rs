@@ -928,7 +928,7 @@ fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
             if list.path.is_ident("repr") && list.nested.len() == 1 {
                 match &list.nested[0] {
                     syn::NestedMeta::Meta(syn::Meta::Path(word)) => {
-                        const ACCEPTABLES: &[&str; 6] = &["u8", "u16", "u32", "i8", "i16", "i32"];
+                        const ACCEPTABLES: &[&str] = &["u8", "u16", "u32", "i8", "i16", "i32"];
                         ACCEPTABLES.iter().any(|w| word.is_ident(w))
                     }
                     _ => false,
