@@ -863,13 +863,15 @@ impl QMessageLogContext {
 
 /// Wrap Qt's QtMsgType enum
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum QtMsgType {
     QtDebugMsg,
     QtWarningMsg,
     QtCriticalMsg,
     QtFatalMsg,
     QtInfoMsg,
+    // there is also one level defined in C++ code:
+    // QtSystemMsg = QtCriticalMsg
 }
 
 /// Wrap qt's qInstallMessageHandler.
@@ -1022,6 +1024,7 @@ pub mod itemmodel;
 pub use itemmodel::*;
 pub mod listmodel;
 pub use listmodel::*;
+pub mod log;
 pub mod qtdeclarative;
 pub use qtdeclarative::*;
 pub mod qmetatype;
