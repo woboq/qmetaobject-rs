@@ -1,9 +1,82 @@
 //! Logging facilities and forwarding
 
+use std::os::raw::c_char;
+
 use log::{Level, logger, Record};
 
-use crate::{install_message_handler, QMessageLogContext, QString, QtMsgType};
-use crate::QtMsgType::*;
+use crate::QString;
+
+use self::QtMsgType::*;
+
+cpp! {{
+    #include <qmetaobject_rust.hpp>
+}}
+
+cpp_class!(
+    /// Wrapper for Qt's QMessageLogContext
+    pub unsafe struct QMessageLogContext as "QMessageLogContext"
+);
+impl QMessageLogContext {
+    // Return QMessageLogContext::line
+    pub fn line(&self) -> i32 {
+        cpp!(unsafe [self as "QMessageLogContext*"] -> i32 as "int" { return self->line; })
+    }
+    // Return QMessageLogContext::file
+    pub fn file(&self) -> &str {
+        unsafe {
+            let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
+                return self->file;
+            });
+            if x.is_null() {
+                return "";
+            }
+            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+        }
+    }
+    // Return QMessageLogContext::function
+    pub fn function(&self) -> &str {
+        unsafe {
+            let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
+                return self->function;
+            });
+            if x.is_null() {
+                return "";
+            }
+            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+        }
+    }
+    // Return QMessageLogContext::category
+    pub fn category(&self) -> &str {
+        unsafe {
+            let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
+                return self->category;
+            });
+            if x.is_null() {
+                return "";
+            }
+            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+        }
+    }
+}
+
+/// Wrap Qt's QtMsgType enum
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub enum QtMsgType {
+    QtDebugMsg,
+    QtWarningMsg,
+    QtCriticalMsg,
+    QtFatalMsg,
+    QtInfoMsg,
+    // there is also one level defined in C++ code:
+    // QtSystemMsg = QtCriticalMsg
+}
+
+/// Wrap qt's qInstallMessageHandler.
+/// Useful in order to forward the log to a rust logging framework
+pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogContext, &QString)) {
+    cpp!(unsafe [logger as "QtMessageHandler"] { qInstallMessageHandler(logger); })
+}
 
 /// Mapping from Qt logging levels to Rust logging facade's levels.
 ///
