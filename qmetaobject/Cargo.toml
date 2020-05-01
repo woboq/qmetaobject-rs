@@ -11,14 +11,15 @@ keywords = ["Qt", "QML", "QMetaObject",]
 repository = "https://github.com/woboq/qmetaobject-rs"
 
 [features]
+default = ["log"]
 chrono_qdatetime = ["chrono"]
 
 [dependencies]
 qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.1.4"}
 lazy_static = "1.0"
-log = "0.4"
 cpp = "0.5.4"
 chrono = { version = "0.4", optional = true }
+log = { version = "0.4", optional = true }
 
 [build-dependencies]
 cpp_build = "0.5.4"
@@ -28,7 +29,6 @@ semver = "0.9"
 cstr = "0.1"
 if_rust_version = "1"
 tempfile = "^3"
-
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]

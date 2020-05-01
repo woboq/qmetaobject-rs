@@ -2,6 +2,7 @@
 
 use std::os::raw::c_char;
 
+#[cfg(feature = "log")]
 use log::{Level, logger, Record};
 
 use crate::QString;
@@ -74,6 +75,7 @@ pub enum QtMsgType {
     // QtSystemMsg = QtCriticalMsg
 }
 
+#[cfg(feature = "log")]
 impl From<QtMsgType> for Level {
     /// Mapping from Qt logging levels to Rust logging facade's levels.
     ///
@@ -97,6 +99,7 @@ impl From<QtMsgType> for Level {
     }
 }
 
+#[cfg(feature = "log")]
 impl From<Level> for QtMsgType {
     /// Mapping back from Rust logging facade's levels to Qt logging levels.
     ///
@@ -130,6 +133,7 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 // It is called from Qt code, then it converts Qt logging data
 // into Rust logging facade's log::Record object, and sends it
 // to the currently active logger.
+#[cfg(feature = "log")]
 extern "C" fn log_capture(msg_type: QtMsgType,
                           context: &QMessageLogContext,
                           message: &QString) {
@@ -179,6 +183,7 @@ extern "C" fn log_capture(msg_type: QtMsgType,
 /// [log]: https://docs.rs/log
 /// [`log::Record`]: https://docs.rs/log/0.4.10/log/struct.Record.html
 /// [lvl]: ./struct.QtMsgType.html
+#[cfg(feature = "log")]
 pub fn init_qt_to_rust() {
     // The reason it is named so complex instead of simple `init` is that
     // such descriptive name is future-proof. Consider if someone someday
@@ -187,6 +192,7 @@ pub fn init_qt_to_rust() {
 }
 
 #[cfg(test)]
+#[cfg(feature = "log")]
 mod tests {
     use super::*;
 
