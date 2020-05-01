@@ -62,7 +62,7 @@ impl QMessageLogContext {
 
 /// Wrap Qt's QtMsgType enum
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum QtMsgType {
     QtDebugMsg,
     QtWarningMsg,
@@ -180,7 +180,7 @@ extern "C" fn log_capture(msg_type: QtMsgType,
     }
 }
 
-/// Installs into Qt logging system a function which forwards messages to the
+/// Installs into [Qt logging system][qt-log] a function which forwards messages to the
 /// [Rust logging facade][log].
 ///
 /// Most metadata from Qt logging context is retained and passed to [`log::Record`][].
@@ -188,6 +188,7 @@ extern "C" fn log_capture(msg_type: QtMsgType,
 ///
 /// This function may be called more than once.
 ///
+/// [qt-log]: https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
 /// [log]: https://docs.rs/log
 /// [`log::Record`]: https://docs.rs/log/0.4.10/log/struct.Record.html
 /// [map_level]: ./fn.map_level.html
@@ -196,4 +197,22 @@ pub fn init_qt_to_rust() {
     // such descriptive name is future-proof. Consider if someone someday
     // would want to implement the opposite forwarding logger?
     install_message_handler(log_capture);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_double_init() {
+        // must not crash
+        init_qt_to_rust();
+        init_qt_to_rust();
+    }
+
+    #[test]
+    fn test_convert() {
+        assert_eq!(Level::from(QtInfoMsg), Level::Info);
+        assert_eq!(QtCriticalMsg, QtMsgType::from(Level::Error))
+    }
 }

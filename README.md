@@ -34,6 +34,7 @@ struct Greeter {
 }
 
 fn main() {
+    qmetaobject::log::init_qt_to_rust();
     qml_register_type::<Greeter>(cstr!("Greeter"), 1, 0, cstr!("Greeter"));
     let mut engine = QmlEngine::new();
     engine.load_data(r#"import QtQuick 2.6; import QtQuick.Window 2.0;
