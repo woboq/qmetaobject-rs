@@ -73,63 +73,49 @@ pub enum QtMsgType {
     // QtSystemMsg = QtCriticalMsg
 }
 
-/// Mapping from Qt logging levels to Rust logging facade's levels.
-///
-/// Due to the limited range of levels from both sides,
-/// [`QtCriticalMsg`][`QtMsgType`] and [`QtFatalMsg`][`QtMsgType`]
-/// both map to [`log::Level::Error`][Level],
-/// while [`log::Level::Trace`][Level] is never returned.
-///
-/// [Level]: https://docs.rs/log/0.4.10/log/enum.Level.html
-/// [`QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
-pub fn map_level(lvl: QtMsgType) -> Level {
-    match lvl {
-        QtDebugMsg => Level::Debug,
-        QtInfoMsg => Level::Info,
-        QtWarningMsg => Level::Warn,
-        QtCriticalMsg => Level::Error,
-        QtFatalMsg => Level::Error,
-        // XXX: What are the external guarantees about possible values of QtMsgType?
-        // XXX: Are they promised to be limited to the valid enum variants?
-    }
-}
-
-/// Mapping back from Rust logging facade's levels to Qt logging levels.
-///
-/// Not used internally, exists just for completeness of API.
-///
-/// Due to the limited range of levels from both sides,
-/// [`log::Level::Debug`][Level] and [`log::Level::Trace`][Level]
-/// both map to [`QtDebugMsg`][`QtMsgType`],
-/// while [`QtFatalMsg`][`QtMsgType`] is never returned.
-///
-/// [Level]: https://docs.rs/log/0.4.10/log/enum.Level.html
-/// [`QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
-pub fn unmap_level(lvl: Level) -> QtMsgType {
-    match lvl {
-        Level::Error => QtCriticalMsg,
-        Level::Warn => QtWarningMsg,
-        Level::Info => QtInfoMsg,
-        Level::Debug => QtDebugMsg,
-        Level::Trace => QtDebugMsg,
-    }
-}
-
 impl From<QtMsgType> for Level {
-    /// Delegates to [default][] mapping algorithm.
+    /// Mapping from Qt logging levels to Rust logging facade's levels.
     ///
-    /// [default]: ./fn.map_level.html
+    /// Due to the limited range of levels from both sides,
+    /// [`QtCriticalMsg`][`Qt::QtMsgType`] and [`QtFatalMsg`][`Qt::QtMsgType`]
+    /// both map to [`log::Level::Error`][Level],
+    /// while [`log::Level::Trace`][Level] is never returned.
+    ///
+    /// [Level]: https://docs.rs/log/0.4.10/log/enum.Level.html
+    /// [`Qt::QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
     fn from(lvl: QtMsgType) -> Self {
-        map_level(lvl)
+        match lvl {
+            QtDebugMsg => Level::Debug,
+            QtInfoMsg => Level::Info,
+            QtWarningMsg => Level::Warn,
+            QtCriticalMsg => Level::Error,
+            QtFatalMsg => Level::Error,
+            // XXX: What are the external guarantees about possible values of QtMsgType?
+            // XXX: Are they promised to be limited to the valid enum variants?
+        }
     }
 }
 
 impl From<Level> for QtMsgType {
-    /// Delegates to [default][] mapping algorithm.
+    /// Mapping back from Rust logging facade's levels to Qt logging levels.
     ///
-    /// [default]: ./fn.unmap_level.html
+    /// Not used internally, exists just for completeness of API.
+    ///
+    /// Due to the limited range of levels from both sides,
+    /// [`log::Level::Debug`][Level] and [`log::Level::Trace`][Level]
+    /// both map to [`QtDebugMsg`][`Qt::QtMsgType`],
+    /// while [`QtFatalMsg`][`Qt::QtMsgType`] is never returned.
+    ///
+    /// [Level]: https://docs.rs/log/0.4.10/log/enum.Level.html
+    /// [`Qt::QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
     fn from(lvl: Level) -> Self {
-        unmap_level(lvl)
+        match lvl {
+            Level::Error => QtCriticalMsg,
+            Level::Warn => QtWarningMsg,
+            Level::Info => QtInfoMsg,
+            Level::Debug => QtDebugMsg,
+            Level::Trace => QtDebugMsg,
+        }
     }
 }
 
@@ -184,14 +170,14 @@ extern "C" fn log_capture(msg_type: QtMsgType,
 /// [Rust logging facade][log].
 ///
 /// Most metadata from Qt logging context is retained and passed to [`log::Record`][].
-/// Logging levels are mapped with the [default][map_level] algorithm.
+/// Logging levels are mapped with the default [`From`][lvl] implementation.
 ///
 /// This function may be called more than once.
 ///
 /// [qt-log]: https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
 /// [log]: https://docs.rs/log
 /// [`log::Record`]: https://docs.rs/log/0.4.10/log/struct.Record.html
-/// [map_level]: ./fn.map_level.html
+/// [lvl]: ./struct.QtMsgType.html
 pub fn init_qt_to_rust() {
     // The reason it is named so complex instead of simple `init` is that
     // such descriptive name is future-proof. Consider if someone someday
