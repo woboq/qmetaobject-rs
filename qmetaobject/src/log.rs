@@ -6,8 +6,6 @@ use log::{Level, logger, Record};
 
 use crate::QString;
 
-use self::QtMsgType::*;
-
 cpp! {{
     #include <qmetaobject_rust.hpp>
 }}
@@ -88,11 +86,11 @@ impl From<QtMsgType> for Level {
     /// [`Qt::QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
     fn from(lvl: QtMsgType) -> Self {
         match lvl {
-            QtDebugMsg => Level::Debug,
-            QtInfoMsg => Level::Info,
-            QtWarningMsg => Level::Warn,
-            QtCriticalMsg => Level::Error,
-            QtFatalMsg => Level::Error,
+            QtMsgType::QtDebugMsg => Level::Debug,
+            QtMsgType::QtInfoMsg => Level::Info,
+            QtMsgType::QtWarningMsg => Level::Warn,
+            QtMsgType::QtCriticalMsg => Level::Error,
+            QtMsgType::QtFatalMsg => Level::Error,
             // XXX: What are the external guarantees about possible values of QtMsgType?
             // XXX: Are they promised to be limited to the valid enum variants?
         }
@@ -113,11 +111,11 @@ impl From<Level> for QtMsgType {
     /// [`Qt::QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
     fn from(lvl: Level) -> Self {
         match lvl {
-            Level::Error => QtCriticalMsg,
-            Level::Warn => QtWarningMsg,
-            Level::Info => QtInfoMsg,
-            Level::Debug => QtDebugMsg,
-            Level::Trace => QtDebugMsg,
+            Level::Error => QtMsgType::QtCriticalMsg,
+            Level::Warn => QtMsgType::QtWarningMsg,
+            Level::Info => QtMsgType::QtInfoMsg,
+            Level::Debug => QtMsgType::QtDebugMsg,
+            Level::Trace => QtMsgType::QtDebugMsg,
         }
     }
 }
@@ -201,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_convert() {
-        assert_eq!(Level::from(QtInfoMsg), Level::Info);
-        assert_eq!(QtCriticalMsg, QtMsgType::from(Level::Error))
+        assert_eq!(Level::from(QtMsgType::QtInfoMsg), Level::Info);
+        assert_eq!(QtMsgType::QtCriticalMsg, QtMsgType::from(Level::Error))
     }
 }
