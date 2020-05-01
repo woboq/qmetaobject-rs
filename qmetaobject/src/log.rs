@@ -16,6 +16,7 @@ cpp_class!(
     /// Wrapper for Qt's QMessageLogContext
     pub unsafe struct QMessageLogContext as "QMessageLogContext"
 );
+
 impl QMessageLogContext {
     // Return QMessageLogContext::line
     pub fn line(&self) -> i32 {
@@ -70,12 +71,6 @@ pub enum QtMsgType {
     QtInfoMsg,
     // there is also one level defined in C++ code:
     // QtSystemMsg = QtCriticalMsg
-}
-
-/// Wrap qt's qInstallMessageHandler.
-/// Useful in order to forward the log to a rust logging framework
-pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogContext, &QString)) {
-    cpp!(unsafe [logger as "QtMessageHandler"] { qInstallMessageHandler(logger); })
 }
 
 /// Mapping from Qt logging levels to Rust logging facade's levels.
@@ -136,6 +131,12 @@ impl From<Level> for QtMsgType {
     fn from(lvl: Level) -> Self {
         unmap_level(lvl)
     }
+}
+
+/// Wrap qt's qInstallMessageHandler.
+/// Useful in order to forward the log to a rust logging framework
+pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogContext, &QString)) {
+    cpp!(unsafe [logger as "QtMessageHandler"] { qInstallMessageHandler(logger); })
 }
 
 // Logging middleware, pass-though, or just proxy function.
