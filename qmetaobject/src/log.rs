@@ -62,6 +62,9 @@ impl QMessageLogContext {
 
 /// Wrap Qt's QtMsgType enum
 #[repr(C)]
+// XXX: Do NOT derive Ord and PartialOrd.
+// XXX: Variants are not ordered by severity.
+// XXX: Also, levels ordering is not implemented in Qt, only == equality.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum QtMsgType {
     QtDebugMsg,
