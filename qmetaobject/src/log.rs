@@ -12,16 +12,19 @@ cpp! {{
 }}
 
 cpp_class!(
-    /// Wrapper for Qt's QMessageLogContext
+    /// Wrapper for [`QMessageLogContext`] class.
+    ///
+    /// [`QMessageLogContext`]: https://doc.qt.io/qt-5/qmessagelogcontext.html
     pub unsafe struct QMessageLogContext as "QMessageLogContext"
 );
 
 impl QMessageLogContext {
-    // Return QMessageLogContext::line
+    /// Wrapper for `QMessageLogContext::line`.
     pub fn line(&self) -> i32 {
         cpp!(unsafe [self as "QMessageLogContext*"] -> i32 as "int" { return self->line; })
     }
-    // Return QMessageLogContext::file
+
+    /// Wrapper for `QMessageLogContext::file`.
     pub fn file(&self) -> &str {
         unsafe {
             let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
@@ -33,7 +36,8 @@ impl QMessageLogContext {
             std::ffi::CStr::from_ptr(x).to_str().unwrap()
         }
     }
-    // Return QMessageLogContext::function
+
+    /// Wrapper for `QMessageLogContext::function`.
     pub fn function(&self) -> &str {
         unsafe {
             let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
@@ -45,7 +49,8 @@ impl QMessageLogContext {
             std::ffi::CStr::from_ptr(x).to_str().unwrap()
         }
     }
-    // Return QMessageLogContext::category
+
+    /// Wrapper for `QMessageLogContext::category`.
     pub fn category(&self) -> &str {
         unsafe {
             let x = cpp!([self as "QMessageLogContext*"] -> *const c_char as "const char*" {
@@ -59,7 +64,9 @@ impl QMessageLogContext {
     }
 }
 
-/// Wrap Qt's QtMsgType enum
+/// Wrapper for  [`Qt::QtMsgType`][] enum.
+///
+/// [`Qt::QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
 #[repr(C)]
 // XXX: Do NOT derive Ord and PartialOrd.
 // XXX: Variants are not ordered by severity.
@@ -192,7 +199,7 @@ extern "C" fn log_capture(msg_type: QtMsgType,
 /// This function may be called more than once.
 ///
 /// [qt-log]: https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
-/// [log]: https://docs.rs/log
+/// [log]: https://crates.io/crates/log
 /// [`log::Record`]: https://docs.rs/log/0.4.10/log/struct.Record.html
 /// [lvl]: ./struct.QtMsgType.html
 #[cfg(feature = "log")]
