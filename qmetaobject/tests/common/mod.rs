@@ -52,7 +52,7 @@ pub fn do_test<T: QObject + Sized>(obj: T, qml: &str) -> bool {
     let _lock = lock_for_test();
     QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
-    install_message_handler(log_capture);
+    install_message_handler(Some(log_capture));
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
@@ -69,7 +69,7 @@ pub fn do_test_error_with_url<T: QObject + Sized>(obj: T, qml: &str, url: &str) 
     let _lock = lock_for_test();
     QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
-    install_message_handler(log_capture);
+    install_message_handler(Some(log_capture));
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
@@ -87,7 +87,7 @@ pub fn do_test_variant(obj: QVariant, qml: &str) -> bool {
     let _lock = lock_for_test();
     QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
-    install_message_handler(log_capture);
+    install_message_handler(Some(log_capture));
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 
@@ -101,7 +101,7 @@ pub fn test_loading_logs(qml: &str, log: &str) -> bool {
     let _lock = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
     QML_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
-    install_message_handler(log_capture);
+    install_message_handler(Some(log_capture));
 
     let qml_text = "import QtQuick 2.0\n".to_owned() + qml;
 

@@ -123,10 +123,22 @@ impl From<Level> for QtMsgType {
     }
 }
 
-/// Wrap qt's qInstallMessageHandler.
-/// Useful in order to forward the log to a rust logging framework
-pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogContext, &QString)) {
-    cpp!(unsafe [logger as "QtMessageHandler"] { qInstallMessageHandler(logger); })
+/// Wrapper for [`QtMessageHandler`][] typedef.
+///
+/// [`QtMessageHandler`]: https://doc.qt.io/qt-5/qtglobal.html#QtMessageHandler-typedef
+pub type QtMessageHandler = Option<extern "C" fn(QtMsgType, &QMessageLogContext, &QString)>;
+
+/// Wrapper for [`qInstallMessageHandler`] function.
+///
+/// # Wrapper-specific behavior
+///
+/// To restore the message handler, call `install_message_handler(None)`.
+///
+/// [`qInstallMessageHandler`]: https://doc.qt.io/qt-5/qtglobal.html#qInstallMessageHandler
+pub fn install_message_handler(logger: QtMessageHandler) -> QtMessageHandler {
+    cpp!(unsafe [logger as "QtMessageHandler"] -> QtMessageHandler as "QtMessageHandler" {
+        return qInstallMessageHandler(logger);
+    })
 }
 
 // Logging middleware, pass-though, or just proxy function.
@@ -188,7 +200,7 @@ pub fn init_qt_to_rust() {
     // The reason it is named so complex instead of simple `init` is that
     // such descriptive name is future-proof. Consider if someone someday
     // would want to implement the opposite forwarding logger?
-    install_message_handler(log_capture);
+    install_message_handler(Some(log_capture));
 }
 
 #[cfg(test)]
