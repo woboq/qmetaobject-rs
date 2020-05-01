@@ -87,7 +87,7 @@ pub fn install_message_handler(logger: extern "C" fn(QtMsgType, &QMessageLogCont
 ///
 /// [Level]: https://docs.rs/log/0.4.10/log/enum.Level.html
 /// [`QtMsgType`]: https://doc.qt.io/qt-5/qtglobal.html#QtMsgType-enum
-pub fn map_level(lvl: &QtMsgType) -> Level {
+pub fn map_level(lvl: QtMsgType) -> Level {
     match lvl {
         QtDebugMsg => Level::Debug,
         QtInfoMsg => Level::Info,
@@ -120,6 +120,24 @@ pub fn unmap_level(lvl: Level) -> QtMsgType {
     }
 }
 
+impl From<QtMsgType> for Level {
+    /// Delegates to [default][] mapping algorithm.
+    ///
+    /// [default]: ./fn.map_level.html
+    fn from(lvl: QtMsgType) -> Self {
+        map_level(lvl)
+    }
+}
+
+impl From<Level> for QtMsgType {
+    /// Delegates to [default][] mapping algorithm.
+    ///
+    /// [default]: ./fn.unmap_level.html
+    fn from(lvl: Level) -> Self {
+        unmap_level(lvl)
+    }
+}
+
 // Logging middleware, pass-though, or just proxy function.
 // It is called from Qt code, then it converts Qt logging data
 // into Rust logging facade's log::Record object, and sends it
@@ -127,7 +145,7 @@ pub fn unmap_level(lvl: Level) -> QtMsgType {
 extern "C" fn log_capture(msg_type: QtMsgType,
                           context: &QMessageLogContext,
                           message: &QString) {
-    let level = map_level(&msg_type);
+    let level = msg_type.into();
     let target = match context.category() {
         "" => "default",
         x => x,
@@ -165,7 +183,7 @@ extern "C" fn log_capture(msg_type: QtMsgType,
 /// [Rust logging facade][log].
 ///
 /// Most metadata from Qt logging context is retained and passed to [`log::Record`][].
-/// Logging levels are mapped with [this][map_level] algorithm.
+/// Logging levels are mapped with the [default][map_level] algorithm.
 ///
 /// This function may be called more than once.
 ///
