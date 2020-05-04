@@ -3,7 +3,7 @@
 use std::os::raw::c_char;
 
 #[cfg(feature = "log")]
-use log::{Level, logger, Record};
+use log::{Level, logger, Record, RecordBuilder};
 
 use crate::QString;
 
@@ -176,17 +176,18 @@ extern "C" fn log_capture(msg_type: QtMsgType,
         .file(file)
         .line(line)
         .module_path(None);
-    // (inner) match with single all-capturing arm is a hack that allows us
+    // Match expression with single all-capturing arm is a hack that allows
     // to extend the lifetime of a matched object for "a little longer".
+    // Passing an expression with temporaries as a function argument
+    // works exactly the same way.
     // Basically, it retains bounded temporary values together with their
     // intermediate values etc. This is also the way how println! macro works.
     match context.function() {
-        "" => match format_args!("{}", message) {
-            args => logger().log(&record.args(args).build()),
-        },
-        f => match format_args!("[in {}] {}", f, message) {
-            args => logger().log(&record.args(args).build()),
-        }
+        "" => finish(record, format_args!("{}", message)),
+        f => finish(record, format_args!("[in {}] {}", f, message)),
+    }
+    fn finish<'a>(mut record: RecordBuilder<'a>, args: std::fmt::Arguments<'a>) {
+        logger().log(&record.args(args).build())
     }
 }
 
