@@ -1,4 +1,5 @@
-/* Copyright (C) 2018 Olivier Goffart <ogoffart@woboq.com>
+/* Original work Copyright (C) 2018 Olivier Goffart <ogoffart@woboq.com>
+   Modified work Copyright (C) 2020 ivan tkachenko a.k.a. ratijas <me@ratijas.tk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -26,11 +27,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern crate syn;
 #[macro_use]
 extern crate quote;
-
+extern crate darling;
 extern crate proc_macro;
 extern crate proc_macro2;
+
 use proc_macro::TokenStream;
 
+mod doc;
 mod qbjs;
 mod qobject_impl;
 mod qrc_impl;
@@ -86,4 +89,10 @@ pub fn qrc_internal(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(SimpleListItem, attributes(QMetaObjectCrate))]
 pub fn simplelistitem(input: TokenStream) -> TokenStream {
     simplelistitem_impl::derive(input)
+}
+
+/// Implementation of `#[qt_doc(...)]` attribute macro
+#[proc_macro_attribute]
+pub fn qt_doc(args: TokenStream, input: TokenStream) -> TokenStream {
+    doc::qt_doc_impl(args, input)
 }

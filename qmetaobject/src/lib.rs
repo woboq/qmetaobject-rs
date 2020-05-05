@@ -954,6 +954,8 @@ pub const USER_ROLE: i32 = 0x0100;
 pub use qmetaobject_impl::qrc_internal as qrc;
 // XXX: The line above re-exports the macro with proper documentation and doctests.
 
+pub use qmetaobject_impl::qt_doc;
+
 pub mod itemmodel;
 pub use itemmodel::*;
 pub mod listmodel;
