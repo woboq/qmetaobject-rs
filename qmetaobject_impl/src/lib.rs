@@ -23,15 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))] // Because we copy-paste constants from Qt
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
 
-#[macro_use]
-extern crate syn;
-#[macro_use]
-extern crate quote;
-extern crate darling;
-extern crate proc_macro;
-extern crate proc_macro2;
-
 use proc_macro::TokenStream;
+
+use quote::quote;
 
 mod doc;
 mod qbjs;

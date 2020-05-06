@@ -15,10 +15,11 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+use proc_macro::TokenStream;
 
 use darling::FromMeta;
-use proc_macro::TokenStream;
-use syn::{AttributeArgs};
+use quote::quote;
+use syn::{AttributeArgs, parse_macro_input};
 
 #[derive(Default, FromMeta)]
 #[darling(default)]
