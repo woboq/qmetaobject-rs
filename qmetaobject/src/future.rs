@@ -98,6 +98,7 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
     }
 }
 
+// SAFETY: caller must ensure that given future hasn't returned Poll::Ready earlier.
 unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) -> bool {
     cpp!([waker as "Waker*"] { waker->ref++; });
     let waker = std::task::RawWaker::new(waker, &QT_WAKER_VTABLE);
