@@ -103,7 +103,7 @@ unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Outpu
 /// The arguments of the signal need to implement `Clone`, and the Output of the future is a tuple
 /// containing the arguments of the signal (or the empty tuple if there are none.)
 ///
-/// The future will be ready as soon as the signal is emited.
+/// The future will be ready as soon as the signal is emitted.
 ///
 /// This is unsafe for the same reason that connections::connect is unsafe.
 pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
