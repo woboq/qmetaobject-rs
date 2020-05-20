@@ -44,14 +44,18 @@ cpp! {{
             Q_UNUSED(e);
             woken = false;
             // future must not be polled after it returned `Poll::Ready`
-            if (completed) return;
+            if (completed) {
+                return;
+            }
             completed = rust!(ProcessQtEvent [
                 this: *const () as "Waker*",
                 future: *mut dyn Future<Output=()> as "TraitObject"
             ] -> bool as "bool" {
                 poll_with_qt_waker(this, Pin::new_unchecked(&mut *future))
             });
-            if (completed) deref();
+            if (completed) {
+                deref();
+            }
         }
         void deref() {
             if (!--ref) {
@@ -59,7 +63,9 @@ cpp! {{
             }
         }
         void wake() {
-            if (woken) return;
+            if (woken) {
+                return;
+            }
             woken = true;
             QApplication::postEvent(this, new QEvent(QEvent::User));
         }
