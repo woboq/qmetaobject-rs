@@ -105,7 +105,9 @@ unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Outpu
 ///
 /// The future will be ready as soon as the signal is emitted.
 ///
-/// This is unsafe for the same reason that connections::connect is unsafe.
+/// This is unsafe for the same reason that [`connections::connect`][] is unsafe.
+///
+/// [`connections::connect`]: ../connections/fn.connect.html
 pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
     sender: *const c_void,
     signal: crate::connections::CppSignal<Args>,
