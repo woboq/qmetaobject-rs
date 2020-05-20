@@ -8,7 +8,7 @@ static QT_WAKER_VTABLE: std::task::RawWakerVTable = unsafe {
         |s: *const ()| {
             std::task::RawWaker::new(
                 cpp!([s as "Waker*"] -> *const() as "Waker*" {
-                    s->ref++;
+                    s->refs++;
                     return s;
                 }),
                 &QT_WAKER_VTABLE,
@@ -38,7 +38,7 @@ cpp! {{
         TraitObject future;
         bool woken = false;
         bool completed = false;
-        QAtomicInt ref = 0;
+        QAtomicInt refs = 0;
         void customEvent(QEvent *e) override {
             Q_UNUSED(e);
             woken = false;
@@ -57,7 +57,7 @@ cpp! {{
             }
         }
         void deref() {
-            if (!--ref) {
+            if (!--refs) {
                 deleteLater();
             }
         }
@@ -89,7 +89,7 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
     unsafe {
         let waker = cpp!([f as "TraitObject"] -> *const() as "Waker*" {
             auto w = new Waker;
-            w->ref++;
+            w->refs++;
             w->future = f;
             return w;
         });
@@ -99,7 +99,7 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
 
 // SAFETY: caller must ensure that given future hasn't returned Poll::Ready earlier.
 unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) -> bool {
-    cpp!([waker as "Waker*"] { waker->ref++; });
+    cpp!([waker as "Waker*"] { waker->refs++; });
     let waker = std::task::RawWaker::new(waker, &QT_WAKER_VTABLE);
     let waker = std::task::Waker::from_raw(waker);
     let mut context = std::task::Context::from_waker(&waker);
