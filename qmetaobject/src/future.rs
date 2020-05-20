@@ -35,7 +35,6 @@ static QT_WAKER_VTABLE: std::task::RawWakerVTable = unsafe {
 
 cpp! {{
     struct Waker : QObject {
-    public:
         TraitObject future;
         bool woken = false;
         bool completed = false;
