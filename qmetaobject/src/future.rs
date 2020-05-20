@@ -39,6 +39,7 @@ cpp! {{
         bool woken = false;
         bool completed = false;
         QAtomicInt refs = 0;
+
         void customEvent(QEvent *e) override {
             Q_UNUSED(e);
             woken = false;
@@ -56,11 +57,13 @@ cpp! {{
                 deref();
             }
         }
+
         void deref() {
             if (!--refs) {
                 deleteLater();
             }
         }
+
         void wake() {
             if (woken) {
                 return;
@@ -68,6 +71,7 @@ cpp! {{
             woken = true;
             QApplication::postEvent(this, new QEvent(QEvent::User));
         }
+
         ~Waker() {
             rust!(QtDestroyFuture [future: *mut dyn Future<Output=()> as "TraitObject"] {
                 std::mem::drop(Box::from_raw(future))
