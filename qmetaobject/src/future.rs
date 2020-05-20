@@ -47,6 +47,9 @@ cpp! {{
         /// Reference counter.
         QAtomicInt refs = 0;
 
+        // start with refs count of 1, because caller gets the ownership.
+        Waker(TraitObject f): future(f), refs(1) {}
+
         void customEvent(QEvent *e) override {
             Q_UNUSED(e);
             woken = false;
@@ -102,10 +105,7 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
     let f = Box::into_raw(Box::new(f)) as *mut dyn Future<Output = ()>;
     unsafe {
         let waker = cpp!([f as "TraitObject"] -> *const() as "Waker*" {
-            auto w = new Waker;
-            w->refs++;
-            w->future = f;
-            return w;
+            return new Waker(f);
         });
         poll_with_qt_waker(waker, Pin::new_unchecked(&mut *f));
     }
