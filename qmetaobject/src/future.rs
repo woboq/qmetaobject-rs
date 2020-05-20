@@ -3,7 +3,7 @@ use std::future::Future;
 use std::os::raw::c_void;
 use std::pin::Pin;
 
-static QTWAKERVTABLE: std::task::RawWakerVTable = unsafe {
+static QT_WAKER_VTABLE: std::task::RawWakerVTable = unsafe {
     std::task::RawWakerVTable::new(
         |s: *const ()| {
             std::task::RawWaker::new(
@@ -11,7 +11,7 @@ static QTWAKERVTABLE: std::task::RawWakerVTable = unsafe {
                     s->ref++;
                     return s;
                 }),
-                &QTWAKERVTABLE,
+                &QT_WAKER_VTABLE,
             )
         },
         |s: *const ()| {
@@ -92,7 +92,7 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
 
 unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) -> bool {
     cpp!([waker as "Waker*"] { waker->ref++; });
-    let waker = std::task::RawWaker::new(waker, &QTWAKERVTABLE);
+    let waker = std::task::RawWaker::new(waker, &QT_WAKER_VTABLE);
     let waker = std::task::Waker::from_raw(waker);
     let mut context = std::task::Context::from_waker(&waker);
     future.poll(&mut context).is_ready()
