@@ -383,7 +383,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         unsafe {
             T::qml_construct(&b, c, ed);
         }
-        std::boxed::Box::into_raw(b);
+        Box::leak(b);
     };
     let creator_fn: extern "C" fn(c: *mut c_void) = creator_fn::<T>;
 
@@ -481,7 +481,7 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
             let obj_box: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
             let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
             obj_box.borrow_mut().init();
-            Box::into_raw(obj_box);
+            Box::leak(obj_box);
             obj_ptr
         }));
         match result {
@@ -570,7 +570,7 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
 
     let obj_box = Box::new(RefCell::new(obj));
     let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
-    Box::into_raw(obj_box);
+    Box::leak(obj_box);
 
     cpp!(unsafe [
         uri_ptr as "char*",
