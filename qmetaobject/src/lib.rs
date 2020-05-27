@@ -758,25 +758,38 @@ macro_rules! qt_plugin {
 
 cpp! {{
     struct FnBoxWrapper {
+        /// Wrapped Box<dyn FnMut()>
         TraitObject fnbox;
+
         ~FnBoxWrapper() {
             if (fnbox) {
-                rust!(FnBoxWrapper_destructor [fnbox : *mut dyn FnMut() as "TraitObject"] {
+                rust!(FnBoxWrapper_destructor [fnbox: *mut dyn FnMut() as "TraitObject"] {
                     unsafe { let _ = Box::from_raw(fnbox); }
                 });
             }
         }
 
+        /// Copying is not allowed.
         FnBoxWrapper &operator=(const FnBoxWrapper&) = delete;
 #if false && QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
         FnBoxWrapper(const FnBoxWrapper&) = delete;
 #else
         // Prior to Qt 5.10 we can't have move-only wrapper. Just do the auto_ptr kind of hack.
-        FnBoxWrapper(const FnBoxWrapper &o) : fnbox(o.fnbox) {  const_cast<FnBoxWrapper &>(o).fnbox = {}; }
+        FnBoxWrapper(const FnBoxWrapper &o) : fnbox(o.fnbox) {
+            const_cast<FnBoxWrapper &>(o).fnbox = {};
+        }
 #endif
 
-        FnBoxWrapper &operator=(FnBoxWrapper &&o) { std::swap(o.fnbox, fnbox); return *this; }
+        /// Moving is allowed, since `Box<FnMut()>` itself is not pinned.
+        FnBoxWrapper(FnBoxWrapper &&o) : fnbox(o.fnbox) {
+            o.fnbox = {};
+        }
+        FnBoxWrapper &operator=(FnBoxWrapper &&o) {
+            std::swap(o.fnbox, fnbox);
+            return *this;
+        }
 
+        /// Call boxed function in rust.
         void operator()() {
             rust!(FnBoxWrapper_operator [fnbox : *mut dyn FnMut() as "TraitObject"] {
                 unsafe { (*fnbox)(); }
@@ -854,6 +867,7 @@ pub fn queued_callback<T: Send, F: FnMut(T) + 'static>(
                 f(x);
             };
         });
+        // C++ destructor `~FnBoxWrapper` takes care of the memory.
         let mut func_raw = Box::into_raw(func);
         cpp!(unsafe [mut func_raw as "FnBoxWrapper", current_thread as "QPointer<QThread>"] {
             if (!current_thread) {
