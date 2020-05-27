@@ -412,7 +412,7 @@ impl<'a, T: QObject + ?Sized> From<&'a T> for QPointer<T> {
         let cpp_obj = obj.get_cpp_object();
         QPointer(
             cpp!(unsafe [cpp_obj as "QObject *"] -> QPointerImpl  as "QPointer<QObject>" {
-                return cpp_obj;
+                return cpp_obj; // implicit constructor
             }),
             obj as *const T,
         )
