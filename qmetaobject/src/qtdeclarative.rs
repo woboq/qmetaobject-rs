@@ -434,9 +434,16 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     }
 }
 
+/// Alias for type of `QQmlPrivate::RegisterSingletonType::qobjectApi` callback
+/// and its C++ counterpart.
+type QmlRegisterSingletonTypeCallback = extern "C" fn(
+    qml_engine: *mut c_void,
+    js_engine: *mut c_void,
+) -> *mut c_void;
 cpp! {{
-    typedef QObject *(*QmlRegisterSingletonTypeCallback)(QQmlEngine *, QJSEngine *);
+    using QmlRegisterSingletonTypeCallback = QObject *(*)(QQmlEngine *, QJSEngine *);
 }}
+
 
 /// Initialization for singleton QML objects.
 pub trait QSingletonInit {
@@ -492,10 +499,7 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
             }
         }
     };
-    let callback_fn: extern "C" fn(
-        _qml_engine: *mut c_void,
-        _js_engine: *mut c_void,
-    ) -> *mut c_void = callback_fn::<T>;
+    let callback_fn: QmlRegisterSingletonTypeCallback = callback_fn::<T>;
 
     cpp!(unsafe [
         uri_ptr as "const char *",
