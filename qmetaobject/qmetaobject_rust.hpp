@@ -98,9 +98,9 @@ struct RustObject : Base {
 struct RustObjectDescription {
     size_t size;
     const QMetaObject *baseMetaObject;
-    QObject *(*create)(const TraitObject*, const TraitObject*);
-    void (*qmlConstruct)(void*, const TraitObject*, const TraitObject*, void (*extra_destruct)(QObject *));
-    TraitObject (*get_rust_refcell)(QObject*); // Possible optimisation: make this an offset
+    QObject *(*create)(const TraitObject *, const TraitObject *);
+    void (*qmlConstruct)(void *, const TraitObject *, const TraitObject *, void (*extra_destruct)(QObject *));
+    TraitObject (*get_rust_refcell)(QObject *); // Possible optimisation: make this an offset
 };
 
 template<typename T>
@@ -121,14 +121,12 @@ const RustObjectDescription *rustObjectDescription() {
             q->ptr_qobject = *self_ptr;
             q->extra_destruct = extra_destruct;
         },
-        [](QObject *q) { return static_cast<T*>(q)->ptr_qobject; }
-
+        [](QObject *q) { return static_cast<T *>(q)->ptr_qobject; }
     };
     return &desc;
 }
 
 using CreatorFunction = void (*)(void *);
-
 
 namespace QtPrivate {
 // Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor

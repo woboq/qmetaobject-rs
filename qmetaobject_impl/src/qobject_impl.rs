@@ -95,6 +95,13 @@ struct MetaMethodParameter {
 struct MetaMethod {
     name: syn::Ident,
     args: Vec<MetaMethodParameter>,
+    // TODO: wrapper for `Qt::MethodFlags` and other enums
+    /// Flags of `Qt::MethodFlags` enum.
+    ///
+    /// Enum members used in QObject generator are:
+    ///  - `AccessPublic = 0x02`
+    ///  - `MethodMethod = 0x00`
+    ///  - `MethodSignal = 0x04`
     flags: u32,
     ret_type: syn::Type,
 }
@@ -520,6 +527,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let int_data = mo.int_data;
 
     use self::MetaObjectCall::*;
+
     let get_object = if is_qobject {
         quote! {
             let pinned = <#name #ty_generics as #crate_::QObject>::get_from_cpp(o);
@@ -527,14 +535,25 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             let mut obj = &mut *pinned.as_ptr();
 
             assert_eq!(o, obj.get_cpp_object(), "Internal pointer invalid");
-            struct Check<'check>(*mut ::std::os::raw::c_void, *const (#crate_::QObject + 'check));
+
+            struct Check<'check>(
+                *mut ::std::os::raw::c_void,
+                *const (#crate_::QObject + 'check)
+            );
+
             impl<'check> ::std::ops::Drop for Check<'check> {
-                fn drop(&mut self) { assert_eq!(self.0, unsafe {&*self.1}.get_cpp_object(), "Internal pointer changed while borrowed"); }
+                fn drop(&mut self) {
+                    assert_eq!(self.0, unsafe { &*self.1 }.get_cpp_object(),
+                               "Internal pointer changed while borrowed");
+                }
             }
+
             let _check = Check(o, obj as *const #crate_::QObject);
         }
     } else {
-        quote! { let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o); }
+        quote! {
+            let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o);
+        }
     };
 
     let property_meta_call: Vec<_> = properties
@@ -555,7 +574,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                     0 => quote!{ obj.#signal() },
                     1 => quote!{ obj.#signal(obj.#property_name.clone()) },
                     _ => panic!("NOTIFY signal {} for property {} has too many arguments",
-                        signal, property_name),
+                                signal, property_name),
                 };
             }
 
@@ -679,7 +698,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                 .collect();
 
             quote! { #i => {
-                match unsafe {*(*(a.offset(1)) as *const u32)} {
+                match unsafe { *(*(a.offset(1)) as *const u32) } {
                     #(#args)*
                     _ => {}
                 }
@@ -706,15 +725,22 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             .map(|arg| {
                 let n = &arg.name;
                 let ty = &arg.typ;
-                quote! { unsafe { ::std::mem::transmute::<& #ty , *mut ::std::os::raw::c_void>(& #n) } }
+                quote! { unsafe { ::std::mem::transmute::<& #ty, *mut ::std::os::raw::c_void>(& #n) } }
             })
             .collect();
         let array_size = signal.args.len() + 1;
         quote! {
             #[allow(non_snake_case)]
             fn #sig_name(&self #(, #args_decl)*) {
-                let a : [*mut ::std::os::raw::c_void; #array_size] = [ ::std::ptr::null_mut() #(, #args_ptr)* ];
-                unsafe { #crate_::invoke_signal((self as &#crate_::QObject).get_cpp_object(), #name::static_meta_object(), #i, &a) }
+                let a: [*mut ::std::os::raw::c_void; #array_size] = [ ::std::ptr::null_mut() #(, #args_ptr)* ];
+                unsafe {
+                    #crate_::invoke_signal(
+                        (self as &#crate_::QObject).get_cpp_object(),
+                        #name::static_meta_object(),
+                        #i,
+                        &a
+                    )
+                }
             }
         }
     }));
@@ -743,12 +769,12 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let mo = if ast.generics.params.is_empty() {
         quote! {
             qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                superdata: #base_meta_object,
+                super_data: #base_meta_object,
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: Some(static_metacall),
-                r: ::std::ptr::null(),
-                e: ::std::ptr::null(),
+                meta_types: ::std::ptr::null(),
+                extra_data: ::std::ptr::null(),
             };};
             return &*MO;
         }
@@ -772,12 +798,12 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             let mut h = HASHMAP.lock().unwrap();
             let mo = h.entry(TypeId::of::<#name #ty_generics>()).or_insert_with(
                 || Box::new(#crate_::QMetaObject {
-                    superdata: #base_meta_object,
+                    super_data: #base_meta_object,
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: Some(static_metacall #turbo_generics),
-                    r: ::std::ptr::null(),
-                    e: ::std::ptr::null(),
+                    meta_types: ::std::ptr::null(),
+                    extra_data: ::std::ptr::null(),
             }));
             return &**mo;
         }
@@ -788,36 +814,50 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             fn get_cpp_object(&self)-> *mut ::std::os::raw::c_void {
                 self.#base_prop.get()
             }
-            unsafe fn get_from_cpp<'pinned_ref>(ptr: *mut ::std::os::raw::c_void) -> #crate_::QObjectPinned<'pinned_ref, Self> {
-                let refcell_qobject : *const ::std::cell::RefCell<#crate_::QObject> = (<#name #ty_generics as #base>::get_object_description().get_rust_refcell)(ptr);
+
+            unsafe fn get_from_cpp<'pinned_ref>(
+                ptr: *mut ::std::os::raw::c_void
+            ) -> #crate_::QObjectPinned<'pinned_ref, Self>
+            {
+                let refcell_qobject: *const ::std::cell::RefCell<#crate_::QObject> = (<#name #ty_generics as #base>::get_object_description().get_rust_refcell)(ptr);
                 // This is a bit ugly, but this is the only solution i found to downcast
-                let refcell_type : &::std::cell::RefCell<#name #ty_generics> = ::std::mem::transmute::<_, (&::std::cell::RefCell<#name #ty_generics>, *const())>(refcell_qobject).0;
+                let refcell_type: &::std::cell::RefCell<#name #ty_generics> = ::std::mem::transmute::<_, (&::std::cell::RefCell<#name #ty_generics>, *const())>(refcell_qobject).0;
                 return #crate_::QObjectPinned::new(refcell_type);
             }
 
-            unsafe fn cpp_construct(pinned : &::std::cell::RefCell<Self>) -> *mut ::std::os::raw::c_void {
+            unsafe fn cpp_construct(
+                pinned: &::std::cell::RefCell<Self>
+            ) -> *mut ::std::os::raw::c_void
+            {
                 assert!(pinned.borrow().#base_prop.get().is_null());
                 let object_ptr = #crate_::QObjectPinned::<#crate_::QObject>::new(pinned as &::std::cell::RefCell<#crate_::QObject>);
                 let object_ptr_ptr : *const #crate_::QObjectPinned<#crate_::QObject> = &object_ptr;
                 let rust_pinned = #crate_::QObjectPinned::<dyn #base>::new(pinned as &::std::cell::RefCell<dyn #base>);
                 let rust_pinned_ptr : *const #crate_::QObjectPinned<dyn #base> = &rust_pinned;
-                let n = (<#name #ty_generics as #base>::get_object_description().create)
-                    (rust_pinned_ptr as *const ::std::os::raw::c_void, object_ptr_ptr as *const ::std::os::raw::c_void);
+                let n = (<#name #ty_generics as #base>::get_object_description().create)(
+                    rust_pinned_ptr as *const ::std::os::raw::c_void,
+                    object_ptr_ptr as *const ::std::os::raw::c_void,
+                );
                 pinned.borrow_mut().#base_prop.set(n);
                 n
             }
 
-            unsafe fn qml_construct(pinned : &::std::cell::RefCell<Self>, mem : *mut ::std::os::raw::c_void,
-                                    extra_destruct : extern fn(*mut ::std::os::raw::c_void)) {
-
+            unsafe fn qml_construct(
+                pinned: &::std::cell::RefCell<Self>,
+                mem: *mut ::std::os::raw::c_void,
+                extra_destruct: extern fn(*mut ::std::os::raw::c_void)
+            ) {
                 let object_ptr = #crate_::QObjectPinned::<#crate_::QObject>::new(pinned as &::std::cell::RefCell<#crate_::QObject>);
                 let object_ptr_ptr : *const #crate_::QObjectPinned<#crate_::QObject> = &object_ptr;
                 let rust_pinned = #crate_::QObjectPinned::<dyn #base>::new(pinned as &::std::cell::RefCell<dyn #base>);
                 let rust_pinned_ptr : *const #crate_::QObjectPinned<dyn #base> = &rust_pinned;
                 pinned.borrow_mut().#base_prop.set(mem);
                 (<#name #ty_generics as #base>::get_object_description().qml_construct)(
-                    mem, rust_pinned_ptr as *const ::std::os::raw::c_void,
-                    object_ptr_ptr as *const ::std::os::raw::c_void, extra_destruct);
+                    mem,
+                    rust_pinned_ptr as *const ::std::os::raw::c_void,
+                    object_ptr_ptr as *const ::std::os::raw::c_void,
+                    extra_destruct
+                );
             }
 
             fn cpp_size() -> usize {
@@ -840,21 +880,27 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             #(#func_bodies)*
         }
         impl #impl_generics #crate_::#trait_name for #name #ty_generics #where_clause {
-            fn meta_object(&self)->*const #crate_::QMetaObject {
+            fn meta_object(&self) -> *const #crate_::QMetaObject {
                 Self::static_meta_object()
             }
 
-            fn static_meta_object()->*const #crate_::QMetaObject {
+            fn static_meta_object() -> *const #crate_::QMetaObject {
 
                 #[cfg(target_pointer_width = "64")]
                 static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
                 #[cfg(target_pointer_width = "32")]
                 static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
+
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
                 #[allow(unused_variables)]
-                extern "C" fn static_metacall #impl_generics (o: *mut ::std::os::raw::c_void, c: u32, idx: u32,
-                                              a: *const *mut ::std::os::raw::c_void) #where_clause {
+                extern "C" fn static_metacall #impl_generics (
+                    o: *mut ::std::os::raw::c_void,
+                    c: u32,
+                    idx: u32,
+                    a: *const *mut ::std::os::raw::c_void
+                ) #where_clause
+                {
                     if c == #InvokeMetaMethod { unsafe {
                         #get_object
                         match idx {
@@ -908,12 +954,12 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             ];
 
             #[no_mangle]
-            pub extern fn qt_plugin_query_metadata() -> *const u8
-            {  qt_pluginMetaData.as_ptr() }
+            pub extern fn qt_plugin_query_metadata() -> *const u8 {
+                qt_pluginMetaData.as_ptr()
+            }
 
             #[no_mangle]
-            pub extern fn qt_plugin_instance() -> *mut ::std::os::raw::c_void
-            {
+            pub extern fn qt_plugin_instance() -> *mut ::std::os::raw::c_void {
                 #crate_::into_leaked_cpp_ptr(#name::default())
             }
 
@@ -951,7 +997,8 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
         is_repr_explicit |= is_valid_repr_attribute(attr);
     }
     if !is_repr_explicit {
-        panic!("#[derive(QEnum)] only support enum with explicit #[repr(*)], possible integer type are u8, u16, u32, i8, i16, i32.")
+        panic!("#[derive(QEnum)] only support enum with explicit #[repr(*)], \
+                possible integer type are u8, u16, u32, i8, i16, i32.")
     }
 
     let crate_ = super::get_crate(&ast);
@@ -982,12 +1029,12 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
     let mo = if ast.generics.params.is_empty() {
         quote! {
             qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                superdata: ::std::ptr::null(),
+                super_data: ::std::ptr::null(),
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: None,
-                r: ::std::ptr::null(),
-                e: ::std::ptr::null(),
+                meta_types: ::std::ptr::null(),
+                extra_data: ::std::ptr::null(),
             };};
             return &*MO;
         }
@@ -997,12 +1044,15 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
 
     let body = quote! {
         impl #crate_::QEnum for #name {
-            fn static_meta_object()->*const #crate_::QMetaObject {
+            fn static_meta_object() -> *const #crate_::QMetaObject {
+
                 #[cfg(target_pointer_width = "64")]
                 static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
                 #[cfg(target_pointer_width = "32")]
                 static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
+
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
+
                 #mo
             }
         }

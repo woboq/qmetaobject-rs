@@ -383,7 +383,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         unsafe {
             T::qml_construct(&b, c, ed);
         }
-        std::boxed::Box::into_raw(b);
+        Box::leak(b);
     };
     let creator_fn: extern "C" fn(c: *mut c_void) = creator_fn::<T>;
 
@@ -481,7 +481,7 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
             let obj_box: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
             let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
             obj_box.borrow_mut().init();
-            Box::into_raw(obj_box);
+            Box::leak(obj_box);
             obj_ptr
         }));
         match result {
@@ -497,35 +497,53 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
         _js_engine: *mut c_void,
     ) -> *mut c_void = callback_fn::<T>;
 
-    unsafe {
-        cpp!([uri_ptr as "const char*", version_major as "int", version_minor as "int",
-                    qml_name_ptr as "const char*", meta_object as "const QMetaObject *",
-                    callback_fn as "QmlRegisterSingletonTypeCallback"] {
+    cpp!(unsafe [
+        uri_ptr as "const char *",
+        version_major as "int",
+        version_minor as "int",
+        qml_name_ptr as "const char *",
+        meta_object as "const QMetaObject *",
+        callback_fn as "QmlRegisterSingletonTypeCallback"
+    ] {
+        const char *className = qml_name_ptr;
+        // BEGIN: From QML_GETTYPENAMES
+        const int nameLen = int(strlen(className));
+        QVarLengthArray<char, 48> pointerName(nameLen + 2);
+        memcpy(pointerName.data(), className, size_t(nameLen));
+        pointerName[nameLen] = '*';
+        pointerName[nameLen + 1] = '\0';
+        // END
 
-            const char *className = qml_name_ptr;
-            // BEGIN: From QML_GETTYPENAMES
-            const int nameLen = int(strlen(className));
-            QVarLengthArray<char,48> pointerName(nameLen+2);
-            memcpy(pointerName.data(), className, size_t(nameLen));
-            pointerName[nameLen] = '*';
-            pointerName[nameLen+1] = '\0';
-            //END
+        auto ptrType = QMetaType::registerNormalizedType(
+            pointerName.constData(),
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Destruct,
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Construct,
+            int(sizeof(void *)),
+            QMetaType::MovableType | QMetaType::PointerToQObject,
+            meta_object
+        );
 
-            auto ptrType = QMetaType::registerNormalizedType(pointerName.constData(),
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
-                int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
-                meta_object);
+        QQmlPrivate::RegisterSingletonType api = {
+            /*version*/ 2, // for now we are happy with pre-5.14 version 2
+            /*uri*/ uri_ptr,
+            /*versionMajor*/ version_major,
+            /*versionMinor*/ version_minor,
+            /*typeName*/ qml_name_ptr,
+            /*scriptApi*/ nullptr,
+            /*qobjectApi*/ callback_fn,
+            // new in version 1
+            /*instanceMetaObject*/ meta_object,
+            // new in version 2
+            /*typeId*/ ptrType,
+            /*revision*/ 0,
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+            // new in version 3
+            /*generalizedQobjectApi*/ {}
+#endif
+        };
 
-            QQmlPrivate::RegisterSingletonType api = {
-                2, // version
-                uri_ptr, version_major, version_minor, qml_name_ptr,
-                nullptr, callback_fn, meta_object, ptrType, 0
-            };
-
-            QQmlPrivate::qmlregister(QQmlPrivate::SingletonRegistration, &api);
-        })
-    }
+        QQmlPrivate::qmlregister(QQmlPrivate::SingletonRegistration, &api);
+    })
 }
 
 /// Register the passed object as a singleton QML object.
@@ -556,17 +574,25 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
 
     let obj_box = Box::new(RefCell::new(obj));
     let obj_ptr = unsafe { T::cpp_construct(&obj_box) };
-    Box::into_raw(obj_box);
+    Box::leak(obj_box);
 
-    unsafe {
-        cpp!([uri_ptr as "char*", version_major as "int", version_minor as "int",
-                type_name_ptr as "char*", obj_ptr as "QObject*"] {
-            #if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
-            qmlRegisterSingletonInstance(uri_ptr, version_major, version_minor, type_name_ptr,
-                obj_ptr);
-            #endif
-        })
-    }
+    cpp!(unsafe [
+        uri_ptr as "char*",
+        version_major as "int",
+        version_minor as "int",
+        type_name_ptr as "char *",
+        obj_ptr as "QObject *"
+    ] {
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+        qmlRegisterSingletonInstance(
+            uri_ptr,
+            version_major,
+            version_minor,
+            type_name_ptr,
+            obj_ptr
+        );
+#endif
+    })
 }
 
 /// Register the given enum as a QML type.

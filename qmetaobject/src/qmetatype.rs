@@ -35,7 +35,9 @@ fn register_metatype_common<T: QMetaType>(
     let e = h.entry(TypeId::of::<T>()).or_insert_with(|| {
         let size = std::mem::size_of::<T>() as u32;
 
-        extern "C" fn deleter_fn<T>(v: *mut T) { unsafe { Box::from_raw(v); } };
+        extern "C" fn deleter_fn<T>(v: *mut T) {
+            let _ = unsafe { Box::from_raw(v) };
+        };
         let deleter_fn: extern "C" fn(v: *mut T) = deleter_fn;
 
         extern "C" fn creator_fn<T: Default + Clone>(c: *const T) -> *const T {
@@ -69,14 +71,26 @@ fn register_metatype_common<T: QMetaType>(
 
         let name = CString::new(format!("{:?}", TypeId::of::<T>())).unwrap();
         let name = name.as_ptr();
-        let type_id = cpp!(unsafe [name as "const char*", size as "int", deleter_fn as "QMetaType::Deleter",
-                creator_fn as "QMetaType::Creator", destructor_fn as "QMetaType::Destructor",
-                constructor_fn as "QMetaType::Constructor", gadget_metaobject as "const QMetaObject*"] -> i32 as "int" {
+        let type_id = cpp!(unsafe [
+            name as "const char *",
+            size as "int",
+            deleter_fn as "QMetaType::Deleter",
+            creator_fn as "QMetaType::Creator",
+            destructor_fn as "QMetaType::Destructor",
+            constructor_fn as "QMetaType::Constructor",
+            gadget_metaobject as "const QMetaObject *"
+        ] -> i32 as "int" {
             QMetaType::TypeFlags extraFlag(gadget_metaobject ? QMetaType::IsGadget : 0);
-            return QMetaType::registerType(gadget_metaobject ? gadget_metaobject->className() : name, deleter_fn, creator_fn, destructor_fn,
-                constructor_fn, size,
+            return QMetaType::registerType(
+                gadget_metaobject ? gadget_metaobject->className() : name,
+                deleter_fn,
+                creator_fn,
+                destructor_fn,
+                constructor_fn,
+                size,
                 QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType | extraFlag,
-                gadget_metaobject);
+                gadget_metaobject
+            );
         });
 
         if T::CONVERSION_TO_STRING.is_some() {
@@ -85,8 +99,8 @@ fn register_metatype_common<T: QMetaType>(
                 true
             }
             let converter_fn: extern "C" fn(*const c_void, &T, *mut QString) -> bool = converter_fn;
-            cpp!( unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
-                //NOTE: the ConverterFunctor are gonna be leaking (in Qt, they are suppoed to be allocated in static storage
+            cpp!(unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
+                // NOTE: the ConverterFunctor are gonna be leaking (in Qt, they are supposed to be allocated in static storage
                 auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
                 if (!c->registerConverter(type_id, QMetaType::QString))
                     delete c;
@@ -109,7 +123,7 @@ fn register_metatype_common<T: QMetaType>(
     });
     let id = e.0;
     if !name.is_null() && !e.1.contains(unsafe { CStr::from_ptr(name) }) {
-        let x = cpp!(unsafe [name as "const char*", id as "int"] -> i32 as "int" {
+        let x = cpp!(unsafe [name as "const char *", id as "int"] -> i32 as "int" {
             if (int exist = QMetaType::type(name)) {
                 if (exist != id) {
                     qWarning("Attempt to register %s as a typedef of %s, while it was already registered as %s",
@@ -127,18 +141,21 @@ fn register_metatype_common<T: QMetaType>(
 
 fn register_metatype_qobject<T: QObject>() -> i32 {
     let metaobject = T::static_meta_object();
-    unsafe {
-        cpp!([metaobject as "const QMetaObject*"] -> i32 as "int" {
-            return QMetaType::registerType(metaobject->className(),
-                [](void*p) { delete static_cast<void**>(p); },
-                [](const void*p) -> void* { using T = void*; return new T{ p ? *static_cast<const T*>(p) : nullptr}; },
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
-                sizeof(void*),
-                QMetaType::MovableType | QMetaType::PointerToQObject,
-                metaobject);
-        })
-    }
+    cpp!(unsafe [metaobject as "const QMetaObject *"] -> i32 as "int" {
+        return QMetaType::registerType(
+            metaobject->className(),
+            [](void *p) { delete static_cast<void **>(p); },
+            [](const void *p) -> void * {
+                using T = void *;
+                return new T{ p ? *static_cast<const T *>(p) : nullptr};
+            },
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Destruct,
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Construct,
+            sizeof(void *),
+            QMetaType::MovableType | QMetaType::PointerToQObject,
+            metaobject
+        );
+    })
 }
 
 /// Implement this trait for type that should be known to the QMetaObject system
@@ -150,6 +167,7 @@ fn register_metatype_qobject<T: QObject>() -> i32 {
 /// # use ::qmetaobject::QMetaType;
 /// #[derive(Default, Clone)]
 /// struct MyStruct(u32, String);
+///
 /// impl QMetaType for MyStruct {}
 /// ```
 pub trait QMetaType: Clone + Default + 'static {
@@ -172,7 +190,7 @@ pub trait QMetaType: Clone + Default + 'static {
     /// Returns a QVariant containing a copy of this object
     fn to_qvariant(&self) -> QVariant {
         let id: i32 = Self::id();
-        cpp!(unsafe [self as "const void*", id as "int"] -> QVariant as "QVariant" {
+        cpp!(unsafe [self as "const void *", id as "int"] -> QVariant as "QVariant" {
             return QVariant(id, self);
         })
     }
@@ -181,15 +199,18 @@ pub trait QMetaType: Clone + Default + 'static {
     fn from_qvariant(mut variant: QVariant) -> Option<Self> {
         let id: i32 = Self::id();
         let var_ptr = &mut variant as *mut QVariant;
-        unsafe {
-            let ptr = cpp!([var_ptr as "QVariant*", id as "int"] -> *const c_void as "const void*" {
-                return var_ptr->canConvert(id) && var_ptr->convert(id) ? var_ptr->constData() : nullptr;
-            });
-            if ptr.is_null() {
-                None
-            } else {
-                Some((*(ptr as *const Self)).clone())
-            }
+        let ptr = cpp!(unsafe [
+            var_ptr as "QVariant *",
+            id as "int"
+        ] -> *const c_void as "const void *" {
+            return var_ptr->canConvert(id) && var_ptr->convert(id)
+                ? var_ptr->constData()
+                : nullptr;
+        });
+        if ptr.is_null() {
+            None
+        } else {
+            Some(unsafe {&*(ptr as *const Self)}.clone())
         }
     }
 
@@ -240,7 +261,7 @@ qdeclare_builtin_metatype! {i8   => 34}
 qdeclare_builtin_metatype! {u16  => 36}
 qdeclare_builtin_metatype! {u8   => 37}
 qdeclare_builtin_metatype! {f32  => 38}
-//qdeclare_builtin_metatype!{"*c_void" => 31,
+//qdeclare_builtin_metatype!{"*c_void" => 31}
 qdeclare_builtin_metatype! {QVariantList  => 9}
 qdeclare_builtin_metatype! {QString => 10}
 qdeclare_builtin_metatype! {QByteArray => 12}
@@ -250,7 +271,6 @@ qdeclare_builtin_metatype! {QDateTime => 16}
 qdeclare_builtin_metatype! {QUrl => 17}
 qdeclare_builtin_metatype! {QRectF => 20}
 qdeclare_builtin_metatype! {QPointF => 26}
-//qdeclare_builtin_metatype!{QVariant => 41}
 impl QMetaType for QVariant {
     fn register(_name: Option<&std::ffi::CStr>) -> i32 {
         41
@@ -313,6 +333,7 @@ where
     fn register_type(_name: &::std::ffi::CStr) -> i32 {
         register_metatype_qobject::<T>()
     }
+
     unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
         let pinned = QObjectPinned::new(self);
         let r = a as *mut *const ::std::os::raw::c_void;
@@ -331,6 +352,7 @@ where
     fn register_type(_name: &::std::ffi::CStr) -> i32 {
         register_metatype_qobject::<T>()
     }
+
     unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
         let pinned = self.as_pinned();
         let r = a as *mut *const ::std::os::raw::c_void;

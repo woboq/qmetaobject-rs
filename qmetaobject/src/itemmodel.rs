@@ -16,8 +16,9 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-use super::*;
 use std::collections::HashMap;
+
+use crate::*;
 
 /// This trait allow to override a Qt QAbstractItemModel
 pub trait QAbstractItemModel: QObject {
@@ -28,25 +29,31 @@ pub trait QAbstractItemModel: QObject {
     {
         unsafe {
             &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-            return rustObjectDescription<Rust_QAbstractItemModel>();
-        } )
+                return rustObjectDescription<Rust_QAbstractItemModel>();
+            })
         }
     }
 
     /// Refer to the Qt documentation of QAbstractItemModel::index
     fn index(&self, row: i32, column: i32, parent: QModelIndex) -> QModelIndex;
+
     /// Refer to the Qt documentation of QAbstractItemModel::parent
     fn parent(&self, index: QModelIndex) -> QModelIndex;
+
     /// Refer to the Qt documentation of QAbstractItemModel::rowCount
     fn row_count(&self, parent: QModelIndex) -> i32;
+
     /// Refer to the Qt documentation of QAbstractItemModel::columnCount
     fn column_count(&self, parent: QModelIndex) -> i32;
+
     /// Refer to the Qt documentation of QAbstractItemModel::data
     fn data(&self, index: QModelIndex, role: i32) -> QVariant;
+
     /// Refer to the Qt documentation of QAbstractItemModel::setData
     fn set_data(&mut self, _index: QModelIndex, _value: &QVariant, _role: i32) -> bool {
         false
     }
+
     /// Refer to the Qt documentation of QAbstractItemModel::roleNames
     fn role_names(&self) -> HashMap<i32, QByteArray> {
         HashMap::new()
@@ -57,42 +64,57 @@ impl dyn QAbstractItemModel {
     /// Refer to the Qt documentation of QAbstractListModel::beginInsertRows
     pub fn begin_insert_rows(&self, parent: QModelIndex, first: i32, last: i32) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", parent as "QModelIndex", first as "int", last as "int"]{
+        cpp!(unsafe [
+            obj as "Rust_QAbstractItemModel *",
+            parent as "QModelIndex",
+            first as "int",
+            last as "int"
+        ] {
             if(obj) obj->beginInsertRows(parent, first, last);
         })
     }
+
     /// Refer to the Qt documentation of QAbstractListModel::endInsertRows
     pub fn end_insert_rows(&self) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel *"]{
             if(obj) obj->endInsertRows();
         })
     }
+
     /// Refer to the Qt documentation of QAbstractListModel::beginRemoveRows
     pub fn begin_remove_rows(&self, parent: QModelIndex, first: i32, last: i32) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", parent as "QModelIndex", first as "int", last as "int"]{
+        cpp!(unsafe [
+            obj as "Rust_QAbstractItemModel *",
+            parent as "QModelIndex",
+            first as "int",
+            last as "int"
+        ] {
             if(obj) obj->beginRemoveRows(parent, first, last);
         })
     }
+
     /// Refer to the Qt documentation of QAbstractListModel::endRemoveRows
     pub fn end_remove_rows(&self) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel *"] {
             if(obj) obj->endRemoveRows();
         })
     }
+
     /// Refer to the Qt documentation of QAbstractListModel::beginResetModel
     pub fn begin_reset_model(&self) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel *"] {
             if(obj) obj->beginResetModel();
         })
     }
+
     /// Refer to the Qt documentation of QAbstractListModel::endResetModel
     pub fn end_reset_model(&self) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"]{
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel *"] {
             if(obj) obj->endResetModel();
         })
     }
@@ -102,7 +124,7 @@ impl dyn QAbstractItemModel {
     /// update_model_indexes need to be called between layout_about_to_be_changed and layout_changed
     pub fn layout_about_to_be_changed(&self) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"] {
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel *"] {
             if (obj) obj->layoutAboutToBeChanged();
         })
     }
@@ -116,12 +138,15 @@ impl dyn QAbstractItemModel {
     {
         let f: &mut dyn FnMut(QModelIndex) -> QModelIndex = &mut f;
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", f as "TraitObject"] {
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel *", f as "TraitObject"] {
             if (!obj) return;
             const auto list1 = obj->persistentIndexList();
             auto list2 = list1;
             for (QModelIndex &idx : list2) {
-                rust!(update_model_indexes [f : &mut dyn FnMut(QModelIndex)->QModelIndex as "TraitObject", idx : &mut QModelIndex as "QModelIndex&"] {
+                rust!(update_model_indexes [
+                    f: &mut dyn FnMut(QModelIndex) -> QModelIndex as "TraitObject",
+                    idx : &mut QModelIndex as "QModelIndex &"
+                ] {
                     *idx = f(*idx);
                 });
             }
@@ -134,7 +159,7 @@ impl dyn QAbstractItemModel {
     /// update_model_indexes need to be called between layout_about_to_be_changed and layout_changed
     pub fn layout_changed(&self) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*"] {
+        cpp!(unsafe [obj as "Rust_QAbstractItemModel *"] {
             if (obj) obj->layoutChanged();
         })
     }
@@ -142,7 +167,11 @@ impl dyn QAbstractItemModel {
     /// Refer to the Qt documentation of QAbstractListModel::dataChanged
     pub fn data_changed(&self, top_left: QModelIndex, bottom_right: QModelIndex) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
+        cpp!(unsafe [
+            obj as "Rust_QAbstractItemModel *",
+            top_left as "QModelIndex",
+            bottom_right as "QModelIndex"
+        ] {
             if(obj) obj->dataChanged(top_left, bottom_right);
         })
     }
@@ -150,84 +179,105 @@ impl dyn QAbstractItemModel {
     /// Refer to the Qt documentation of QAbstractItemModel::createIndex
     pub fn create_index(&self, row: i32, column: i32, id: usize) -> QModelIndex {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QAbstractItemModel*", row as "int", column as "int", id as "uintptr_t"] -> QModelIndex as "QModelIndex" {
+        cpp!(unsafe [
+            obj as "Rust_QAbstractItemModel *",
+            row as "int",
+            column as "int",
+            id as "uintptr_t"
+        ] -> QModelIndex as "QModelIndex" {
             return obj ? obj->createIndex(row, column, id) : QModelIndex();
         })
     }
 }
 
 cpp! {{
-#include <qmetaobject_rust.hpp>
-#include <QtCore/QAbstractItemModel>
+    #include <qmetaobject_rust.hpp>
+    #include <QtCore/QAbstractItemModel>
 }}
 
 cpp! {{
-struct Rust_QAbstractItemModel : RustObject<QAbstractItemModel> {
+    struct Rust_QAbstractItemModel : RustObject<QAbstractItemModel> {
 
-    using QAbstractItemModel::beginInsertRows;
-    using QAbstractItemModel::endInsertRows;
-    using QAbstractItemModel::beginRemoveRows;
-    using QAbstractItemModel::endRemoveRows;
-    using QAbstractItemModel::beginResetModel;
-    using QAbstractItemModel::endResetModel;
-    using QAbstractItemModel::createIndex;
-    using QAbstractItemModel::changePersistentIndexList;
-    using QAbstractItemModel::persistentIndexList;
+        using QAbstractItemModel::beginInsertRows;
+        using QAbstractItemModel::endInsertRows;
+        using QAbstractItemModel::beginRemoveRows;
+        using QAbstractItemModel::endRemoveRows;
+        using QAbstractItemModel::beginResetModel;
+        using QAbstractItemModel::endResetModel;
+        using QAbstractItemModel::createIndex;
+        using QAbstractItemModel::changePersistentIndexList;
+        using QAbstractItemModel::persistentIndexList;
 
-    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
-        return rust!(Rust_QAbstractItemModel_index[rust_object : QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
-                row : i32 as "int", column : i32 as "int", parent : QModelIndex as "QModelIndex"] -> QModelIndex as "QModelIndex" {
-            rust_object.borrow().index(row, column, parent)
-        });
-    }
+        QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
+            return rust!(Rust_QAbstractItemModel_index [
+                rust_object: QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
+                row: i32 as "int",
+                column: i32 as "int",
+                parent: QModelIndex as "QModelIndex"
+            ] -> QModelIndex as "QModelIndex" {
+                rust_object.borrow().index(row, column, parent)
+            });
+        }
 
-    QModelIndex parent(const QModelIndex &index) const override {
-        return rust!(Rust_QAbstractItemModel_parent[rust_object : QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
-                index : QModelIndex as "QModelIndex"] -> QModelIndex as "QModelIndex" {
-            rust_object.borrow().parent(index)
-        });
-    }
+        QModelIndex parent(const QModelIndex &index) const override {
+            return rust!(Rust_QAbstractItemModel_parent [
+                rust_object: QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
+                index : QModelIndex as "QModelIndex"
+            ] -> QModelIndex as "QModelIndex" {
+                rust_object.borrow().parent(index)
+            });
+        }
 
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override {
-        return rust!(Rust_QAbstractItemModel_rowCount[rust_object : QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
-                  parent : QModelIndex as "QModelIndex"]
-                -> i32 as "int" {
-            rust_object.borrow().row_count(parent)
-        });
-    }
+        int rowCount(const QModelIndex &parent = QModelIndex()) const override {
+            return rust!(Rust_QAbstractItemModel_rowCount [
+                rust_object: QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
+                parent: QModelIndex as "QModelIndex"
+            ] -> i32 as "int" {
+                rust_object.borrow().row_count(parent)
+            });
+        }
 
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override {
-        return rust!(Rust_QAbstractItemModel_columnCount[rust_object : QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
-                     parent : QModelIndex as "QModelIndex"]
-                -> i32 as "int" {
-            rust_object.borrow().column_count(parent)
-        });
-    }
+        int columnCount(const QModelIndex &parent = QModelIndex()) const override {
+            return rust!(Rust_QAbstractItemModel_columnCount [
+                rust_object: QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
+                parent : QModelIndex as "QModelIndex"
+            ] -> i32 as "int" {
+                rust_object.borrow().column_count(parent)
+            });
+        }
 
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        return rust!(Rust_QAbstractItemModel_data[rust_object : QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
-                index : QModelIndex as "QModelIndex", role : i32 as "int"] -> QVariant as "QVariant" {
-            rust_object.borrow().data(index, role)
-        });
-    }
+        QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
+            return rust!(Rust_QAbstractItemModel_data [
+                rust_object: QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
+                index: QModelIndex as "QModelIndex",
+                role: i32 as "int"
+            ] -> QVariant as "QVariant" {
+                rust_object.borrow().data(index, role)
+            });
+        }
 
-    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
-        return rust!(Rust_QAbstractItemModel_setData[rust_object : QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
-                index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
-                -> bool as "bool" {
-            rust_object.borrow_mut().set_data(index, &value, role)
-        });
-    }
+        bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
+            return rust!(Rust_QAbstractItemModel_setData [
+                rust_object: QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
+                index: QModelIndex as "QModelIndex",
+                value: QVariant as "QVariant",
+                role: i32 as "int"
+            ] -> bool as "bool" {
+                rust_object.borrow_mut().set_data(index, &value, role)
+            });
+        }
 
-    QHash<int, QByteArray> roleNames() const override {
-        QHash<int, QByteArray> base = QAbstractItemModel::roleNames();
-        rust!(Rust_QAbstractItemModel_roleNames[rust_object : QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
-                base: *mut c_void as "QHash<int, QByteArray>&"] {
-            for (key, val) in rust_object.borrow().role_names().iter() {
-                add_to_hash(base, *key, val.clone());
-            }
-        });
-        return base;
-    }
-};
+        QHash<int, QByteArray> roleNames() const override {
+            QHash<int, QByteArray> base = QAbstractItemModel::roleNames();
+            rust!(Rust_QAbstractItemModel_roleNames [
+                rust_object: QObjectPinned<dyn QAbstractItemModel> as "TraitObject",
+                base: *mut c_void as "QHash<int, QByteArray> &"
+            ] {
+                for (key, val) in rust_object.borrow().role_names().iter() {
+                    add_to_hash(base, *key, val.clone());
+                }
+            });
+            return base;
+        }
+    };
 }}
