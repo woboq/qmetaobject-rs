@@ -177,8 +177,28 @@ macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 use std::cell::RefCell;
 use std::os::raw::{c_char, c_void};
 
-pub mod qttypes;
+pub use itemmodel::*;
+pub use listmodel::*;
+pub use crate::log::*;
+pub use qtdeclarative::*;
+pub use qmetatype::*;
+pub use connections::RustSignal;
+pub use connections::{connect, CppSignal, SignalCppRepresentation};
+pub use qtquickcontrols2::*;
+pub use future::*;
 pub use qttypes::*;
+
+pub mod itemmodel;
+pub mod listmodel;
+pub mod log;
+pub mod qtdeclarative;
+pub mod qmetatype;
+pub mod qrc;
+pub mod connections;
+pub mod qtquickcontrols2;
+pub mod scenegraph;
+pub mod future;
+pub mod qttypes;
 
 cpp! {{
     #include <qmetaobject_rust.hpp>
@@ -1004,23 +1024,3 @@ pub const USER_ROLE: i32 = 0x0100;
 /// [`$CARGO_MANIFEST_DIR`]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
 pub use qmetaobject_impl::qrc_internal as qrc;
 // XXX: The line above re-exports the macro with proper documentation and doctests.
-
-pub mod itemmodel;
-pub use itemmodel::*;
-pub mod listmodel;
-pub use listmodel::*;
-pub mod log;
-pub use crate::log::*;
-pub mod qtdeclarative;
-pub use qtdeclarative::*;
-pub mod qmetatype;
-pub use qmetatype::*;
-pub mod qrc;
-pub mod connections;
-pub use connections::RustSignal;
-pub use connections::{connect, CppSignal, SignalCppRepresentation};
-pub mod qtquickcontrols2;
-pub mod scenegraph;
-pub use qtquickcontrols2::*;
-pub mod future;
-pub use future::*;
