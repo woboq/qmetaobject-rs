@@ -17,6 +17,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //! Showcase of `#[qt_doc(...)]` custom proc macro attribute.
+#![deny(missing_docs)]
 
 #[macro_use]
 extern crate qmetaobject;
@@ -38,5 +39,6 @@ impl QSomething {
 #[qt_doc(qt = "qbytearray.html#qstrnlen", related = "uint qstrnlen(const char *str, uint maxlen)")]
 pub fn qstrlen(str: *const u8, maxlen: usize) {}
 
+#[allow(non_camel_case_types)]
 #[qt_doc(qt = "qtglobal.html#qreal-typedef", typedef = "qreal")]
 pub type qreal = f32;
