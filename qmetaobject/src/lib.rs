@@ -580,17 +580,25 @@ pub unsafe fn invoke_signal(
     })
 }
 
+/// Wrapper for `QMetaObject`'s private data's `StaticMetacallFunction` typedef.
+type StaticMetacallFunction = Option<extern "C" fn(
+    o: *mut c_void, // FIXME: should be QObject or something
+    c: u32,
+    idx: u32,
+    a: *const *mut c_void
+)>;
+
 /// Same as a C++ QMetaObject.
 #[doc(hidden)]
 #[repr(C)]
 pub struct QMetaObject {
-    pub superdata: *const QMetaObject,
+    // fields are slightly renamed from Qt to match Rust code style
+    pub super_data: *const QMetaObject,
     pub string_data: *const u8,
     pub data: *const u32,
-    pub static_metacall:
-        Option<extern "C" fn(o: *mut c_void, c: u32, idx: u32, a: *const *mut c_void)>,
-    pub r: *const c_void,
-    pub e: *const c_void,
+    pub static_metacall: StaticMetacallFunction,
+    pub meta_types: *const c_void,
+    pub extra_data: *const c_void,
 }
 
 unsafe impl Sync for QMetaObject {}

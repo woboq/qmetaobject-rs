@@ -762,12 +762,12 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     let mo = if ast.generics.params.is_empty() {
         quote! {
             qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                superdata: #base_meta_object,
+                super_data: #base_meta_object,
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: Some(static_metacall),
-                r: ::std::ptr::null(),
-                e: ::std::ptr::null(),
+                meta_types: ::std::ptr::null(),
+                extra_data: ::std::ptr::null(),
             };};
             return &*MO;
         }
@@ -791,12 +791,12 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             let mut h = HASHMAP.lock().unwrap();
             let mo = h.entry(TypeId::of::<#name #ty_generics>()).or_insert_with(
                 || Box::new(#crate_::QMetaObject {
-                    superdata: #base_meta_object,
+                    super_data: #base_meta_object,
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: Some(static_metacall #turbo_generics),
-                    r: ::std::ptr::null(),
-                    e: ::std::ptr::null(),
+                    meta_types: ::std::ptr::null(),
+                    extra_data: ::std::ptr::null(),
             }));
             return &**mo;
         }
@@ -1022,12 +1022,12 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
     let mo = if ast.generics.params.is_empty() {
         quote! {
             qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
-                superdata: ::std::ptr::null(),
+                super_data: ::std::ptr::null(),
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: None,
-                r: ::std::ptr::null(),
-                e: ::std::ptr::null(),
+                meta_types: ::std::ptr::null(),
+                extra_data: ::std::ptr::null(),
             };};
             return &*MO;
         }
