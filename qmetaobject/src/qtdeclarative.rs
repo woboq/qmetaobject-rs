@@ -535,7 +535,11 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
             /*instanceMetaObject*/ meta_object,
             // new in version 2
             /*typeId*/ ptrType,
-            /*revision*/ 0
+            /*revision*/ 0,
+#if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+            // new in version 3
+            /*generalizedQobjectApi*/ {}
+#endif
         };
 
         QQmlPrivate::qmlregister(QQmlPrivate::SingletonRegistration, &api);
