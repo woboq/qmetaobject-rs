@@ -95,6 +95,13 @@ struct MetaMethodParameter {
 struct MetaMethod {
     name: syn::Ident,
     args: Vec<MetaMethodParameter>,
+    // TODO: wrapper for `Qt::MethodFlags` and other enums
+    /// Flags of `Qt::MethodFlags` enum.
+    ///
+    /// Enum members used in QObject generator are:
+    ///  - `AccessPublic = 0x02`
+    ///  - `MethodMethod = 0x00`
+    ///  - `MethodSignal = 0x04`
     flags: u32,
     ret_type: syn::Type,
 }
