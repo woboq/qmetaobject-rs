@@ -101,8 +101,8 @@ cpp! {{
 /// Note that this function returns immediately. A Qt event loop need to be running
 /// on the current thread so the future can be executed. (It is Ok if the Qt event
 /// loop hasn't started yet when this function is called)
-pub fn execute_async(f: impl Future<Output = ()> + 'static) {
-    let f = Box::into_raw(Box::new(f)) as *mut dyn Future<Output = ()>;
+pub fn execute_async(f: impl Future<Output=()> + 'static) {
+    let f: *mut dyn Future<Output=()> = Box::into_raw(Box::new(f));
     unsafe {
         let waker = cpp!([f as "TraitObject"] -> *const() as "Waker*" {
             return new Waker(f);
@@ -112,7 +112,7 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
 }
 
 // SAFETY: caller must ensure that given future hasn't returned Poll::Ready earlier.
-unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) -> bool {
+unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output=()>>) -> bool {
     cpp!([waker as "Waker*"] { waker->refs++; });
     let waker = std::task::RawWaker::new(waker, &QT_WAKER_VTABLE);
     let waker = std::task::Waker::from_raw(waker);
@@ -133,15 +133,18 @@ unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Outpu
 pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
     sender: *const c_void,
     signal: crate::connections::CppSignal<Args>,
-) -> impl Future<Output = <Args as SignalArgArrayToTuple>::Tuple> {
+) -> impl Future<Output=<Args as SignalArgArrayToTuple>::Tuple> {
     enum ConnectionFutureState<Args: SignalArgArrayToTuple> {
         Init { sender: *const c_void, signal: crate::connections::CppSignal<Args> },
         Started { handle: crate::connections::ConnectionHandle, waker: std::task::Waker },
         Finished { result: <Args as SignalArgArrayToTuple>::Tuple },
         Invalid,
     }
+
     impl<Args: SignalArgArrayToTuple> std::marker::Unpin for ConnectionFutureState<Args> {}
+
     struct ConnectionFuture<Args: SignalArgArrayToTuple>(ConnectionFutureState<Args>);
+
     impl<Args: SignalArgArrayToTuple> Drop for ConnectionFuture<Args> {
         fn drop(&mut self) {
             if let ConnectionFutureState::Started { ref mut handle, .. } = &mut self.0 {
@@ -149,6 +152,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
             }
         }
     }
+
     impl<Args: SignalArgArrayToTuple> Future for ConnectionFuture<Args> {
         type Output = <Args as SignalArgArrayToTuple>::Tuple;
         fn poll(
