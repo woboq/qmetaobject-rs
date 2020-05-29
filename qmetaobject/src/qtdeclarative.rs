@@ -51,7 +51,8 @@ cpp! {{
 
         QmlEngineHolder(int &argc, char **argv)
             : app(new QApplication(argc, argv))
-            , engine(new QQmlApplicationEngine()) { }
+            , engine(new QQmlApplicationEngine())
+        {}
     };
 }}
 
@@ -68,34 +69,37 @@ impl QmlEngine {
         use std::ffi::CString;
 
         let mut arguments: Vec<*mut c_char> = std::env::args()
-            .map(|arg| CString::new(arg.into_bytes()).expect("argument contains invalid c-string!"))
+            .map(|arg| CString::new(arg.into_bytes())
+                .expect("argument contains invalid c-string!"))
             .map(|arg| arg.into_raw())
             .collect();
         let argc: i32 = arguments.len() as i32 - 1;
         let argv: *mut *mut c_char = arguments.as_mut_ptr();
 
-        let result = unsafe {
-            cpp!([argc as "int", argv as "char**"] -> QmlEngine as "QmlEngineHolder" {
-                static int _argc  = argc;
-                static char **_argv = nullptr;
-                if (_argv == nullptr) {
-                    // copy the arguments
-                    _argv = new char*[argc + 1];
-                    // argv should be null terminated
-                    _argv[argc] = nullptr;
-                    for (int i=0; i<argc; ++i) {
-                        _argv[i] = new char[strlen(argv[i]) + 1];
-                        strcpy(_argv[i], argv[i]);
-                    }
+        let result = cpp!(unsafe [
+            argc as "int",
+            argv as "char **"
+        ] -> QmlEngine as "QmlEngineHolder" {
+            // Static variables when used inside function are initialized only once
+            static int _argc  = argc;
+            static char **_argv = nullptr;
+            // this is *real* initialization, and it would also happen only once
+            if (_argv == nullptr) {
+                // copy the arguments
+                _argv = new char *[argc + 1];
+                // argv should be null terminated
+                _argv[argc] = nullptr;
+                for (int i = 0; i < argc; ++i) {
+                    _argv[i] = new char[strlen(argv[i]) + 1];
+                    strcpy(_argv[i], argv[i]);
                 }
-                return QmlEngineHolder(_argc, _argv);
-            })
-        };
-
-        for arg in arguments {
-            unsafe {
-                CString::from_raw(arg);
             }
+            return QmlEngineHolder(_argc, _argv);
+        });
+
+        // run destructor
+        for arg in arguments {
+            let _ = unsafe { CString::from_raw(arg) };
         }
 
         result
@@ -103,50 +107,46 @@ impl QmlEngine {
 
     /// Loads a file as a qml file (See QQmlApplicationEngine::load(const QString & filePath))
     pub fn load_file(&mut self, path: QString) {
-        unsafe {
-            cpp!([self as "QmlEngineHolder*", path as "QString"] {
-                self->engine->load(path);
-            })
-        }
+        cpp!(unsafe [self as "QmlEngineHolder *", path as "QString"] {
+            self->engine->load(path);
+        })
     }
 
-    //     pub fn load_url(&mut self, uri: &str) {
-    //     }
+    // TODO: implement load_url
 
     /// Loads qml data (See QQmlApplicationEngine::loadData)
     pub fn load_data(&mut self, data: QByteArray) {
-        unsafe {
-            cpp!([self as "QmlEngineHolder*", data as "QByteArray"] {
-                self->engine->loadData(data);
-            })
-        }
+        cpp!(unsafe [self as "QmlEngineHolder *", data as "QByteArray"] {
+            self->engine->loadData(data);
+        })
     }
 
     /// Loads qml data with `url` as base url component (See QQmlApplicationEngine::loadData)
     pub fn load_data_as(&mut self, data: QByteArray, url: QUrl) {
-        unsafe {
-            cpp!([self as "QmlEngineHolder*", data as "QByteArray", url as "QUrl"] {
-                self->engine->loadData(data, url);
-            })
-        }
+        cpp!(unsafe [self as "QmlEngineHolder *", data as "QByteArray", url as "QUrl"] {
+            self->engine->loadData(data, url);
+        })
     }
 
     /// Launches the application
     pub fn exec(&self) {
-        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->exec(); }) }
+        cpp!(unsafe [self as "QmlEngineHolder *"] {
+            self->app->exec();
+        })
     }
+
     /// Closes the application
     pub fn quit(&self) {
-        unsafe { cpp!([self as "QmlEngineHolder*"] { self->app->quit(); }) }
+        cpp!(unsafe [self as "QmlEngineHolder *"] {
+            self->app->quit();
+        })
     }
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     pub fn set_property(&mut self, name: QString, value: QVariant) {
-        unsafe {
-            cpp!([self as "QmlEngineHolder*", name as "QString", value as "QVariant"] {
-                self->engine->rootContext()->setContextProperty(name, value);
-            })
-        }
+        cpp!(unsafe [self as "QmlEngineHolder *", name as "QString", value as "QVariant"] {
+            self->engine->rootContext()->setContextProperty(name, value);
+        })
     }
 
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
@@ -158,7 +158,7 @@ impl QmlEngine {
         obj: QObjectPinned<T>,
     ) {
         let obj_ptr = obj.get_or_create_cpp_object();
-        cpp!(unsafe [self as "QmlEngineHolder*", name as "QString", obj_ptr as "QObject*"] {
+        cpp!(unsafe [self as "QmlEngineHolder *", name as "QString", obj_ptr as "QObject *"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);
         })
     }
@@ -166,21 +166,31 @@ impl QmlEngine {
     pub fn invoke_method(&mut self, name: QByteArray, args: &[QVariant]) -> QVariant {
         let args_size = args.len();
         let args_ptr = args.as_ptr();
-        unsafe {
-            cpp!([self as "QmlEngineHolder*", name as "QByteArray", args_size as "size_t", args_ptr as "QVariant*"]
-                    -> QVariant as "QVariant" {
-                auto robjs = self->engine->rootObjects();
-                if (robjs.isEmpty())
-                    return {};
-                QVariant ret;
-                QGenericArgument args[9] = {};
-                for (uint i = 0; i < args_size; ++i)
-                    args[i] = Q_ARG(QVariant, args_ptr[i]);
-                QMetaObject::invokeMethod(robjs.first(), name, Q_RETURN_ARG(QVariant,ret),
-                        args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
-                return ret;
-            })
-        }
+
+        cpp!(unsafe [
+            self as "QmlEngineHolder *",
+            name as "QByteArray",
+            args_size as "size_t",
+            args_ptr as "QVariant *"
+        ] -> QVariant as "QVariant"
+        {
+            auto robjs = self->engine->rootObjects();
+            if (robjs.isEmpty()) {
+                return {};
+            }
+            QVariant ret;
+            QGenericArgument args[9] = {};
+            for (uint i = 0; i < args_size; ++i) {
+                args[i] = Q_ARG(QVariant, args_ptr[i]);
+            }
+            QMetaObject::invokeMethod(
+                robjs.first(),
+                name,
+                Q_RETURN_ARG(QVariant, ret),
+                args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]
+            );
+            return ret;
+        })
     }
 
     /// Give a QObject to the engine by wrapping it in a QJSValue
@@ -189,20 +199,19 @@ impl QmlEngine {
     /// Panic if the C++ object was already created.
     pub fn new_qobject<T: QObject>(&mut self, obj: T) -> QJSValue {
         let obj_ptr = into_leaked_cpp_ptr(obj);
-        unsafe {
-            cpp!([self as "QmlEngineHolder*", obj_ptr as "QObject*"] -> QJSValue as "QJSValue" {
-                return self->engine->newQObject(obj_ptr);
-            })
-        }
+        cpp!(unsafe [
+            self as "QmlEngineHolder *",
+            obj_ptr as "QObject *"
+        ] -> QJSValue as "QJSValue" {
+            return self->engine->newQObject(obj_ptr);
+        })
     }
 
     /// Adds an import path for this QML engine (calls QQmlEngine::addImportPath)
     pub fn add_import_path(&mut self, path: QString) {
-        unsafe {
-            cpp!([self as "QmlEngineHolder*", path as "QString"] {
-                self->engine->addImportPath(path);
-            })
-        }
+        cpp!(unsafe [self as "QmlEngineHolder *", path as "QString"] {
+            self->engine->addImportPath(path);
+        })
     }
 }
 
@@ -210,16 +219,15 @@ impl QmlEngine {
 pub struct QQuickView {
     engine: QmlEngine,
 }
+
 impl QQuickView {
     /// Creates a new QQuickView, it's engine and an application
     pub fn new() -> QQuickView {
         let mut engine = QmlEngine::new();
-        unsafe {
-            cpp!([mut engine as "QmlEngineHolder"] {
+        cpp!(unsafe [mut engine as "QmlEngineHolder"] {
             engine.view = std::unique_ptr<QQuickView>(new QQuickView(engine.engine.get(), nullptr));
             engine.view->setResizeMode(QQuickView::SizeRootObjectToView);
-        } )
-        };
+        });
         QQuickView { engine }
     }
 
@@ -231,21 +239,17 @@ impl QQuickView {
     /// Refer to the Qt documentation of QQuickView::show
     pub fn show(&mut self) {
         let engine = self.engine();
-        unsafe {
-            cpp!([engine as "QmlEngineHolder*"] {
+        cpp!(unsafe [engine as "QmlEngineHolder *"] {
             engine->view->show();
-        } )
-        };
+        });
     }
 
     /// Refer to the Qt documentation of QQuickView::setSource
     pub fn set_source(&mut self, url: QString) {
         let engine = self.engine();
-        unsafe {
-            cpp!([engine as "QmlEngineHolder*", url as "QString"] {
+        cpp!(unsafe [engine as "QmlEngineHolder *", url as "QString"] {
             engine->view->setSource(url);
-        } )
-        };
+        });
     }
 }
 
@@ -277,7 +281,9 @@ cpp! {{
     struct QQmlComponentHolder {
         std::unique_ptr<QQmlComponent> component;
 
-        QQmlComponentHolder(QQmlEngine *e) : component(new QQmlComponent(e)) {}
+        QQmlComponentHolder(QQmlEngine *e)
+            : component(new QQmlComponent(e))
+        {}
     };
 }}
 
@@ -289,65 +295,57 @@ cpp_class!(
 impl QmlComponent {
     /// Create a QmlComponent using the QmlEngine.
     pub fn new(engine: &QmlEngine) -> QmlComponent {
-        unsafe {
-            cpp!([engine as "QmlEngineHolder*"] -> QmlComponent as "QQmlComponentHolder" {
-                return QQmlComponentHolder(engine->engine.get());
-            })
-        }
+        cpp!(unsafe [engine as "QmlEngineHolder *"] -> QmlComponent as "QQmlComponentHolder" {
+            return QQmlComponentHolder(engine->engine.get());
+        })
     }
 
     /// Returns a pointer to the underlying QQmlComponent. Similar to QObject::get_cpp_object()
     pub fn get_cpp_object(&self) -> *mut c_void {
-        unsafe {
-            cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QQmlComponent*" {
-                return self->component.get();
-            })
-        }
+        cpp!(unsafe [self as "QQmlComponentHolder *"] -> *mut c_void as "QQmlComponent *" {
+            return self->component.get();
+        })
     }
 
     /// Performs QQmlComponent::loadUrl
     pub fn load_url(&mut self, url: QUrl, compilation_mode: CompilationMode) {
-        unsafe {
-            cpp!([self as "QQmlComponentHolder*", url as "QUrl", compilation_mode as "QQmlComponent::CompilationMode"]{
-                self->component->loadUrl(url, compilation_mode);
-            })
-        }
+        cpp!(unsafe [
+            self as "QQmlComponentHolder *",
+            url as "QUrl",
+            compilation_mode as "QQmlComponent::CompilationMode"
+        ] {
+            self->component->loadUrl(url, compilation_mode);
+        })
     }
 
     /// Performs QQmlComponent::setData with a default url
     pub fn set_data(&mut self, data: QByteArray) {
-        unsafe {
-            cpp!([self as "QQmlComponentHolder*", data as "QByteArray"]{
-                self->component->setData(data, QUrl());
-            })
-        }
+        cpp!(unsafe [self as "QQmlComponentHolder *", data as "QByteArray"] {
+            self->component->setData(data, QUrl());
+        })
     }
 
     /// Performs QQmlComponent::setData
     pub fn set_data_as(&mut self, data: QByteArray, url: QUrl) {
-        unsafe {
-            cpp!([self as "QQmlComponentHolder*", data as "QByteArray", url as "QUrl"]{
-                self->component->setData(data, url);
-            })
-        }
+        cpp!(unsafe [self as "QQmlComponentHolder *", data as "QByteArray", url as "QUrl"] {
+            self->component->setData(data, url);
+        })
     }
 
     /// Performs QQmlComponent::create
     pub fn create(&mut self) -> *mut c_void {
-        unsafe {
-            cpp!([self as "QQmlComponentHolder*"] -> *mut c_void as "QObject*" {
-                return self->component->create();
-            })
-        }
+        cpp!(unsafe [self as "QQmlComponentHolder *"] -> *mut c_void as "QObject *" {
+            return self->component->create();
+        })
     }
 
     /// Performs QQmlComponent::status
     pub fn status(&self) -> ComponentStatus {
-        unsafe {
-            cpp!([self as "QQmlComponentHolder*"] -> ComponentStatus as "QQmlComponent::Status" {
-                return self->component->status();
-            })
-        }
+        cpp!(unsafe [
+            self as "QQmlComponentHolder *"
+        ] -> ComponentStatus as "QQmlComponent::Status" {
+            return self->component->status();
+        })
     }
 
     /// See Qt documentation for QQmlComponent::statusChanged
@@ -374,7 +372,9 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     let meta_object = T::static_meta_object();
 
     extern "C" fn extra_destruct(c: *mut c_void) {
-        unsafe { cpp!([c as "QObject*"]{ QQmlPrivate::qdeclarativeelement_destructor(c); }) }
+        cpp!(unsafe [c as "QObject *"] {
+            QQmlPrivate::qdeclarativeelement_destructor(c);
+        })
     }
 
     extern "C" fn creator_fn<T: QObject + Default + Sized>(c: *mut c_void) {
@@ -389,54 +389,85 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 
     let size = T::cpp_size();
 
-    unsafe {
-        cpp!([qml_name_ptr as "char*", uri_ptr as "char*", version_major as "int",
-                        version_minor as "int", meta_object as "const QMetaObject *",
-                        creator_fn as "CreatorFunction", size as "size_t"]{
+    cpp!(unsafe [
+        qml_name_ptr as "char *",
+        uri_ptr as "char *",
+        version_major as "int",
+        version_minor as "int",
+        meta_object as "const QMetaObject *",
+        creator_fn as "CreatorFunction",
+        size as "size_t"
+    ] {
+        const char *className = qml_name_ptr;
+        // BEGIN: From QML_GETTYPENAMES
+        const int nameLen = int(strlen(className));
+        QVarLengthArray<char, 48> pointerName(nameLen + 2);
+        memcpy(pointerName.data(), className, size_t(nameLen));
+        pointerName[nameLen] = '*';
+        pointerName[nameLen + 1] = '\0';
+        // FIXME: list type?
+        /*const int listLen = int(strlen("QQmlListProperty<"));
+        QVarLengthArray<char,64> listName(listLen + nameLen + 2);
+        memcpy(listName.data(), "QQmlListProperty<", size_t(listLen));
+        memcpy(listName.data()+listLen, className, size_t(nameLen));
+        listName[listLen+nameLen] = '>';
+        listName[listLen+nameLen+1] = '\0';*/
+        // END
 
-            const char *className = qml_name_ptr;
-            // BEGIN: From QML_GETTYPENAMES
-            const int nameLen = int(strlen(className));
-            QVarLengthArray<char,48> pointerName(nameLen+2);
-            memcpy(pointerName.data(), className, size_t(nameLen));
-            pointerName[nameLen] = '*';
-            pointerName[nameLen+1] = '\0';
-            /*const int listLen = int(strlen("QQmlListProperty<"));
-            QVarLengthArray<char,64> listName(listLen + nameLen + 2);
-            memcpy(listName.data(), "QQmlListProperty<", size_t(listLen));
-            memcpy(listName.data()+listLen, className, size_t(nameLen));
-            listName[listLen+nameLen] = '>';
-            listName[listLen+nameLen+1] = '\0';*/
-            //END
+        auto ptrType = QMetaType::registerNormalizedType(
+            pointerName.constData(),
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Destruct,
+            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Construct,
+            int(sizeof(void *)),
+            QMetaType::MovableType | QMetaType::PointerToQObject,
+            meta_object
+        );
 
-            auto ptrType = QMetaType::registerNormalizedType(pointerName.constData(),
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Destruct,
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void*>::Construct,
-                int(sizeof(void*)), QMetaType::MovableType | QMetaType::PointerToQObject,
-                meta_object);
+        int parserStatusCast = meta_object && meta_object->inherits(&QQuickItem::staticMetaObject)
+            ? QQmlPrivate::StaticCastSelector<QQuickItem, QQmlParserStatus>::cast()
+            : -1;
 
-            int parserStatusCast = meta_object && meta_object->inherits(&QQuickItem::staticMetaObject)
-                ? QQmlPrivate::StaticCastSelector<QQuickItem,QQmlParserStatus>::cast() : -1;
+        QQmlPrivate::RegisterType api = {
+            /*version*/ 0,
 
-            QQmlPrivate::RegisterType type = {
-                0 /*version*/, ptrType, 0, /* FIXME?*/
-                int(size), creator_fn,
-                QString(),
-                uri_ptr, version_major, version_minor, qml_name_ptr, meta_object,
-                nullptr, nullptr, // attached properties
-                parserStatusCast, -1, -1,
-                nullptr, nullptr,
-                nullptr,
-                0
-            };
-            QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &type);
-        })
-    }
+            /*typeId*/ ptrType,
+            /*listId*/ 0,  // FIXME: list type?
+            /*objectSize*/ int(size),
+            /*create*/ creator_fn,
+            /*noCreationReason*/ QString(),
+
+            /*uri*/ uri_ptr,
+            /*versionMajor*/ version_major,
+            /*versionMinor*/ version_minor,
+            /*elementName*/ qml_name_ptr,
+            /*metaObject*/ meta_object,
+
+            /*attachedPropertiesFunction*/ nullptr,
+            /*attachedPropertiesMetaObject*/ nullptr,
+
+            /*parserStatusCast*/ parserStatusCast,
+            /*valueSourceCast*/ -1,
+            /*valueInterceptorCast*/ -1,
+
+            /*extensionObjectCreate*/ nullptr,
+            /*extensionMetaObject*/ nullptr,
+            /*customParser*/ nullptr,
+            /*revision*/ 0  // FIXME: support revisions?
+        };
+        QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &api);
+    })
 }
 
+/// Alias for type of `QQmlPrivate::RegisterSingletonType::qobjectApi` callback
+/// and its C++ counterpart.
+type QmlRegisterSingletonTypeCallback = extern "C" fn(
+    qml_engine: *mut c_void,
+    js_engine: *mut c_void,
+) -> *mut c_void;
 cpp! {{
-    typedef QObject *(*QmlRegisterSingletonTypeCallback)(QQmlEngine *, QJSEngine *);
+    using QmlRegisterSingletonTypeCallback = QObject *(*)(QQmlEngine *, QJSEngine *);
 }}
+
 
 /// Initialization for singleton QML objects.
 pub trait QSingletonInit {
@@ -456,13 +487,13 @@ pub trait QSingletonInit {
 /// After construction of the corresponding C++ object the `QSingletonInit::init()` function
 /// will be called.
 ///
-/// Refer to the Qt documentation for [qmlRegisterSingletonType][].
+/// Refer to the Qt documentation for [qmlRegisterSingletonType][qt].
 ///
 /// # Panics
 ///
 /// The process will be aborted when the default or init functions panic.
 ///
-/// [qmlRegisterSingletonType]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterSingletonType-3
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterSingletonType-3
 pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default>(
     uri: &std::ffi::CStr,
     version_major: u32,
@@ -492,10 +523,7 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
             }
         }
     };
-    let callback_fn: extern "C" fn(
-        _qml_engine: *mut c_void,
-        _js_engine: *mut c_void,
-    ) -> *mut c_void = callback_fn::<T>;
+    let callback_fn: QmlRegisterSingletonTypeCallback = callback_fn::<T>;
 
     cpp!(unsafe [
         uri_ptr as "const char *",
@@ -525,10 +553,12 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
 
         QQmlPrivate::RegisterSingletonType api = {
             /*version*/ 2, // for now we are happy with pre-5.14 version 2
+
             /*uri*/ uri_ptr,
             /*versionMajor*/ version_major,
             /*versionMinor*/ version_minor,
             /*typeName*/ qml_name_ptr,
+
             /*scriptApi*/ nullptr,
             /*qobjectApi*/ callback_fn,
             // new in version 1
@@ -553,13 +583,13 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
 ///
 /// The object is shared between all instances of `QmlEngine`.
 ///
-/// Refer to the Qt documentation for [qmlRegisterSingletonInstance][] (not documented at the time of writing).
+/// Refer to the Qt documentation for [qmlRegisterSingletonInstance][qt] (not documented at the time of writing).
 ///
 /// # Availability
 ///
 /// Only available in Qt 5.14 or above.
 ///
-/// [qmlRegisterSingletonInstance]: https://doc.qt.io/qt-5/qtqml-cppintegration-overview.html
+/// [qt]: https://doc.qt.io/qt-5/qtqml-cppintegration-overview.html
 // XXX: replace link with real documentation, when it will be generated.
 #[cfg(qt_5_14)]
 pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
@@ -577,7 +607,7 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
     Box::leak(obj_box);
 
     cpp!(unsafe [
-        uri_ptr as "char*",
+        uri_ptr as "char *",
         version_major as "int",
         version_minor as "int",
         type_name_ptr as "char *",
@@ -597,9 +627,9 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
 
 /// Register the given enum as a QML type.
 ///
-/// Refer to the Qt documentation for [qmlRegisterUncreatableMetaObject][].
+/// Refer to the Qt documentation for [qmlRegisterUncreatableMetaObject][qt].
 ///
-/// [qmlRegisterUncreatableMetaObject]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterUncreatableMetaObject
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterUncreatableMetaObject
 pub fn qml_register_enum<T: QEnum>(
     uri: &std::ffi::CStr,
     version_major: u32,
@@ -610,13 +640,22 @@ pub fn qml_register_enum<T: QEnum>(
     let qml_name_ptr = qml_name.as_ptr();
     let meta_object = T::static_meta_object();
 
-    unsafe {
-        cpp!([qml_name_ptr as "char*", uri_ptr as "char*", version_major as "int",
-                        version_minor as "int", meta_object as "const QMetaObject *"]{
-            qmlRegisterUncreatableMetaObject(*meta_object, uri_ptr, version_major,
-                version_minor, qml_name_ptr, "Access to enums & flags only");
-        })
-    }
+    cpp!(unsafe [
+        qml_name_ptr as "char *",
+        uri_ptr as "char *",
+        version_major as "int",
+        version_minor as "int",
+        meta_object as "const QMetaObject *"
+    ] {
+        qmlRegisterUncreatableMetaObject(
+            *meta_object,
+            uri_ptr,
+            version_major,
+            version_minor,
+            qml_name_ptr,
+            "Access to enums & flags only"
+        );
+    })
 }
 
 /// A QObject-like trait to inherit from QQuickItem.
@@ -629,12 +668,13 @@ pub trait QQuickItem: QObject {
     {
         unsafe {
             &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-            return rustObjectDescription<Rust_QQuickItem>();
-        } )
+                return rustObjectDescription<Rust_QQuickItem>();
+            })
         }
     }
 
     fn class_begin(&mut self) {}
+
     fn component_complete(&mut self) {}
 
     /// Handle mouse press, release, or move events. Returns true if the event was accepted.
@@ -650,124 +690,147 @@ pub trait QQuickItem: QObject {
 }
 
 cpp! {{
-#include <qmetaobject_rust.hpp>
-#include <QtQuick/QQuickItem>
-struct Rust_QQuickItem : RustObject<QQuickItem> {
-/*
-    virtual QRectF boundingRect() const;
-    virtual QRectF clipRect() const;
-    virtual bool contains(const QPointF &point) const;
-    virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
-    virtual bool isTextureProvider() const;
-    virtual QSGTextureProvider *textureProvider() const;
-    virtual void itemChange(ItemChange, const ItemChangeData &);*/
-    void classBegin() override {
-        QQuickItem::classBegin();
-        rust!(Rust_QQuickItem_classBegin[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject"] {
-            rust_object.borrow_mut().class_begin();
-        });
-    }
+    #include <qmetaobject_rust.hpp>
+    #include <QtQuick/QQuickItem>
 
-    void componentComplete() override {
-        QQuickItem::componentComplete();
-        rust!(Rust_QQuickItem_componentComplete[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject"] {
-            rust_object.borrow_mut().component_complete();
-        });
-    }
-
-    /*virtual void keyPressEvent(QKeyEvent *event);
-    virtual void keyReleaseEvent(QKeyEvent *event);
-    virtual void inputMethodEvent(QInputMethodEvent *);
-    virtual void focusInEvent(QFocusEvent *);
-    virtual void focusOutEvent(QFocusEvent *);*/
-
-    void mousePressEvent(QMouseEvent *event) override { handleMouseEvent(event); }
-    void mouseMoveEvent(QMouseEvent *event) override { handleMouseEvent(event); }
-    void mouseReleaseEvent(QMouseEvent *event) override { handleMouseEvent(event); }
-    //void mouseDoubleClickEvent(QMouseEvent *event) override { handleMouseEvent(event); }
-
-    void handleMouseEvent(QMouseEvent *event) {
-       if (!rust!(Rust_QQuickItem_mousePressEvent[
-            rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject",
-            event : QMouseEvent as "QMouseEvent*"
-        ] -> bool as "bool" {
-            rust_object.borrow_mut().mouse_event(event)
-        })) { event->ignore(); }
-    }
-
+    struct Rust_QQuickItem : RustObject<QQuickItem> {
     /*
+        virtual QRectF boundingRect() const;
+        virtual QRectF clipRect() const;
+        virtual bool contains(const QPointF &point) const;
+        virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
+        virtual bool isTextureProvider() const;
+        virtual QSGTextureProvider *textureProvider() const;
+        virtual void itemChange(ItemChange, const ItemChangeData &);*/
+        void classBegin() override {
+            QQuickItem::classBegin();
+            rust!(Rust_QQuickItem_classBegin[
+                rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject"
+            ] {
+                rust_object.borrow_mut().class_begin();
+            });
+        }
 
+        void componentComplete() override {
+            QQuickItem::componentComplete();
+            rust!(Rust_QQuickItem_componentComplete[
+                rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject"
+            ] {
+                rust_object.borrow_mut().component_complete();
+            });
+        }
 
-    virtual void mouseUngrabEvent(); // XXX todo - params?
-    virtual void touchUngrabEvent();
-    virtual void wheelEvent(QWheelEvent *event);
-    virtual void touchEvent(QTouchEvent *event);
-    virtual void hoverEnterEvent(QHoverEvent *event);
-    virtual void hoverMoveEvent(QHoverEvent *event);
-    virtual void hoverLeaveEvent(QHoverEvent *event);
-    virtual void dragEnterEvent(QDragEnterEvent *);
-    virtual void dragMoveEvent(QDragMoveEvent *);
-    virtual void dragLeaveEvent(QDragLeaveEvent *);
-    virtual void dropEvent(QDropEvent *);
-    virtual bool childMouseEventFilter(QQuickItem *, QEvent *);
-    virtual void windowDeactivateEvent();*/
-    virtual void geometryChanged(const QRectF &new_geometry,
-                                 const QRectF &old_geometry) {
-        rust!(Rust_QQuickItem_geometryChanged[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject",
-                new_geometry : QRectF as "QRectF", old_geometry : QRectF as "QRectF"] {
-            rust_object.borrow_mut().geometry_changed(new_geometry, old_geometry);
-        });
-        QQuickItem::geometryChanged(new_geometry, old_geometry);
-    }
+        /*virtual void keyPressEvent(QKeyEvent *event);
+        virtual void keyReleaseEvent(QKeyEvent *event);
+        virtual void inputMethodEvent(QInputMethodEvent *);
+        virtual void focusInEvent(QFocusEvent *);
+        virtual void focusOutEvent(QFocusEvent *);*/
 
-    QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
-        return rust!(Rust_QQuickItem_updatePaintNode[rust_object : QObjectPinned<dyn QQuickItem> as "TraitObject",
-                    node : *mut c_void as "QSGNode*"] -> SGNode<ContainerNode> as "QSGNode*" {
-            rust_object.borrow_mut().update_paint_node(unsafe { SGNode::<ContainerNode>::from_raw(node) })
-        });
-    }
-    /*
-    virtual void releaseResources();
-    virtual void updatePolish();
-*/
+        void mousePressEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+        void mouseMoveEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+        void mouseReleaseEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+        //void mouseDoubleClickEvent(QMouseEvent *event) override { handleMouseEvent(event); }
 
-};
+        void handleMouseEvent(QMouseEvent *event) {
+           if (!rust!(Rust_QQuickItem_mousePressEvent[
+                rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject",
+                event: QMouseEvent as "QMouseEvent *"
+            ] -> bool as "bool" {
+                rust_object.borrow_mut().mouse_event(event)
+            })) { event->ignore(); }
+        }
 
+        /*
+        virtual void mouseUngrabEvent(); // XXX todo - params?
+        virtual void touchUngrabEvent();
+        virtual void wheelEvent(QWheelEvent *event);
+        virtual void touchEvent(QTouchEvent *event);
+        virtual void hoverEnterEvent(QHoverEvent *event);
+        virtual void hoverMoveEvent(QHoverEvent *event);
+        virtual void hoverLeaveEvent(QHoverEvent *event);
+        virtual void dragEnterEvent(QDragEnterEvent *);
+        virtual void dragMoveEvent(QDragMoveEvent *);
+        virtual void dragLeaveEvent(QDragLeaveEvent *);
+        virtual void dropEvent(QDropEvent *);
+        virtual bool childMouseEventFilter(QQuickItem *, QEvent *);
+        virtual void windowDeactivateEvent();*/
+        virtual void geometryChanged(const QRectF &new_geometry,
+                                     const QRectF &old_geometry) {
+            rust!(Rust_QQuickItem_geometryChanged[
+                rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject",
+                new_geometry: QRectF as "QRectF",
+                old_geometry: QRectF as "QRectF"
+            ] {
+                rust_object.borrow_mut().geometry_changed(new_geometry, old_geometry);
+            });
+            QQuickItem::geometryChanged(new_geometry, old_geometry);
+        }
+
+        QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
+            return rust!(Rust_QQuickItem_updatePaintNode[
+                rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject",
+                node : *mut c_void as "QSGNode *"
+            ] -> SGNode<ContainerNode> as "QSGNode *" {
+                rust_object.borrow_mut().update_paint_node(unsafe {
+                    SGNode::<ContainerNode>::from_raw(node)
+                })
+            });
+        }
+        /*
+        virtual void releaseResources();
+        virtual void updatePolish();
+        */
+    };
 }}
 
 impl<'a> dyn QQuickItem + 'a {
     pub fn bounding_rect(&self) -> QRectF {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QQuickItem*"] -> QRectF as "QRectF" {
+        cpp!(unsafe [obj as "Rust_QQuickItem *"] -> QRectF as "QRectF" {
             return obj ? obj->boundingRect() : QRectF();
         })
     }
+
     pub fn update(&self) {
         let obj = self.get_cpp_object();
-        cpp!(unsafe [obj as "Rust_QQuickItem*"] { if (obj) obj->update(); });
+        cpp!(unsafe [obj as "Rust_QQuickItem *"] {
+            if (obj) obj->update();
+        });
     }
 }
 
+/// Only a specific subset of [`QEvent::Type`][qt] enum.
+///
+/// [qt]: https://doc.qt.io/qt-5/qevent.html#Type-enum
 #[repr(u32)]
+#[non_exhaustive]
 pub enum QMouseEventType {
     MouseButtonPress = 2,
     MouseButtonRelease = 3,
+    // FIXME: WIP
     //MouseButtonDblClick = 4,
     MouseMove = 5,
 }
 
-/// A reference to a QMouseEvent
+/// A reference to a [`QMouseEvent`][qt] instance.
+///
+/// [qt]: https://doc.qt.io/qt-5/qmouseevent.html
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct QMouseEvent<'a>(*const c_void, std::marker::PhantomData<&'a u32>);
+
 impl<'a> QMouseEvent<'a> {
     /// Returns the type of event
     pub fn event_type(self) -> QMouseEventType {
-        cpp!(unsafe [self as "QMouseEvent*"] -> QMouseEventType as "int" { return self->type(); })
+        cpp!(unsafe [self as "QMouseEvent *"] -> QMouseEventType as "int" {
+            return self->type();
+        })
     }
     /// Return the position, wrapper around Qt's QMouseEvent::localPos()
     pub fn position(self) -> QPointF {
-        cpp!(unsafe [self as "QMouseEvent*"] -> QPointF as "QPointF" { return self->localPos(); })
+        cpp!(unsafe [self as "QMouseEvent *"] -> QPointF as "QPointF" {
+            return self->localPos();
+        })
     }
 }
 
@@ -775,71 +838,93 @@ cpp_class!(
     /// Wrapper for QJSValue
     pub unsafe struct QJSValue as "QJSValue"
 );
+
 impl QJSValue {
     pub fn to_string(&self) -> QString {
-        unsafe {
-            cpp!([self as "const QJSValue*"] -> QString as "QString" { return self->toString(); })
-        }
+        cpp!(unsafe [self as "const QJSValue *"] -> QString as "QString" {
+            return self->toString();
+        })
     }
 
     pub fn to_bool(&self) -> bool {
-        unsafe { cpp!([self as "const QJSValue*"] -> bool as "bool" { return self->toBool(); }) }
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->toBool();
+        })
     }
 
     pub fn to_number(&self) -> f64 {
-        unsafe { cpp!([self as "const QJSValue*"] -> f64 as "double" { return self->toNumber(); }) }
+        cpp!(unsafe [self as "const QJSValue *"] -> f64 as "double" {
+            return self->toNumber();
+        })
     }
 
     pub fn to_variant(&self) -> QVariant {
-        unsafe {
-            cpp!([self as "const QJSValue*"] -> QVariant as "QVariant" { return self->toVariant(); })
-        }
+        cpp!(unsafe [self as "const QJSValue *"] -> QVariant as "QVariant" {
+            return self->toVariant();
+        })
     }
 
     pub fn to_qobject<'a, T: QObject + 'a>(&'a self) -> Option<QObjectPinned<'a, T>> {
         let mo = T::static_meta_object();
-        let obj = unsafe {
-            cpp!([self as "const QJSValue*", mo as "const QMetaObject*"] -> *mut c_void as "QObject*" {
-                QObject *obj = self->toQObject();
-                // FIXME! inheritence?
-                return obj && obj->metaObject()->inherits(mo) ? obj : nullptr;
-            })
-        };
+        let obj = cpp!(unsafe [
+            self as "const QJSValue *",
+            mo as "const QMetaObject *"
+        ] -> *mut c_void as "QObject *" {
+            QObject *obj = self->toQObject();
+            // FIXME: inheritance?
+            return obj && obj->metaObject()->inherits(mo) ? obj : nullptr;
+        });
         if obj.is_null() {
             return None;
         }
         Some(unsafe { T::get_from_cpp(obj) })
     }
 }
+
 impl From<QString> for QJSValue {
     fn from(a: QString) -> QJSValue {
-        unsafe { cpp!([a as "QString"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
+        cpp!(unsafe [a as "QString"] -> QJSValue as "QJSValue" {
+            return QJSValue(a);
+        })
     }
 }
+
 impl From<i32> for QJSValue {
     fn from(a: i32) -> QJSValue {
-        unsafe { cpp!([a as "int"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
+        cpp!(unsafe [a as "int"] -> QJSValue as "QJSValue" {
+            return QJSValue(a);
+        })
     }
 }
+
 impl From<u32> for QJSValue {
     fn from(a: u32) -> QJSValue {
-        unsafe { cpp!([a as "uint"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
+        cpp!(unsafe [a as "uint"] -> QJSValue as "QJSValue" {
+            return QJSValue(a);
+        })
     }
 }
+
 impl From<f64> for QJSValue {
     fn from(a: f64) -> QJSValue {
-        unsafe { cpp!([a as "double"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
+        cpp!(unsafe [a as "double"] -> QJSValue as "QJSValue" {
+            return QJSValue(a);
+        })
     }
 }
+
 impl From<bool> for QJSValue {
     fn from(a: bool) -> QJSValue {
-        unsafe { cpp!([a as "bool"] -> QJSValue as "QJSValue" { return QJSValue(a); }) }
+        cpp!(unsafe [a as "bool"] -> QJSValue as "QJSValue" {
+            return QJSValue(a);
+        })
     }
 }
 
 #[cfg(test)]
 mod qjsvalue_tests {
     use super::*;
+
     #[test]
     fn test_qjsvalue() {
         let foo = QJSValue::from(45);
@@ -885,9 +970,9 @@ pub trait QQmlExtensionPlugin: QObject {
         Self: Sized,
     {
         unsafe {
-            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-            return rustObjectDescription<Rust_QQmlExtensionPlugin>();
-        } )
+            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const *" {
+                return rustObjectDescription<Rust_QQmlExtensionPlugin>();
+            })
         }
     }
 
@@ -896,15 +981,17 @@ pub trait QQmlExtensionPlugin: QObject {
 }
 
 cpp! {{
-#include <qmetaobject_rust.hpp>
-#include <QtQml/QQmlExtensionPlugin>
-struct Rust_QQmlExtensionPlugin : RustObject<QQmlExtensionPlugin> {
-    void registerTypes(const char *uri) override  {
-        rust!(Rust_QQmlExtensionPlugin_registerTypes[rust_object : QObjectPinned<dyn QQmlExtensionPlugin> as "TraitObject",
-                                                            uri : *const std::os::raw::c_char as "const char*"] {
-            rust_object.borrow_mut().register_types(unsafe { std::ffi::CStr::from_ptr(uri) });
-        });
-    }
-};
+    #include <qmetaobject_rust.hpp>
+    #include <QtQml/QQmlExtensionPlugin>
 
+    struct Rust_QQmlExtensionPlugin : RustObject<QQmlExtensionPlugin> {
+        void registerTypes(const char *uri) override  {
+            rust!(Rust_QQmlExtensionPlugin_registerTypes[
+                rust_object: QObjectPinned<dyn QQmlExtensionPlugin> as "TraitObject",
+                uri: *const std::os::raw::c_char as "const char *"
+            ] {
+                rust_object.borrow_mut().register_types(unsafe { std::ffi::CStr::from_ptr(uri) });
+            });
+        }
+    };
 }}
