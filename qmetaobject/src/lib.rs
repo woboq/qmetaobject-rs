@@ -762,7 +762,7 @@ cpp! {{
         TraitObject fnbox;
 
         ~FnBoxWrapper() {
-            if (fnbox) {
+            if (fnbox.isValid()) {
                 rust!(FnBoxWrapper_destructor [fnbox: *mut dyn FnMut() as "TraitObject"] {
                     unsafe { let _ = Box::from_raw(fnbox); }
                 });

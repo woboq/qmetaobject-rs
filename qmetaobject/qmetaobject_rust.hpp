@@ -21,23 +21,106 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QtCore/QEvent>
 #include <QtCore/QDebug>
 
-union SignalCppRepresentation {
-    void (QObject::*cpp_signal)();
-    qintptr rust_signal;
+/// Raw representation of a pointer to member function as specified by Itanium ABI.
+/// This is somehow similar to `std::raw::TraitObject` in Rust, but for C++.
+///
+/// Note: it can not be used to represent a pointer to data member.
+///
+/// http://itanium-cxx-abi.github.io/cxx-abi/abi.html#member-pointers
+struct MemberFunctionPtr {
+    ptrdiff_t ptr;
+    ptrdiff_t adj;
 
-    SignalCppRepresentation() = default;
+    /// Create raw pointer to member function from raw parts.
+    explicit MemberFunctionPtr(ptrdiff_t ptr, ptrdiff_t adj)
+        : ptr(ptr)
+        , adj(adj)
+    {}
 
-    // Construct the object from an arbitrary signal.
-    // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
-    template<typename R, typename Object, typename ...Args>
-    SignalCppRepresentation(R (Object::*cpp_signal)(Args...))
-        : cpp_signal(*reinterpret_cast<void (QObject::**)()>(&cpp_signal)) { }
+    /// Create raw pointer to member function from a reference to any member
+    /// function of any type.
+    template<typename R, typename Type, typename ...Args>
+    explicit MemberFunctionPtr(R (Type::* func)(Args...)) {
+        *this = *reinterpret_cast<MemberFunctionPtr *>(&func);
+    }
 };
 
+/// Pointer to a method of QObject which takes no arguments and returns nothing.
+/// Actually this is a "type-erased" method with various arguments and return
+/// value, but it merely represents a generic pointer, and let other code
+/// handle the types and memory safety.
+using QObjectMethodErased = void (QObject::*)();
+
+/// From `QMetaObject::Connection QObject::connectImpl(...)` documentation:
+/// ```
+/// signal is a pointer to a pointer to a member signal of the sender
+/// ```
+///
+/// This type encapsulates a pointer to a member function and provides handy
+/// conversions.
+union SignalCppRepresentation {
+// No need to be public. Pointer to a signal is exposed via safe public getter.
+private:
+    /// Tear fat pointer apart.
+    MemberFunctionPtr raw;
+    /// Or take it as an erased pointer to member function. Useless on its own,
+    /// but provides better options for `reinterpret_cast`.
+    QObjectMethodErased erased;
+
+public:
+    /// Construct from Rust side, when type information is not available to C++.
+    /// Member function must be a QObject signal.
+    explicit SignalCppRepresentation(MemberFunctionPtr ptr)
+        : raw(ptr)
+    {}
+
+    /// Same as `SignalCppRepresentation(MemberFunctionPtr)`, but assumes no
+    /// adjustment to `this`, i.e. `MemberFunctionPtr::adj = 0`.
+    explicit SignalCppRepresentation(ptrdiff_t ptr)
+        : SignalCppRepresentation(MemberFunctionPtr(ptr, 0))
+    {}
+
+    /// Construct the object from an arbitrary Qt signal.
+    ///
+    /// Note: this is an implicit conversion.
+    template<typename R, typename Type, typename ...Args>
+    SignalCppRepresentation(R (Type::* qt_signal)(Args...))
+        // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
+        : erased(*reinterpret_cast<QObjectMethodErased *>(&qt_signal))
+    {}
+
+    /// Qt uses "pointer to a pointer to a member" signal representation inside
+    /// QObject::connect(...) functions. This little helper encapsulates the
+    /// required cast.
+    void **asRawSignal() {
+        return reinterpret_cast<void **>(&erased);
+    }
+};
+
+/// Wrapper for Rust `std::raw::TraitObject` struct.
+///
+/// Note: `std::raw` is marked unstable as of Rust 1.43.0, so for future
+/// compatibility it would be better to box the trait object on the heap,
+/// and never manipulate its content directly from C++. For the time being,
+/// though, let it be.
 struct TraitObject {
-    void *a;
-    void *b;
-    explicit operator bool() const { return a && b; }
+    void *data;
+    void *vtable;
+
+    /// Nullability check.
+    bool isValid() const {
+        return data && vtable;
+    }
+
+    /// Forget about referenced object.
+    ///
+    /// If this TraitObject represented a `Box` (owned object) rather than a
+    /// `&dyn` reference (borrowed object) then it may cause memory leaks,
+    /// unless a copy was made for later proper destruction.
+    inline void invalidate() {
+        data = nullptr;
+        vtable = nullptr;
+    }
 };
 
 extern "C" QMetaObject *RustObject_metaObject(TraitObject);
@@ -55,7 +138,7 @@ struct RustObject : Base {
     TraitObject ptr_qobject;  // a QObjectPinned<QObject>
     void (*extra_destruct)(QObject *);
     const QMetaObject *metaObject() const override {
-        return ptr_qobject ? RustObject_metaObject(ptr_qobject) : Base::metaObject();
+        return ptr_qobject.isValid() ? RustObject_metaObject(ptr_qobject) : Base::metaObject();
     }
     int qt_metacall(QMetaObject::Call _c, int _id, void **_a) override {
         _id = Base::qt_metacall(_c, _id, _a);
@@ -77,9 +160,9 @@ struct RustObject : Base {
         return _id;
     }
     bool event(QEvent *event) override {
-        if (ptr_qobject && event->type() == QtJambi_EventType_DeleteOnMainThread) {
+        if (ptr_qobject.isValid() && event->type() == QtJambi_EventType_DeleteOnMainThread) {
             // This event is sent by rust when we are deleted.
-            ptr_qobject = { nullptr, nullptr }; // so the destructor don't recurse
+            ptr_qobject.invalidate(); // so the destructor don't recurse
             delete this;
             return true;
         }
@@ -87,10 +170,10 @@ struct RustObject : Base {
     }
     ~RustObject() {
         auto r = ptr_qobject;
-        ptr_qobject = { nullptr, nullptr };
+        ptr_qobject.invalidate();
         if (extra_destruct)
             extra_destruct(this);
-        if (r)
+        if (r.isValid())
             RustObject_destruct(r);
     }
 };
