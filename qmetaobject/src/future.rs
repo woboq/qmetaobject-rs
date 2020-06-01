@@ -1,12 +1,15 @@
-use crate::connections::SignalArgArrayToTuple;
 use std::future::Future;
 use std::os::raw::c_void;
 use std::pin::Pin;
+use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
-static QT_WAKER_VTABLE: std::task::RawWakerVTable = unsafe {
-    std::task::RawWakerVTable::new(
+use crate::connections::SignalArgArrayToTuple;
+
+
+static QT_WAKER_VTABLE: RawWakerVTable = unsafe {
+    RawWakerVTable::new(
         |s: *const ()| {
-            std::task::RawWaker::new(
+            RawWaker::new(
                 cpp!([s as "Waker *"] -> *const() as "Waker *" {
                     s->refs++;
                     return s;
@@ -117,9 +120,9 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
 // SAFETY: caller must ensure that given future hasn't returned Poll::Ready earlier.
 unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) -> bool {
     cpp!([waker as "Waker *"] { waker->refs++; });
-    let waker = std::task::RawWaker::new(waker, &QT_WAKER_VTABLE);
-    let waker = std::task::Waker::from_raw(waker);
-    let mut context = std::task::Context::from_waker(&waker);
+    let waker = RawWaker::new(waker, &QT_WAKER_VTABLE);
+    let waker = Waker::from_raw(waker);
+    let mut context = Context::from_waker(&waker);
     future.poll(&mut context).is_ready()
 }
 
@@ -139,7 +142,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
 ) -> impl Future<Output = <Args as SignalArgArrayToTuple>::Tuple> {
     enum ConnectionFutureState<Args: SignalArgArrayToTuple> {
         Init { sender: *const c_void, signal: crate::connections::Signal<Args> },
-        Started { handle: crate::connections::ConnectionHandle, waker: std::task::Waker },
+        Started { handle: crate::connections::ConnectionHandle, waker: Waker },
         Finished { result: <Args as SignalArgArrayToTuple>::Tuple },
         Invalid,
     }
@@ -160,12 +163,12 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
         type Output = <Args as SignalArgArrayToTuple>::Tuple;
         fn poll(
             mut self: Pin<&mut Self>,
-            ctx: &mut std::task::Context,
-        ) -> std::task::Poll<Self::Output> {
+            ctx: &mut Context,
+        ) -> Poll<Self::Output> {
             let state = &mut self.0;
             *state = match std::mem::replace(state, ConnectionFutureState::Invalid) {
                 ConnectionFutureState::Finished { result } => {
-                    return std::task::Poll::Ready(result);
+                    return Poll::Ready(result);
                 }
                 ConnectionFutureState::Init { sender, signal } => {
                     let s_ptr = state as *mut ConnectionFutureState<_>;
@@ -176,7 +179,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
                 s @ ConnectionFutureState::Started { .. } => s,
                 ConnectionFutureState::Invalid => unreachable!(),
             };
-            std::task::Poll::Pending
+            Poll::Pending
         }
     }
 
