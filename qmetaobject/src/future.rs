@@ -7,7 +7,7 @@ static QT_WAKER_VTABLE: std::task::RawWakerVTable = unsafe {
     std::task::RawWakerVTable::new(
         |s: *const ()| {
             std::task::RawWaker::new(
-                cpp!([s as "Waker*"] -> *const() as "Waker*" {
+                cpp!([s as "Waker *"] -> *const() as "Waker *" {
                     s->refs++;
                     return s;
                 }),
@@ -15,18 +15,18 @@ static QT_WAKER_VTABLE: std::task::RawWakerVTable = unsafe {
             )
         },
         |s: *const ()| {
-            cpp!([s as "Waker*"] {
+            cpp!([s as "Waker *"] {
                 s->wake();
                 s->deref();
             })
         },
         |s: *const ()| {
-            cpp!([s as "Waker*"] {
+            cpp!([s as "Waker *"] {
                 s->wake();
             })
         },
         |s: *const ()| {
-            cpp!([s as "Waker*"] {
+            cpp!([s as "Waker *"] {
                 s->deref();
             })
         },
@@ -61,7 +61,7 @@ cpp! {{
                 return;
             }
             completed = rust!(ProcessQtEvent [
-                this: *const () as "Waker*",
+                this: *const () as "Waker *",
                 future: *mut dyn Future<Output=()> as "TraitObject"
             ] -> bool as "bool" {
                 poll_with_qt_waker(this, Pin::new_unchecked(&mut *future))
@@ -107,7 +107,7 @@ cpp! {{
 pub fn execute_async(f: impl Future<Output = ()> + 'static) {
     let f: *mut dyn Future<Output = ()> = Box::into_raw(Box::new(f));
     unsafe {
-        let waker = cpp!([f as "TraitObject"] -> *const() as "Waker*" {
+        let waker = cpp!([f as "TraitObject"] -> *const() as "Waker *" {
             return new Waker(f);
         });
         poll_with_qt_waker(waker, Pin::new_unchecked(&mut *f));
@@ -116,7 +116,7 @@ pub fn execute_async(f: impl Future<Output = ()> + 'static) {
 
 // SAFETY: caller must ensure that given future hasn't returned Poll::Ready earlier.
 unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Output = ()>>) -> bool {
-    cpp!([waker as "Waker*"] { waker->refs++; });
+    cpp!([waker as "Waker *"] { waker->refs++; });
     let waker = std::task::RawWaker::new(waker, &QT_WAKER_VTABLE);
     let waker = std::task::Waker::from_raw(waker);
     let mut context = std::task::Context::from_waker(&waker);
