@@ -15,12 +15,13 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-use super::qbjs;
 use proc_macro::TokenStream;
-use quote::ToTokens;
-use std::iter::Iterator;
-use syn;
-use syn::parse::{Parse, ParseStream, Parser, Result};
+
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, parse_quote, Token};
+use syn::parse::{Parse, Parser, ParseStream, Result};
+
+use super::qbjs;
 
 macro_rules! unwrap_parse_error(
     ($e:expr) => {

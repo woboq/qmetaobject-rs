@@ -2,6 +2,7 @@
 members = [
     'qmetaobject_impl',
     'qmetaobject',
+    'qmetaobject_doc_comment_test',
     'examples/todos',
     'examples/graph',
     'examples/qmlextensionplugins',
