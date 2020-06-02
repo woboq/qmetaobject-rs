@@ -34,7 +34,7 @@ impl Graph {
         // FIXME! find a better way maybe
         let obj = self.get_cpp_object();
         assert!(!obj.is_null());
-        cpp!(unsafe [obj as "QQuickItem*"] { obj->setFlag(QQuickItem::ItemHasContents); });
+        cpp!(unsafe [obj as "QQuickItem *"] { obj->setFlag(QQuickItem::ItemHasContents); });
         (self as &dyn QQuickItem).update();
     }
 }
