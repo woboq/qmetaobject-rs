@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         name_changed: qt_signal!(),
         // And even a slot
         compute_greetings: qt_method!(fn compute_greetings(&self, verb: String) -> QString {
-            return (verb + " " + &self.name.to_string()).into()
+            format!("{} {}", verb, self.name.to_string()).into()
         })
     }
 
