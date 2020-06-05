@@ -628,6 +628,26 @@ impl From<u32> for QVariant {
         })
     }
 }
+impl From<i64> for QVariant {
+    /// Wrapper around [`QVariant(int)`][ctor] constructor.
+    ///
+    /// [ctor]: https://doc.qt.io/qt-5/qvariant.html#QVariant-4
+    fn from(a: i64) -> QVariant {
+        cpp!(unsafe [a as "qlonglong"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
+    }
+}
+impl From<u64> for QVariant {
+    /// Wrapper around [`QVariant(uint)`][ctor] constructor.
+    ///
+    /// [ctor]: https://doc.qt.io/qt-5/qvariant.html#QVariant-5
+    fn from(a: u64) -> QVariant {
+        cpp!(unsafe [a as "qulonglong"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
+    }
+}
 impl From<f32> for QVariant {
     /// Wrapper around [`QVariant(float)`][ctor] constructor.
     ///
