@@ -124,6 +124,8 @@ cpp! {{
         Func function;
 
         static void impl(int which, QSlotObjectBase *this_, QObject *r, void **a, bool *ret) {
+            Q_UNUSED(ret);
+            Q_UNUSED(r);
             switch (which) {
             case Destroy:
                 delete static_cast<QRustClosureSlotObject *>(this_);
@@ -141,10 +143,10 @@ cpp! {{
                 });
                 break;
             }
-            case Compare: // not implemented
-            case NumOperations:
-                Q_UNUSED(ret);
-                Q_UNUSED(r);
+            // Compare not implemented for closures
+            case Compare:
+            default:
+                break;
             }
         }
 
