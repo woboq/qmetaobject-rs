@@ -21,79 +21,74 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QtCore/QEvent>
 #include <QtCore/QDebug>
 
-/// Raw representation of a pointer to member function as specified by Itanium ABI.
-/// This is somehow similar to `std::raw::TraitObject` in Rust, but for C++.
-///
-/// Note: it can not be used to represent a pointer to data member.
-///
-/// http://itanium-cxx-abi.github.io/cxx-abi/abi.html#member-pointers
-struct MemberFunctionPtr {
-    ptrdiff_t ptr;
-    ptrdiff_t adj;
-
-    /// Create raw pointer to member function from raw parts.
-    explicit MemberFunctionPtr(ptrdiff_t ptr, ptrdiff_t adj)
-        : ptr(ptr)
-        , adj(adj)
-    {}
-
-    /// Create raw pointer to member function from a reference to any member
-    /// function of any type.
-    template<typename R, typename Type, typename ...Args>
-    explicit MemberFunctionPtr(R (Type::* func)(Args...)) {
-        *this = *reinterpret_cast<MemberFunctionPtr *>(&func);
-    }
-};
-
 /// Pointer to a method of QObject which takes no arguments and returns nothing.
 /// Actually this is a "type-erased" method with various arguments and return
 /// value, but it merely represents a generic pointer, and let other code
 /// handle the types and memory safety.
-using QObjectMethodErased = void (QObject::*)();
+using QObjectErasedMethod = void (QObject::*)();
 
-/// From `QMetaObject::Connection QObject::connectImpl(...)` documentation:
-/// ```
-/// signal is a pointer to a pointer to a member signal of the sender
-/// ```
+/// This type represents signals defined both in C++ and Rust, and provides
+/// handy conversions.
 ///
-/// This type encapsulates a pointer to a member function and provides handy
-/// conversions.
-union SignalCppRepresentation {
+/// Internally Qt signals are represented by some ID which must be unique
+/// within class hierarchy (not to be confused with indices). So, things
+/// like `&QObject::objectNameChanged` are only meaningful as far as they
+/// can be converted to some kind of magic representation (`void **`), and
+/// those representations can be compared for equality.
+///
+/// In C++, signals are represented as pointers to member functions, but with
+/// types erased down to `void (QObject::*)()`.
+/// From `QMetaObject::Connection QObject::connectImpl(...)` documentation:
+/// > signal is a pointer to a pointer to a member signal of the sender
+///
+/// For classes defined in Rust, signals are represented as offsets of
+/// corresponding `RustSignal` fields from the base address of their struct.
+/// This provides an easy way to guarantee ID uniqueness at a low price of
+/// having one bool field per signal.
+///
+/// # Safety
+///
+/// Users of `SignalInner` must ensure that they only ever use a
+/// signal of one class with instances of that class or its subclasses.
+///
+/// Erased `cpp_erased_method` is not directly used as a function pointer anyway,
+/// so it is safe even if it contains garbage.
+///
+/// # Further reading
+///
+///  - http://itanium-cxx-abi.github.io/cxx-abi/abi.html#member-pointers
+///  - https://docs.microsoft.com/en-us/cpp/cpp/pointers-to-members?view=vs-2019
+union SignalInner {
 // No need to be public. Pointer to a signal is exposed via safe public getter.
 private:
-    /// Tear fat pointer apart.
-    MemberFunctionPtr raw;
-    /// Or take it as an erased pointer to member function. Useless on its own,
-    /// but provides better options for `reinterpret_cast`.
-    QObjectMethodErased erased;
+    /// For signals derived from `RustSignal` Rust structs, e.g. `greeter.name_changed`.
+    ptrdiff_t rust_field_offset;
+    /// For signals defined in C++ classes, e.g. `&QObject::objectNameChanged`.
+    QObjectErasedMethod cpp_erased_method;
 
 public:
-    /// Construct from Rust side, when type information is not available to C++.
-    /// Member function must be a QObject signal.
-    explicit SignalCppRepresentation(MemberFunctionPtr ptr)
-        : raw(ptr)
+    /// Construct signal representation for an arbitrary Qt signal defined in Rust
+    /// as an offset of signal's field within Rust struct.
+    explicit SignalInner(ptrdiff_t field_offset)
+        : rust_field_offset(field_offset)
     {}
 
-    /// Same as `SignalCppRepresentation(MemberFunctionPtr)`, but assumes no
-    /// adjustment to `this`, i.e. `MemberFunctionPtr::adj = 0`.
-    explicit SignalCppRepresentation(ptrdiff_t ptr)
-        : SignalCppRepresentation(MemberFunctionPtr(ptr, 0))
-    {}
-
-    /// Construct the object from an arbitrary Qt signal.
+    /// Construct signal representation for an arbitrary Qt signal defined in C++.
     ///
     /// Note: this is an implicit conversion.
     template<typename R, typename Type, typename ...Args>
-    SignalCppRepresentation(R (Type::* qt_signal)(Args...))
+    SignalInner(R (Type::* qt_signal)(Args...))
         // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
-        : erased(*reinterpret_cast<QObjectMethodErased *>(&qt_signal))
+        : cpp_erased_method(*reinterpret_cast<QObjectErasedMethod *>(&qt_signal))
     {}
 
     /// Qt uses "pointer to a pointer to a member" signal representation inside
-    /// QObject::connect(...) functions. This little helper encapsulates the
+    /// `QObject::connect(...)` functions. This little helper encapsulates the
     /// required cast.
     void **asRawSignal() {
-        return reinterpret_cast<void **>(&erased);
+        return reinterpret_cast<void **>(&cpp_erased_method);
+        // equivalently:
+        // return reinterpret_cast<void **>(&rust_field_offset);
     }
 };
 

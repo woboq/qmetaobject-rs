@@ -349,9 +349,9 @@ impl QmlComponent {
     }
 
     /// See Qt documentation for QQmlComponent::statusChanged
-    pub fn status_changed_signal() -> CppSignal<fn(status: ComponentStatus)> {
+    pub fn status_changed_signal() -> Signal<fn(status: ComponentStatus)> {
         unsafe {
-            CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+            Signal::new(cpp!([] -> SignalInner as "SignalInner"  {
                 return &QQmlComponent::statusChanged;
             }))
         }

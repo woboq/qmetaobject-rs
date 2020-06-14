@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! This module implements several concepts related to Qt's signals and slot
 //! mechanism such as wrappers for Qt types and extensions specific to Rust.
 //!
-//! Important things to note:
+//! Key points:
 //!  - emitting signal is equivalent to just calling a method marked as such;
 //!  - signal method takes ownership over its arguments, and borrows them to connected slots;
 //!  - argument number zero (`a[0]`) usually used to communicate returned value from the
@@ -33,27 +33,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! Subclasses of `QObject` defined in Rust code declare their signals using [`qt_signal!`][]
 //! pseudo-macro. It generates both struct member and a method with the same name. Those members
 //! will be generated as `RustSignal<fn(...)>` with appropriate generics, and calling
-//! corresponding methods actually emits the signal and invokes all connected slots.
+//! corresponding methods actually emits the signal which invokes all connected slots.
 //!
 //! `RustSignal`s are useless on their own, and in fact are only needed to take space in the
 //! struct, so that we could take a reference to it. In order to use them, e.g. connect to a slot,
-//! they must be converted into the corresponding `CppSignal` via [`to_cpp_representation`][]
+//! they must be converted into the corresponding `Signal` via [`to_cpp_representation`][]
 //! method.
 //!
-//! `CppSignal` is a type-safe wrapper for the `SignalCppRepresentation`, which in turn is what
-//! C++ calls "a pointer to a member function". They can be obtained from objects defined in Rust
-//! (by calling [`to_cpp_representation`][] on their signal members) as well as from objects
-//! defined in C++ and wrapped in Rust (by using `cpp!` macro).
+//! `Signal` is a type-safe wrapper for the `SignalInner`, which in turn is what
+//! Qt recognizes as a signal ID. For signals defined in C++ they are "a pointer to a member
+//! function", but for signals defined in Rust we are currently using `RustSignal` fields' offsets
+//! for that. `SignalInner` objects can be obtained both from objects defined in Rust
+//! (by calling [`to_cpp_representation`][] on their signal members), as well as from
+//! objects defined in C++ and wrapped in Rust (by using `cpp!` macro).
 //!
-//! Note: Currently neither `CppSignal` nor any other type hold the information about type of
-//! object a signal belongs to, so care must be taken to ensure `CppSignal` is used to connect
-//! the same type of objects it was derived from.
+//! Note: Currently neither `Signal` nor any other type hold the information about type of
+//! object a signal belongs to, so care must be taken to ensure `Signal` is used to connect
+//! the same type of objects it was derived from. It is __surprising behavior__ to use signals
+//! representations with non-related types. In the best case, specified signal would not be found
+//! which would result in a warning; in the worst case, signal IDs may clash (e.g. same offset)
+//! resulting in a warning about incompatible types or even connecting to a wrong function.
 //!
 //! Signals connect to [`Slot`][]s. `Slot` can be any rust closure with compatible argument count
 //! and types. This trait is implemented for up to ten arguments. In terms of Qt, there also
 //! exist a return value of a slot, but it is ignored (assumed void) by current implementation.
 //!
-//! Finally, function [`connect`][] is used to connect `CppSignal`s (obtained by any means either
+//! Finally, function [`connect`][] is used to connect `Signal`s (obtained by any means either
 //! from `RustSignal`s defined on rust `QObject`s, or from Rust wrappers for C++ classes) to slots
 //! (usual Rust closures with compatible argument count and types).
 //!
@@ -66,13 +71,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! ```
 //! but we don't want to require the `Args: Copy` constraint.
 //!
+//! To learn more about internals, take a look at documentation in `qmetaobject_rust.hpp` source
+//! file.
+//!
 //! [Signals & Slots]: https://doc.qt.io/qt-5/signalsandslots.html
 //! [woboq]: https://woboq.com/blog/
 //! [woboq-blog-1]: https://woboq.com/blog/how-qt-signals-slots-work.html
-//! [`qt_signal!`]: ../struct.RustSignal.html#method.qt_signal.html
-//! [`to_cpp_representation`]: ./struct
-//! [`Slot`]: ./struct.Slot.html
-//! [`connect`]: ./function.connect.html
+//! [`qt_signal!`]: ../macro.qt_signal.html
+//! [`to_cpp_representation`]: ./struct.RustSignal.html#method.to_cpp_representation
+//! [`Slot`]: ./trait.Slot.html
+//! [`connect`]: ./fn.connect.html
 #![deny(missing_docs)]
 use std::os::raw::c_void;
 
@@ -212,14 +220,19 @@ impl ConnectionHandle {
 
 cpp_class!(
     /// Internal class that can be used to construct C++ signal.  Should only be used as an implementation
-    /// details when writing bindings to Qt signals to construct a `CppSignal<...>`.
+    /// details when writing bindings to Qt signals to construct a [`Signal<...>`][Signal].
     ///
     /// It has the same size as any pointer to a member function like `void (QObject::*)()`,
-    /// and can be constructed from signals.
-    pub unsafe struct SignalCppRepresentation as "SignalCppRepresentation"
+    /// and can be constructed from signals defined in both C++ classes and Rust structs.
+    ///
+    /// To learn more about internals, take a look at documentation in `qmetaobject_rust.hpp` source
+    /// file.
+    ///
+    /// [Signal]: ./struct.Signal.html
+    pub unsafe struct SignalInner as "SignalInner"
 );
 
-impl SignalCppRepresentation {
+impl SignalInner {
     /// Construct signal representation from offset of the signal relative to
     /// the base address of the object.
     ///
@@ -236,44 +249,43 @@ impl SignalCppRepresentation {
             "Signal is not part of the Object: offset {} is outside of type `{}` object's memory",
             offset, std::any::type_name::<O>()
         );
-        cpp!(unsafe [offset as "ptrdiff_t"] -> SignalCppRepresentation as "SignalCppRepresentation" {
-            return SignalCppRepresentation(offset);
+        cpp!(unsafe [offset as "ptrdiff_t"] -> SignalInner as "SignalInner" {
+            return SignalInner(offset);
         })
     }
 }
 
 /// High-level typed wrapper for a pointer to a C++/Qt signal.
 ///
-/// While low-level `SignalCppRepresentation` operated on pointers to 'erased'
+/// While low-level `SignalInner` operated on pointers to 'erased'
 /// member functions types, this struct adds type-safe behavior on top of that.
 ///
 /// `Args` is a type that matches the argument of the signal.
 ///
 /// For example, a C++ signal with signature `void (MyType::*)(int, QString)` will be represented
-/// by the `CppSignal<fn(int, QString)>` type.
-pub struct CppSignal<Args> {
-    inner: SignalCppRepresentation,
+/// by the `Signal<fn(int, QString)>` type.
+pub struct Signal<Args> {
+    inner: SignalInner,
     phantom: std::marker::PhantomData<Args>,
 }
 
-impl<Args> CppSignal<Args> {
-    /// Wrap low level type-erased `SignalCppRepresentation` and provide
-    /// high-level typed wrapper.
+impl<Args> Signal<Args> {
+    /// Wraps low-level type-erased signal representation in a high-level types wrapper.
     ///
     /// # Safety
     ///
     /// Caller must ensure that number, types and order of arguments strictly
     /// matches between signal represented by `inner` and `Args`. Passing
-    /// incorrect information may result in Undefined Behavior.
+    /// incorrect information may result in **Undefined Behavior.**
     ///
     /// # Example
     ///
     /// ```
     /// # #[macro_use] extern crate cpp;
     /// # use qmetaobject::*;
-    /// fn object_name_changed() -> CppSignal<fn(QString)> {
+    /// fn object_name_changed() -> Signal<fn(QString)> {
     ///     unsafe {
-    ///         CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+    ///         Signal::new(cpp!([] -> SignalInner as "SignalInner"  {
     ///             return &QObject::objectNameChanged;
     ///         }))
     ///     }
@@ -282,26 +294,26 @@ impl<Args> CppSignal<Args> {
     /// #     let _ = object_name_changed();
     /// # }
     /// ```
-    pub unsafe fn new(inner: SignalCppRepresentation) -> Self {
-        CppSignal { inner, phantom: Default::default() }
+    pub unsafe fn new(inner: SignalInner) -> Self {
+        Signal { inner, phantom: Default::default() }
     }
 }
 
 // see module-level docs
-impl<Args> Clone for CppSignal<Args> {
+impl<Args> Clone for Signal<Args> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
 // see module-level docs
-impl<Args> Copy for CppSignal<Args> {}
+impl<Args> Copy for Signal<Args> {}
 
 /// Types of signals constructed with the `qt_signal!` macro.
 ///
 /// This type is empty, only its address within the corresponding object matters.
 ///
-/// `Args` represents the type of the arguments, same as in `CppSignal`.
+/// `Args` represents the type of the arguments, same as in `Signal`.
 pub struct RustSignal<Args> {
     phantom: std::marker::PhantomData<Args>,
     _u: bool, // Actually put a field so it has a size;
@@ -318,7 +330,7 @@ impl<Args> Default for RustSignal<Args> {
 }
 
 impl<Args> RustSignal<Args> {
-    /// Construct a corresponding `CppSignal` from this `RustSignal` struct member.
+    /// Construct a corresponding `Signal` from this `RustSignal` struct member.
     ///
     /// The container object must be passed, because `RustSignal` does not have a reference to it.
     /// It does not bind the object though, the object reference is only needed to calculate the
@@ -331,12 +343,14 @@ impl<Args> RustSignal<Args> {
     /// This method panics if the signal offset lies outside of object's memory
     /// space, i.e. if the offset is less than 0 or greater or equal to
     /// object's size. Object's size must be known at compile time.
-    pub fn to_cpp_representation<O: QObject + Sized>(&self, obj: &O) -> CppSignal<Args> {
+    // TODO: Add owning type to generics and get rid of `obj` argument.
+    // TODO: Rename to signal() or something.
+    pub fn to_cpp_representation<O: QObject + Sized>(&self, obj: &O) -> Signal<Args> {
         let base_ptr = obj as *const _ as isize;
         let signal_ptr = self as *const _ as isize;
         let offset = signal_ptr - base_ptr;
-        let inner = SignalCppRepresentation::from_offset::<O>(offset);
-        CppSignal { inner, phantom: Default::default() }
+        let inner = SignalInner::from_offset::<O>(offset);
+        Signal { inner, phantom: Default::default() }
     }
 }
 
@@ -461,15 +475,15 @@ declare_slot_traits![A:10 B:9 C:8 D:7 E:6 F:5 G:4 H:3 I:2 J:1];
 /// Arguments:
 ///
 ///  - Sender is a raw pointer to an instance of `QObject` subclass.
-///  - Signal is one of the signals of the sender. See [`CppSignal`][] for more.
+///  - Signal is one of the signals of the sender. See [`Signal`][] for more.
 ///  - Slot can be any rust clojure `FnMut` with compatible argument count and types (functor-like
 /// slot).
 ///
-/// [`CppSignal`]: ./struct.CppSignal.html
+/// [`Signal`]: ./struct.Signal.html
 /// [qt]: https://doc.qt.io/qt-5/qobject.html#connect-4
 pub unsafe fn connect<Args, F: Slot<Args>>(
     sender: *const c_void,
-    signal: CppSignal<Args>,
+    signal: Signal<Args>,
     mut slot: F,
 ) -> ConnectionHandle {
     let mut cpp_signal = signal.inner;
@@ -480,7 +494,7 @@ pub unsafe fn connect<Args, F: Slot<Args>>(
 
     cpp!(unsafe [
         sender as "const QObject *",
-        mut cpp_signal as "SignalCppRepresentation",
+        mut cpp_signal as "SignalInner",
         slot_closure_raw as "TraitObject"
     ] -> ConnectionHandle as "QMetaObject::Connection" {
         return QObjectPrivate::rust_connectImpl(
