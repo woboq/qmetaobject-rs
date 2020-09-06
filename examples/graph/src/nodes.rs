@@ -2,7 +2,7 @@ use qmetaobject::scenegraph::SGNode;
 use qmetaobject::{QColor, QQuickItem, QRectF};
 
 qrc! {
-    init_ressource,
+    init_resource,
     "scenegraph/graph" {
 //        "main.qml",
         "shaders/noisy.vsh",
@@ -25,7 +25,7 @@ cpp! {{
 pub enum NoisyNode {}
 
 pub fn create_noisy_node(s: &mut SGNode<NoisyNode>, ctx: &dyn QQuickItem) {
-    init_ressource();
+    init_resource();
     let item_ptr = ctx.get_cpp_object();
     cpp!(unsafe [s as "NoisyNode**", item_ptr as "QQuickItem*"] {
         if (!*s && item_ptr) {
@@ -52,7 +52,7 @@ pub fn update_grid_node(s: &mut SGNode<GridNode>, rect: QRectF) {
 
 pub enum LineNode {}
 pub fn create_line_node(s: &mut SGNode<LineNode>, size: f32, spread: f32, color: QColor) {
-    init_ressource();
+    init_resource();
     cpp!(unsafe [s as "LineNode**", size as "float", spread as "float", color as "QColor"] {
         if (!*s) *s = new LineNode(size, spread, color);
     });
