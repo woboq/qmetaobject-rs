@@ -132,10 +132,10 @@ unsafe fn poll_with_qt_waker(waker: *const (), future: Pin<&mut dyn Future<Outpu
 /// [`connections::connect`]: ../connections/fn.connect.html
 pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
     sender: *const c_void,
-    signal: crate::connections::CppSignal<Args>,
+    signal: crate::connections::Signal<Args>,
 ) -> impl Future<Output=<Args as SignalArgArrayToTuple>::Tuple> {
     enum ConnectionFutureState<Args: SignalArgArrayToTuple> {
-        Init { sender: *const c_void, signal: crate::connections::CppSignal<Args> },
+        Init { sender: *const c_void, signal: crate::connections::Signal<Args> },
         Started { handle: crate::connections::ConnectionHandle, waker: std::task::Waker },
         Finished { result: <Args as SignalArgArrayToTuple>::Tuple },
         Invalid,

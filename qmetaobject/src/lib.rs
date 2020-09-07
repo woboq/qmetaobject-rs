@@ -183,7 +183,7 @@ pub use crate::log::*;
 pub use qtdeclarative::*;
 pub use qmetatype::*;
 pub use connections::RustSignal;
-pub use connections::{connect, CppSignal, SignalCppRepresentation};
+pub use connections::{connect, Signal, SignalInner};
 pub use qtquickcontrols2::*;
 pub use future::*;
 pub use qttypes::*;
@@ -333,9 +333,9 @@ impl dyn QObject {
     }
 
     /// See Qt documentation for QObject::destroyed
-    pub fn destroyed_signal() -> CppSignal<fn()> {
+    pub fn destroyed_signal() -> Signal<fn()> {
         unsafe {
-            CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+            Signal::new(cpp!([] -> SignalInner as "SignalInner"  {
                 return &QObject::destroyed;
             }))
         }
@@ -353,9 +353,9 @@ impl dyn QObject {
     }
 
     /// See Qt documentation for QObject::objectNameChanged
-    pub fn object_name_changed_signal() -> CppSignal<fn(QString)> {
+    pub fn object_name_changed_signal() -> Signal<fn(QString)> {
         unsafe {
-            CppSignal::new(cpp!([] -> SignalCppRepresentation as "SignalCppRepresentation"  {
+            Signal::new(cpp!([] -> SignalInner as "SignalInner"  {
                 return &QObject::objectNameChanged;
             }))
         }
@@ -762,7 +762,7 @@ cpp! {{
         TraitObject fnbox;
 
         ~FnBoxWrapper() {
-            if (fnbox) {
+            if (fnbox.isValid()) {
                 rust!(FnBoxWrapper_destructor [fnbox: *mut dyn FnMut() as "TraitObject"] {
                     unsafe { let _ = Box::from_raw(fnbox); }
                 });

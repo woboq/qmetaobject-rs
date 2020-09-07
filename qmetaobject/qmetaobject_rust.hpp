@@ -21,23 +21,101 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <QtCore/QEvent>
 #include <QtCore/QDebug>
 
-union SignalCppRepresentation {
-    void (QObject::*cpp_signal)();
-    qintptr rust_signal;
+/// Pointer to a method of QObject which takes no arguments and returns nothing.
+/// Actually this is a "type-erased" method with various arguments and return
+/// value, but it merely represents a generic pointer, and let other code
+/// handle the types and memory safety.
+using QObjectErasedMethod = void (QObject::*)();
 
-    SignalCppRepresentation() = default;
+/// This type represents signals defined both in C++ and Rust, and provides
+/// handy conversions.
+///
+/// Internally Qt signals are represented by some ID which must be unique
+/// within class hierarchy (not to be confused with indices). So, things
+/// like `&QObject::objectNameChanged` are only meaningful as far as they
+/// can be converted to some kind of magic representation (`void **`), and
+/// those representations can be compared for equality.
+///
+/// In C++, signals are represented as pointers to member functions, but with
+/// types erased down to `void (QObject::*)()`.
+/// From `QMetaObject::Connection QObject::connectImpl(...)` documentation:
+/// > signal is a pointer to a pointer to a member signal of the sender
+///
+/// For classes defined in Rust, signals are represented as offsets of
+/// corresponding `RustSignal` fields from the base address of their struct.
+/// This provides an easy way to guarantee ID uniqueness at a low price of
+/// having one bool field per signal.
+///
+/// # Safety
+///
+/// Users of `SignalInner` must ensure that they only ever use a
+/// signal of one class with instances of that class or its subclasses.
+///
+/// Erased `cpp_erased_method` is not directly used as a function pointer anyway,
+/// so it is safe even if it contains garbage.
+///
+/// # Further reading
+///
+///  - http://itanium-cxx-abi.github.io/cxx-abi/abi.html#member-pointers
+///  - https://docs.microsoft.com/en-us/cpp/cpp/pointers-to-members?view=vs-2019
+union SignalInner {
+// No need to be public. Pointer to a signal is exposed via safe public getter.
+private:
+    /// For signals derived from `RustSignal` Rust structs, e.g. `greeter.name_changed`.
+    ptrdiff_t rust_field_offset;
+    /// For signals defined in C++ classes, e.g. `&QObject::objectNameChanged`.
+    QObjectErasedMethod cpp_erased_method;
 
-    // Construct the object from an arbitrary signal.
-    // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
-    template<typename R, typename Object, typename ...Args>
-    SignalCppRepresentation(R (Object::*cpp_signal)(Args...))
-        : cpp_signal(*reinterpret_cast<void (QObject::**)()>(&cpp_signal)) { }
+public:
+    /// Construct signal representation for an arbitrary Qt signal defined in Rust
+    /// as an offset of signal's field within Rust struct.
+    explicit SignalInner(ptrdiff_t field_offset)
+        : rust_field_offset(field_offset)
+    {}
+
+    /// Construct signal representation for an arbitrary Qt signal defined in C++.
+    ///
+    /// Note: this is an implicit conversion.
+    template<typename R, typename Type, typename ...Args>
+    SignalInner(R (Type::* qt_signal)(Args...))
+        // (there is a double indirection in the reinterpret_cast to avoid -Wcast-function-type)
+        : cpp_erased_method(*reinterpret_cast<QObjectErasedMethod *>(&qt_signal))
+    {}
+
+    /// Qt uses "pointer to a pointer to a member" signal representation inside
+    /// `QObject::connect(...)` functions. This little helper encapsulates the
+    /// required cast.
+    void **asRawSignal() {
+        return reinterpret_cast<void **>(&cpp_erased_method);
+        // equivalently:
+        // return reinterpret_cast<void **>(&rust_field_offset);
+    }
 };
 
+/// Wrapper for Rust `std::raw::TraitObject` struct.
+///
+/// Note: `std::raw` is marked unstable as of Rust 1.43.0, so for future
+/// compatibility it would be better to box the trait object on the heap,
+/// and never manipulate its content directly from C++. For the time being,
+/// though, let it be.
 struct TraitObject {
-    void *a;
-    void *b;
-    explicit operator bool() const { return a && b; }
+    void *data;
+    void *vtable;
+
+    /// Nullability check.
+    bool isValid() const {
+        return data && vtable;
+    }
+
+    /// Forget about referenced object.
+    ///
+    /// If this TraitObject represented a `Box` (owned object) rather than a
+    /// `&dyn` reference (borrowed object) then it may cause memory leaks,
+    /// unless a copy was made for later proper destruction.
+    inline void invalidate() {
+        data = nullptr;
+        vtable = nullptr;
+    }
 };
 
 extern "C" QMetaObject *RustObject_metaObject(TraitObject);
@@ -55,7 +133,7 @@ struct RustObject : Base {
     TraitObject ptr_qobject;  // a QObjectPinned<QObject>
     void (*extra_destruct)(QObject *);
     const QMetaObject *metaObject() const override {
-        return ptr_qobject ? RustObject_metaObject(ptr_qobject) : Base::metaObject();
+        return ptr_qobject.isValid() ? RustObject_metaObject(ptr_qobject) : Base::metaObject();
     }
     int qt_metacall(QMetaObject::Call _c, int _id, void **_a) override {
         _id = Base::qt_metacall(_c, _id, _a);
@@ -77,9 +155,9 @@ struct RustObject : Base {
         return _id;
     }
     bool event(QEvent *event) override {
-        if (ptr_qobject && event->type() == QtJambi_EventType_DeleteOnMainThread) {
+        if (ptr_qobject.isValid() && event->type() == QtJambi_EventType_DeleteOnMainThread) {
             // This event is sent by rust when we are deleted.
-            ptr_qobject = { nullptr, nullptr }; // so the destructor don't recurse
+            ptr_qobject.invalidate(); // so the destructor don't recurse
             delete this;
             return true;
         }
@@ -87,10 +165,10 @@ struct RustObject : Base {
     }
     ~RustObject() {
         auto r = ptr_qobject;
-        ptr_qobject = { nullptr, nullptr };
+        ptr_qobject.invalidate();
         if (extra_destruct)
             extra_destruct(this);
-        if (r)
+        if (r.isValid())
             RustObject_destruct(r);
     }
 };
