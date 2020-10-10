@@ -179,6 +179,7 @@ use std::os::raw::{c_char, c_void};
 
 pub use itemmodel::*;
 pub use listmodel::*;
+pub use tablemodel::*;
 pub use crate::log::*;
 pub use qtdeclarative::*;
 pub use qmetatype::*;
@@ -190,6 +191,7 @@ pub use qttypes::*;
 
 pub mod itemmodel;
 pub mod listmodel;
+pub mod tablemodel;
 pub mod log;
 pub mod qtdeclarative;
 pub mod qmetatype;
