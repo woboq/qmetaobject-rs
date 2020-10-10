@@ -315,7 +315,11 @@ impl QDateTime {
     /// [ctor]: https://doc.qt.io/qt-5/qdatetime.html#QDateTime-1
     pub fn from_date(date: QDate) -> Self {
         cpp!(unsafe [date as "QDate"] -> QDateTime as "QDateTime" {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+            return date.startOfDay();
+#else
             return QDateTime(date);
+#endif
         })
     }
 
