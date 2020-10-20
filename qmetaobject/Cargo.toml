@@ -13,6 +13,7 @@ repository = "https://github.com/woboq/qmetaobject-rs"
 [features]
 default = ["log"]
 chrono_qdatetime = ["chrono"]
+webengine = []
 
 [dependencies]
 qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.1.4"}

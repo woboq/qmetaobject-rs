@@ -85,4 +85,7 @@ fn main() {
     println!("cargo:rustc-link-lib{}=Qt{}Core", macos_lib_search, macos_lib_framework);
     println!("cargo:rustc-link-lib{}=Qt{}Quick", macos_lib_search, macos_lib_framework);
     println!("cargo:rustc-link-lib{}=Qt{}Qml", macos_lib_search, macos_lib_framework);
+    if cfg!(feature = "webengine") {
+        println!("cargo:rustc-link-lib{}=Qt{}WebEngine", macos_lib_search, macos_lib_framework);
+    }
 }

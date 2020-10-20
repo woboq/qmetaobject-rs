@@ -201,6 +201,8 @@ pub mod qtquickcontrols2;
 pub mod scenegraph;
 pub mod future;
 pub mod qttypes;
+#[cfg(feature = "webengine")]
+pub mod webengine;
 
 cpp! {{
     #include <qmetaobject_rust.hpp>
