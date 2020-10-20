@@ -5,4 +5,5 @@ members = [
     'examples/todos',
     'examples/graph',
     'examples/qmlextensionplugins',
+    'examples/webengine',
 ]
