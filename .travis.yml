@@ -19,7 +19,7 @@ before_install:
     - sudo apt-get update
 
 install:
-    - sudo apt-get install -y -qq qt${QT_VERSION}base qt${QT_VERSION}declarative g++-7 mesa-common-dev
+    - sudo apt-get install -y -qq qt${QT_VERSION}base qt${QT_VERSION}declarative qt${QT_VERSION}webengine  g++-7 mesa-common-dev
     - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 90;
 
 before_script:
@@ -31,3 +31,4 @@ script:
     - (cd examples/todos && cargo build)
     - (cd examples/qmlextensionplugins && cargo build)
     - (cd examples/graph && cargo build)
+    - (cd examples/webengine && cargo build)
