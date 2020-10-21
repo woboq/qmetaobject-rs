@@ -104,6 +104,12 @@ Enables interoperability of `QDate` and `QTime` with Rust [`chrono`](https://cra
 
 This feature is disabled by default.
 
+### `webengine`
+
+Enables `QtWebEngine` functionality. For more details see the [example](./examples/webengine).
+
+This feature is disabled by default.
+
 ## What if a binding for the Qt C++ API you want to use is missing?
 
 It is quite likely that you would like to call a particular Qt function which is not wrapped by
