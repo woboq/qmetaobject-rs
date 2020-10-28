@@ -540,6 +540,15 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`userType()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#userType
+    pub fn user_type(&self) -> i32 {
+        cpp!(unsafe [self as "const QVariant*"] -> i32 as "int" {
+            return self->userType(); 
+        }) 
+    }
+
     // FIXME: do more wrappers
 }
 impl From<QString> for QVariant {
