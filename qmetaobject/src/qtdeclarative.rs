@@ -112,7 +112,12 @@ impl QmlEngine {
         })
     }
 
-    // TODO: implement load_url
+    /// Loads the root QML file located at url (See QQmlApplicationEngine::load(const QUrl &url))
+    pub fn load_url(&mut self, url: QUrl) {
+        cpp!(unsafe [self as "QmlEngineHolder *", url as "QUrl"] {
+            self->engine->load(url);
+        })
+    }
 
     /// Loads qml data (See QQmlApplicationEngine::loadData)
     pub fn load_data(&mut self, data: QByteArray) {
