@@ -6,7 +6,7 @@ authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 
 [lib]
 name = "qmlqtimeexampleplugin"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 qmetaobject = { path = "../../qmetaobject"}
