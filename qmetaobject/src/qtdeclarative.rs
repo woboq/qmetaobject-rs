@@ -649,6 +649,7 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
 /// Refer to the Qt documentation for [qmlRegisterUncreatableMetaObject][qt].
 ///
 /// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterUncreatableMetaObject
+#[cfg(qt_5_8)]
 pub fn qml_register_enum<T: QEnum>(
     uri: &std::ffi::CStr,
     version_major: u32,
@@ -666,6 +667,7 @@ pub fn qml_register_enum<T: QEnum>(
         version_minor as "int",
         meta_object as "const QMetaObject *"
     ] {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
         qmlRegisterUncreatableMetaObject(
             *meta_object,
             uri_ptr,
@@ -674,6 +676,7 @@ pub fn qml_register_enum<T: QEnum>(
             qml_name_ptr,
             "Access to enums & flags only"
         );
+#endif
     })
 }
 
