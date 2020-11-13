@@ -332,9 +332,11 @@ impl SGNode {
 }
 */
 
+#[cfg(qt_5_8)]
 /// Wrapper around QSGRectangleNode
 pub enum RectangleNode {}
 
+#[cfg(qt_5_8)]
 impl SGNode<RectangleNode> {
     pub fn set_color(&mut self, color: QColor) {
         let raw = self.raw;
@@ -356,8 +358,10 @@ impl SGNode<RectangleNode> {
         let item = item.get_cpp_object();
         self.raw = cpp!(unsafe [item as "QQuickItem*"] -> *mut c_void as "void*" {
             if (!item) return nullptr;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
             if (auto window = item->window())
                 return window->createRectangleNode();
+#endif
             return nullptr;
         });
     }
