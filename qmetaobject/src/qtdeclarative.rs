@@ -54,6 +54,20 @@ cpp! {{
             , engine(new QQmlApplicationEngine())
         {}
     };
+
+// Equivalent with QMetaObject::inherits(), for 5.6 and lower.
+    bool qmeta_inherits(const QMetaObject *child, const QMetaObject *check) {
+#if QT_VERSION <= QT_VERSION_CHECK(5, 7, 0)
+        do {
+            if (child == check) {
+                return true;
+            }
+        } while ((child = child->superClass()));
+        return false;
+#else
+        return child->inherits(check);
+#endif
+    }
 }}
 
 cpp_class!(
@@ -428,7 +442,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
             meta_object
         );
 
-        int parserStatusCast = meta_object && meta_object->inherits(&QQuickItem::staticMetaObject)
+        int parserStatusCast = meta_object && qmeta_inherits(meta_object, &QQuickItem::staticMetaObject)
             ? QQmlPrivate::StaticCastSelector<QQuickItem, QQmlParserStatus>::cast()
             : -1;
 
@@ -877,7 +891,7 @@ impl QJSValue {
         ] -> *mut c_void as "QObject *" {
             QObject *obj = self->toQObject();
             // FIXME: inheritance?
-            return obj && obj->metaObject()->inherits(mo) ? obj : nullptr;
+            return obj && qmeta_inherits(obj->metaObject(), mo) ? obj : nullptr;
         });
         if obj.is_null() {
             return None;

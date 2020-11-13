@@ -185,6 +185,7 @@ pub use qtdeclarative::*;
 pub use qmetatype::*;
 pub use connections::RustSignal;
 pub use connections::{connect, Signal, SignalInner};
+#[cfg(qt_5_7)]
 pub use qtquickcontrols2::*;
 pub use future::*;
 pub use qttypes::*;
@@ -197,6 +198,7 @@ pub mod qtdeclarative;
 pub mod qmetatype;
 pub mod qrc;
 pub mod connections;
+#[cfg(qt_5_7)]
 pub mod qtquickcontrols2;
 pub mod scenegraph;
 pub mod future;

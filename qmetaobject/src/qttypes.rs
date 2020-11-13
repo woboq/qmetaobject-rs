@@ -124,9 +124,14 @@ impl QDate {
     pub fn get_y_m_d(&self) -> (i32, i32, i32) {
         let mut res = (0, 0, 0);
         let (ref mut y, ref mut m, ref mut d) = res;
-        cpp!(unsafe [self as "const QDate*", y as "int*", m as "int*", d as "int*"] {
+
+        // In version prior to Qt 5.7, this method was marked non-const.
+        // A #[cfg(qt_5_7)] attribute does not solve that issue, because the cpp_build crate is not
+        // smart enough not to compile the non-qualifying closure.
+        cpp!(unsafe [self as "QDate*", y as "int*", m as "int*", d as "int*"] {
             return self->getDate(y, m, d);
         });
+
         res
     }
 
