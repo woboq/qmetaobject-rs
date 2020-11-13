@@ -68,8 +68,10 @@ fn main() {
         config.flag(qt_library_path.trim());
     }
 
-    if qt_version >= Version::new(5, 14, 0) {
-        println!("cargo:rustc-cfg=qt_5_14");
+    for minor in 7..=15 {
+        if qt_version >= Version::new(5, minor, 0) {
+            println!("cargo:rustc-cfg=qt_{}_{}", 5, minor);
+        }
     }
 
     detect_qreal_size(&qt_include_path.trim());
