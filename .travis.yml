@@ -6,6 +6,8 @@ addons:
 
 matrix:
     include:
+        - env: QT_VERSION=56 QT_SOURCE=563
+          rust: stable
         - env: QT_VERSION=58 QT_SOURCE=58
           rust: stable
         - env: QT_VERSION=59 QT_SOURCE=593
