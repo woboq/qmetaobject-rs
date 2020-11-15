@@ -15,6 +15,8 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
+#[cfg(qt_5_8)]
 use super::*;
 use std::os::raw::c_void;
 
@@ -336,18 +338,28 @@ impl SGNode {
 /// Wrapper around QSGRectangleNode
 pub enum RectangleNode {}
 
+cpp! {{
+#if QT_VERSION < QT_VERSION_CHECK(5, 8, 0)
+    struct QSGRectangleNode{};
+#endif
+}}
+
 #[cfg(qt_5_8)]
 impl SGNode<RectangleNode> {
     pub fn set_color(&mut self, color: QColor) {
         let raw = self.raw;
         cpp!(unsafe [raw as "QSGRectangleNode*", color as "QColor"] {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
             if(raw) raw->setColor(color);
+#endif
         });
     }
     pub fn set_rect(&mut self, rect: QRectF) {
         let raw = self.raw;
         cpp!(unsafe [raw as "QSGRectangleNode*", rect as "QRectF"] {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
             if (raw) raw->setRect(rect);
+#endif
         });
     }
 
