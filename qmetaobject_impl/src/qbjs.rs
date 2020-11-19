@@ -35,6 +35,7 @@ fn write_u16(val: u16) -> [u8; 2] {
 pub enum Value {
     String(std::string::String),
     Double(f64),
+    Bool(bool),
     // TODO: other things
 }
 
@@ -63,20 +64,23 @@ fn write_value(result: &mut Vec<u8>, v: &Value) {
             result.extend_from_slice(&write_u32((bits & 0xffff_ffff) as u32));
             result.extend_from_slice(&write_u32((bits >> 32) as u32));
         }
+        Value::Bool(_) => {} // value encoded in header
     }
 }
 
 fn compute_header(v: &Value, off: u32) -> u32 {
-    (match v {
-        Value::String(_) => 3 | (1 << 3), // FIXME: Assume ascii (as does all the code)
-        Value::Double(_) => 2,
-    }) | (off << 5)
+    match v {
+        Value::String(_) => (3 | (1 << 3)) | (off << 5), // FIXME: Assume ascii (as does all the code)
+        Value::Double(_) => 2 | (off << 5),
+        Value::Bool(v) => 1 | ((*v as u32) << 5),
+    }
 }
 
 fn compute_size(v: &Value) -> u32 {
     match v {
         Value::String(ref s) => string_size(&s),
         Value::Double(_) => 8,
+        Value::Bool(_) => 0,
     }
 }
 
