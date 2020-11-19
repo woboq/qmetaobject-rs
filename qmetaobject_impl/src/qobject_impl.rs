@@ -936,7 +936,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
             ("IID", Value::String(plugin_iid.unwrap().value())),
             ("className", Value::String(name.to_string())),
             ("version", Value::Double(f64::from(0x050100))),
-            ("debug", Value::Double(0.0 as f64)),
+            ("debug", Value::Bool(cfg!(debug_assertions))),
             // ("MetaData"] = CDef->Plugin.MetaData;
         ];
         object_data.sort_by(|a, b| a.0.cmp(b.0));
