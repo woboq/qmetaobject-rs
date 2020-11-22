@@ -14,10 +14,11 @@ https://www.vandenoever.info/blog/2018/10/30/building_qt_apps_with_cargo.html
 To apply the patch and run the program:
 
 ```
-git clone https://anongit.kde.org/scratch/vandenoever/qrep
+git clone https://invent.kde.org/vandenoever/qrep
 cd qrep
 git checkout bdbde040e74819351609581c0d98a59bbfeecbf9 -b qmetaobject-rs
-git am ../qmetaobject-rs/examples/rqbg/qrep.patch
+git am ../qmetaobject-rs/examples/rqbg/0001-Port-to-qmetaobject-rs.patch
+git am ../qmetaobject-rs/examples/rqbg/0002-Fix-build.patch
 cargo run
 ```
 
