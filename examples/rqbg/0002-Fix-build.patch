@@ -1,0 +1,41 @@
+From c9b77aa3120c0c8e10701baf125ebd7d3c699f1c Mon Sep 17 00:00:00 2001
+From: Olivier Robert <olivier.robert.dev@gmail.com>
+Date: Sun, 22 Nov 2020 14:23:48 +0100
+Subject: [PATCH] Fix build
+
+---
+ Cargo.toml            | 4 ++--
+ src/implementation.rs | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 27c07ee..9bd68e6 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -12,8 +12,8 @@ grep-regex = "0.1.1"
+ grep-searcher = "0.1.1"
+ htmlescape = "0.3.1"
+ libc = "0.2"
+-spmc = "0.2.2"
++spmc = "0.3.0"
+ walkdir = "2"
+-qmetaobject = "0.0.4"
++qmetaobject = { path = "../qmetaobject-rs/qmetaobject/"}
+ cstr = "0.1"
+ 
+diff --git a/src/implementation.rs b/src/implementation.rs
+index 8330769..b6be809 100644
+--- a/src/implementation.rs
++++ b/src/implementation.rs
+@@ -124,7 +124,7 @@ fn grep(
+     if query.is_empty() {
+         return list(&emit, item_sender, active);
+     }
+-    let (sender, receiver) = spmc::channel();
++    let (mut sender, receiver) = spmc::channel();
+     let mut threads = Vec::new();
+     for _ in 0..4 {
+         let sender = item_sender.clone();
+-- 
+2.29.2
+
