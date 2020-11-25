@@ -81,13 +81,24 @@ fn main() {
     let macos_lib_search = if cfg!(target_os = "macos") { "=framework" } else { "" };
     let macos_lib_framework = if cfg!(target_os = "macos") { "" } else { "5" };
 
+    let debug = std::env::var("DEBUG").ok().map_or(false, |s| s == "true");
+    let windows_dbg_suffix = if debug {
+        if cfg!(target_os = "windows") {
+            println!("cargo:rustc-link-lib=msvcrtd");
+            "d"
+        } else {
+            ""
+        }
+    } else {
+        ""
+    };
     println!("cargo:rustc-link-search{}={}", macos_lib_search, qt_library_path.trim());
-    println!("cargo:rustc-link-lib{}=Qt{}Widgets", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Gui", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Core", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Quick", macos_lib_search, macos_lib_framework);
-    println!("cargo:rustc-link-lib{}=Qt{}Qml", macos_lib_search, macos_lib_framework);
+    println!("cargo:rustc-link-lib{}=Qt{}Widgets{}", macos_lib_search, macos_lib_framework, windows_dbg_suffix);
+    println!("cargo:rustc-link-lib{}=Qt{}Gui{}", macos_lib_search, macos_lib_framework, windows_dbg_suffix);
+    println!("cargo:rustc-link-lib{}=Qt{}Core{}", macos_lib_search, macos_lib_framework, windows_dbg_suffix);
+    println!("cargo:rustc-link-lib{}=Qt{}Quick{}", macos_lib_search, macos_lib_framework, windows_dbg_suffix);
+    println!("cargo:rustc-link-lib{}=Qt{}Qml{}", macos_lib_search, macos_lib_framework, windows_dbg_suffix);
     if cfg!(feature = "webengine") {
-        println!("cargo:rustc-link-lib{}=Qt{}WebEngine", macos_lib_search, macos_lib_framework);
+        println!("cargo:rustc-link-lib{}=Qt{}WebEngine{}", macos_lib_search, macos_lib_framework, windows_dbg_suffix);
     }
 }
