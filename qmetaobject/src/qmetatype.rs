@@ -295,6 +295,8 @@ qdeclare_builtin_metatype! {isize  => 4} // That's QMetaType::LongLong
 #[cfg(target_pointer_width = "64")]
 qdeclare_builtin_metatype! {usize  => 5} // That's QMetaType::ULongLong
 
+impl QMetaType for QJSValue {}
+
 /// Internal trait used to pass or read the type in a Q_PROPERTY
 ///
 /// Don't implement this trait, implement the QMetaType trait.
