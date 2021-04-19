@@ -34,6 +34,9 @@ static QT_WAKER_VTABLE: std::task::RawWakerVTable = unsafe {
 };
 
 cpp! {{
+
+    #include <QtCore/QCoreApplication>
+
     /// Special QObject subclass to glue together internals of Rust's futures and Qt's events.
     /// It's lifetime is determined through reference counting, and its lifecycle is based on
     /// Qt's QObject rather than C++ RAII.
@@ -82,7 +85,7 @@ cpp! {{
             // This line results in invocation of customEvent(QEvent*) method above.
             // Note that object may be waken multiple times before the wake up call
             // actually gets proceeded by the Qt's event loop.
-            QApplication::postEvent(this, new QEvent(QEvent::User));
+            QCoreApplication::postEvent(this, new QEvent(QEvent::User));
         }
 
         ~Waker() {
