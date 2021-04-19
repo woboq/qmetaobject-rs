@@ -4,11 +4,18 @@ version = "0.1.4"
 edition = "2018"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
-description = "Manually maintained building for Qt basic types"
+description = "Manually maintained buildings for Qt value types"
 readme = "README.md"
 license = "MIT"
-keywords = ["Qt"]
+keywords = ["Qt", "QtCore", "QtGui"]
 repository = "https://github.com/woboq/qmetaobject-rs"
+links = "qt"
+
+[features]
+# Link against QtQuick
+qtquick = []
+# Link against QtWebEngine
+qtwebengine = []
 
 [dependencies]
 cpp = "0.5.6"
@@ -16,7 +23,6 @@ chrono = { version = "0.4", optional = true }
 
 [build-dependencies]
 cpp_build = "0.5.6"
-semver = "0.11"
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]
