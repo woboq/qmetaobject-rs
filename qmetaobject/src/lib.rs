@@ -177,32 +177,32 @@ macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 use std::cell::RefCell;
 use std::os::raw::{c_char, c_void};
 
-pub use itemmodel::*;
-pub use listmodel::*;
-pub use tablemodel::*;
 pub use crate::log::*;
-pub use qtdeclarative::*;
-pub use qmetatype::*;
 pub use connections::RustSignal;
 pub use connections::{connect, Signal, SignalInner};
+pub use future::*;
+pub use itemmodel::*;
+pub use listmodel::*;
+pub use qmetatype::*;
+pub use qtdeclarative::*;
 #[cfg(qt_5_7)]
 pub use qtquickcontrols2::*;
-pub use future::*;
 pub use qttypes::*;
+pub use tablemodel::*;
 
+pub mod connections;
+pub mod future;
 pub mod itemmodel;
 pub mod listmodel;
-pub mod tablemodel;
 pub mod log;
-pub mod qtdeclarative;
 pub mod qmetatype;
 pub mod qrc;
-pub mod connections;
+pub mod qtdeclarative;
 #[cfg(qt_5_7)]
 pub mod qtquickcontrols2;
-pub mod scenegraph;
-pub mod future;
 pub mod qttypes;
+pub mod scenegraph;
+pub mod tablemodel;
 #[cfg(feature = "webengine")]
 pub mod webengine;
 
@@ -607,12 +607,14 @@ pub unsafe fn invoke_signal(
 }
 
 /// Wrapper for `QMetaObject`'s private data's `StaticMetacallFunction` typedef.
-type StaticMetacallFunction = Option<extern "C" fn(
-    o: *mut c_void, // FIXME: should be QObject or something
-    c: u32,
-    idx: u32,
-    a: *const *mut c_void
-)>;
+type StaticMetacallFunction = Option<
+    extern "C" fn(
+        o: *mut c_void, // FIXME: should be QObject or something
+        c: u32,
+        idx: u32,
+        a: *const *mut c_void,
+    ),
+>;
 
 /// Same as a C++ QMetaObject.
 #[doc(hidden)]

@@ -320,12 +320,12 @@ impl QDateTime {
     /// [ctor]: https://doc.qt.io/qt-5/qdatetime.html#QDateTime-1
     pub fn from_date(date: QDate) -> Self {
         cpp!(unsafe [date as "QDate"] -> QDateTime as "QDateTime" {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-            return date.startOfDay();
-#else
-            return QDateTime(date);
-#endif
-        })
+        #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                    return date.startOfDay();
+        #else
+                    return QDateTime(date);
+        #endif
+                })
     }
 
     /// Wrapper around [`QDateTime(const QDate &date, const QTime &time, Qt::TimeSpec spec = Qt::LocalTime)`][ctor] constructor.
@@ -550,8 +550,8 @@ impl QVariant {
     /// [method]: https://doc.qt.io/qt-5/qvariant.html#userType
     pub fn user_type(&self) -> i32 {
         cpp!(unsafe [self as "const QVariant*"] -> i32 as "int" {
-            return self->userType(); 
-        }) 
+            return self->userType();
+        })
     }
 
     // FIXME: do more wrappers

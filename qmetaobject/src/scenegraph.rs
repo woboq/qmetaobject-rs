@@ -349,18 +349,18 @@ impl SGNode<RectangleNode> {
     pub fn set_color(&mut self, color: QColor) {
         let raw = self.raw;
         cpp!(unsafe [raw as "QSGRectangleNode*", color as "QColor"] {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-            if(raw) raw->setColor(color);
-#endif
-        });
+        #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+                    if(raw) raw->setColor(color);
+        #endif
+                });
     }
     pub fn set_rect(&mut self, rect: QRectF) {
         let raw = self.raw;
         cpp!(unsafe [raw as "QSGRectangleNode*", rect as "QRectF"] {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-            if (raw) raw->setRect(rect);
-#endif
-        });
+        #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+                    if (raw) raw->setRect(rect);
+        #endif
+                });
     }
 
     pub fn create(&mut self, item: &dyn QQuickItem) {
@@ -369,13 +369,13 @@ impl SGNode<RectangleNode> {
         }
         let item = item.get_cpp_object();
         self.raw = cpp!(unsafe [item as "QQuickItem*"] -> *mut c_void as "void*" {
-            if (!item) return nullptr;
-#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-            if (auto window = item->window())
-                return window->createRectangleNode();
-#endif
-            return nullptr;
-        });
+                    if (!item) return nullptr;
+        #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+                    if (auto window = item->window())
+                        return window->createRectangleNode();
+        #endif
+                    return nullptr;
+                });
     }
 }
 

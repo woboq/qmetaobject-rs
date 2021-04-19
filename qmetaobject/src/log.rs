@@ -3,7 +3,7 @@
 use std::os::raw::c_char;
 
 #[cfg(feature = "log")]
-use log::{Level, logger, Record, RecordBuilder};
+use log::{logger, Level, Record, RecordBuilder};
 
 use crate::QString;
 
@@ -153,9 +153,7 @@ pub fn install_message_handler(logger: QtMessageHandler) -> QtMessageHandler {
 // into Rust logging facade's log::Record object, and sends it
 // to the currently active logger.
 #[cfg(feature = "log")]
-extern "C" fn log_capture(msg_type: QtMsgType,
-                          context: &QMessageLogContext,
-                          message: &QString) {
+extern "C" fn log_capture(msg_type: QtMsgType, context: &QMessageLogContext, message: &QString) {
     let level = msg_type.into();
     let target = match context.category() {
         "" => "default",
@@ -171,11 +169,7 @@ extern "C" fn log_capture(msg_type: QtMsgType,
         x => Some(x as _),
     };
     let mut record = Record::builder();
-    record.level(level)
-        .target(target)
-        .file(file)
-        .line(line)
-        .module_path(None);
+    record.level(level).target(target).file(file).line(line).module_path(None);
     // Match expression with single all-capturing arm is a hack that allows
     // to extend the lifetime of a matched object for "a little longer".
     // Passing an expression with temporaries as a function argument

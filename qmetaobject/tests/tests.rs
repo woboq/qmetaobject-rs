@@ -64,13 +64,18 @@ struct MyObject {
     prop_z: qt_property!(QString; NOTIFY prop_z_changed),
     prop_z_changed: qt_signal!(v: QString),
 
-    multiply_and_add1: qt_method!(fn multiply_and_add1(&self, a: u32, b:u32) -> u32 { a*b + 1 }),
+    multiply_and_add1: qt_method!(
+        fn multiply_and_add1(&self, a: u32, b: u32) -> u32 {
+            a * b + 1
+        }
+    ),
 
-    concatenate_strings: qt_method!(fn concatenate_strings(
-            &self, a: QString, b:QString, c: QByteArray) -> QString {
-        let res = a.to_string() + &(b.to_string()) + &(c.to_string());
-        QString::from(&res as &str)
-    }),
+    concatenate_strings: qt_method!(
+        fn concatenate_strings(&self, a: QString, b: QString, c: QByteArray) -> QString {
+            let res = a.to_string() + &(b.to_string()) + &(c.to_string());
+            QString::from(&res as &str)
+        }
+    ),
 
     method_out_of_line: qt_method!(fn(&self, a: QString) -> QString),
 
@@ -163,7 +168,11 @@ fn call_method() {
 struct RegisteredObj {
     base: qt_base_class!(trait QObject),
     value: qt_property!(u32),
-    square: qt_method!(fn square(&self, v : u32) -> u32 { self.value * v } ),
+    square: qt_method!(
+        fn square(&self, v: u32) -> u32 {
+            self.value * v
+        }
+    ),
 }
 
 #[test]
@@ -198,7 +207,11 @@ fn register_type() {
 struct RegisterSingletonInstanceObj {
     base: qt_base_class!(trait QObject),
     value: u32,
-    get_value: qt_method!(fn get_value(&self) -> u32 { self.value } ),
+    get_value: qt_method!(
+        fn get_value(&self) -> u32 {
+            self.value
+        }
+    ),
 }
 
 #[test]
@@ -233,7 +246,11 @@ fn register_singleton_instance() {
 struct RegisterSingletonTypeObj {
     base: qt_base_class!(trait QObject),
     value: u32,
-    get_value2: qt_method!(fn get_value2(&self) -> u32 { self.value } ),
+    get_value2: qt_method!(
+        fn get_value2(&self) -> u32 {
+            self.value
+        }
+    ),
 }
 
 impl QSingletonInit for RegisterSingletonTypeObj {
@@ -272,9 +289,11 @@ fn simple_gadget() {
     struct MySimpleGadget {
         num_value: qt_property!(u32; ALIAS numValue),
         str_value: qt_property!(String; ALIAS strValue),
-        concat: qt_method!(fn concat(&self, separator : String) -> String {
-            return format!("{}{}{}", self.str_value, separator, self.num_value)
-        } ),
+        concat: qt_method!(
+            fn concat(&self, separator: String) -> String {
+                return format!("{}{}{}", self.str_value, separator, self.num_value);
+            }
+        ),
     }
 
     let mut my_gadget = MySimpleGadget::default();
@@ -300,7 +319,11 @@ struct ObjectWithObject {
     base: qt_base_class!(trait QObject),
     prop_object: qt_property!(RefCell<MyObject>; CONST),
 
-    subx: qt_method!(fn subx(&self) -> u32 { self.prop_object.borrow().prop_x }),
+    subx: qt_method!(
+        fn subx(&self) -> u32 {
+            self.prop_object.borrow().prop_x
+        }
+    ),
 }
 
 #[test]
@@ -595,7 +618,9 @@ fn with_life_time() {
         base: qt_base_class!(trait QObject),
         _something: Option<&'a u32>,
         my_signal: qt_signal!(xx: u32, yy: String),
-        my_method: qt_method!(fn my_method(&self, _x: u32) {}),
+        my_method: qt_method!(
+            fn my_method(&self, _x: u32) {}
+        ),
         my_property: qt_property!(u32),
     }
 
@@ -762,20 +787,24 @@ fn threading() {
         base: qt_base_class!(trait QObject),
         result: qt_property!(QString; NOTIFY result_changed),
         result_changed: qt_signal!(),
-        recompute_result: qt_method!(fn recompute_result(&self, name : String) {
-            let qptr = QPointer::from(&*self);
-            let set_value = qmetaobject::queued_callback(move |val : QString| {
-                qptr.as_pinned().map(|self_| {
-                    self_.borrow_mut().result = val;
-                    self_.borrow().result_changed();
+        recompute_result: qt_method!(
+            fn recompute_result(&self, name: String) {
+                let qptr = QPointer::from(&*self);
+                let set_value = qmetaobject::queued_callback(move |val: QString| {
+                    qptr.as_pinned().map(|self_| {
+                        self_.borrow_mut().result = val;
+                        self_.borrow().result_changed();
+                    });
                 });
-            });
-            std::thread::spawn(move || {
-                // do stuff asynchronously ...
-                let r = QString::from("Hello ".to_owned() + &name);
-                set_value(r);
-            }).join().unwrap();
-        }),
+                std::thread::spawn(move || {
+                    // do stuff asynchronously ...
+                    let r = QString::from("Hello ".to_owned() + &name);
+                    set_value(r);
+                })
+                .join()
+                .unwrap();
+            }
+        ),
     }
 
     let obj = std::cell::RefCell::new(MyAsyncObject::default());

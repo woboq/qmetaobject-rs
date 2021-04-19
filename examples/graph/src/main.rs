@@ -20,11 +20,13 @@ struct Graph {
     m_geometryChanged: bool,
 
     appendSample: qt_method!(fn(&mut self, value: f64)),
-    removeFirstSample: qt_method!(fn removeFirstSample(&mut self) {
-        self.m_samples.drain(0..1);
-        self.m_samplesChanged = true;
-        (self as &dyn QQuickItem).update();
-    }),
+    removeFirstSample: qt_method!(
+        fn removeFirstSample(&mut self) {
+            self.m_samples.drain(0..1);
+            self.m_samplesChanged = true;
+            (self as &dyn QQuickItem).update();
+        }
+    ),
 }
 
 impl Graph {

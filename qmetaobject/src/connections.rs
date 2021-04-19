@@ -247,7 +247,8 @@ impl SignalInner {
         assert!(
             offset >= 0 && offset < std::mem::size_of::<O>() as isize,
             "Signal is not part of the Object: offset {} is outside of type `{}` object's memory",
-            offset, std::any::type_name::<O>()
+            offset,
+            std::any::type_name::<O>()
         );
         cpp!(unsafe [offset as "ptrdiff_t"] -> SignalInner as "SignalInner" {
             return SignalInner(offset);
@@ -322,10 +323,7 @@ pub struct RustSignal<Args> {
 // see module-level docs
 impl<Args> Default for RustSignal<Args> {
     fn default() -> Self {
-        RustSignal {
-            phantom: Default::default(),
-            _u: Default::default()
-        }
+        RustSignal { phantom: Default::default(), _u: Default::default() }
     }
 }
 

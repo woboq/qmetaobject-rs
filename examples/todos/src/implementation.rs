@@ -38,7 +38,7 @@ pub struct Todos {
     active_count_changed: qt_signal!(),
 
     setCompleted: qt_method!(fn(&mut self, item: usize, v: bool) -> bool),
-    setDescription: qt_method!(fn(&mut self, item: usize, v: String) -> bool ),
+    setDescription: qt_method!(fn(&mut self, item: usize, v: String) -> bool),
     insert_rows: qt_method!(fn(&mut self, row: usize, count: usize) -> bool),
     remove_rows: qt_method!(fn(&mut self, row: usize, count: usize) -> bool),
     clearCompleted: qt_method!(fn(&mut self)),

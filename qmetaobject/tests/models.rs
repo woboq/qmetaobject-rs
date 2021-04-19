@@ -60,9 +60,11 @@ fn simple_model_remove() {
     pub struct Foo {
         base: qt_base_class!(trait QObject),
         pub list: qt_property!(RefCell<SimpleListModel<X>>; CONST),
-        pub remove: qt_method!(fn remove(&mut self, index: usize) {
-            self.list.borrow_mut().remove(index);
-        }),
+        pub remove: qt_method!(
+            fn remove(&mut self, index: usize) {
+                self.list.borrow_mut().remove(index);
+            }
+        ),
     }
 
     #[derive(Debug, Clone, SimpleListItem, Default)]

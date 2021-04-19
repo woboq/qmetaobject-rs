@@ -998,8 +998,10 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
         is_repr_explicit |= is_valid_repr_attribute(attr);
     }
     if !is_repr_explicit {
-        panic!("#[derive(QEnum)] only support enum with explicit #[repr(*)], \
-                possible integer type are u8, u16, u32, i8, i16, i32.")
+        panic!(
+            "#[derive(QEnum)] only support enum with explicit #[repr(*)], \
+                possible integer type are u8, u16, u32, i8, i16, i32."
+        )
     }
 
     let crate_ = super::get_crate(&ast);

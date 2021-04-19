@@ -2,7 +2,10 @@ use super::*;
 use std::collections::HashMap;
 
 pub trait QAbstractTableModel: QObject {
-    fn get_object_description() -> &'static QObjectDescription where Self: Sized {
+    fn get_object_description() -> &'static QObjectDescription
+    where
+        Self: Sized,
+    {
         unsafe {
             &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
                 return rustObjectDescription<Rust_QAbstractTableModel>();
