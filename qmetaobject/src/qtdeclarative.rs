@@ -232,6 +232,18 @@ impl QmlEngine {
             self->engine->addImportPath(path);
         })
     }
+
+    /// Add an QQuickImageProvider to the QML engine
+    ///
+    /// There currently isn't a way to construct a QQuickImageProvider in
+    /// rust so it is necessary to create a class that extend QQuickImageProvider
+    /// in cpp, then construct one and pass it to this method.
+    pub fn add_image_provider(&mut self, provider_id: QString, provider: *mut c_void) {
+        cpp!(unsafe [self as "QmlEngineHolder*", provider_id as "QString", provider as "QQmlImageProviderBase*"] {
+            self->engine->addImageProvider(provider_id, provider);
+        })
+    }
+
 }
 
 /// Bindings to a QQuickView
