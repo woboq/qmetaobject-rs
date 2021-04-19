@@ -83,8 +83,7 @@ impl QmlEngine {
         use std::ffi::CString;
 
         let mut arguments: Vec<*mut c_char> = std::env::args()
-            .map(|arg| CString::new(arg.into_bytes())
-                .expect("argument contains invalid c-string!"))
+            .map(|arg| CString::new(arg.into_bytes()).expect("argument contains invalid c-string!"))
             .map(|arg| arg.into_raw())
             .collect();
         let argc: i32 = arguments.len() as i32 - 1;
@@ -403,7 +402,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
             T::qml_construct(&b, c, ed);
         }
         Box::leak(b);
-    };
+    }
     let creator_fn: extern "C" fn(c: *mut c_void) = creator_fn::<T>;
 
     let size = T::cpp_size();
@@ -479,14 +478,11 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 
 /// Alias for type of `QQmlPrivate::RegisterSingletonType::qobjectApi` callback
 /// and its C++ counterpart.
-type QmlRegisterSingletonTypeCallback = extern "C" fn(
-    qml_engine: *mut c_void,
-    js_engine: *mut c_void,
-) -> *mut c_void;
+type QmlRegisterSingletonTypeCallback =
+    extern "C" fn(qml_engine: *mut c_void, js_engine: *mut c_void) -> *mut c_void;
 cpp! {{
     using QmlRegisterSingletonTypeCallback = QObject *(*)(QQmlEngine *, QJSEngine *);
 }}
-
 
 /// Initialization for singleton QML objects.
 pub trait QSingletonInit {

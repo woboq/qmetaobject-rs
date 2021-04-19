@@ -37,7 +37,7 @@ fn register_metatype_common<T: QMetaType>(
 
         extern "C" fn deleter_fn<T>(v: *mut T) {
             let _ = unsafe { Box::from_raw(v) };
-        };
+        }
         let deleter_fn: extern "C" fn(v: *mut T) = deleter_fn;
 
         extern "C" fn creator_fn<T: Default + Clone>(c: *const T) -> *const T {
@@ -46,14 +46,14 @@ fn register_metatype_common<T: QMetaType>(
             } else {
                 Box::into_raw(Box::new(unsafe { (*c).clone() }))
             }
-        };
+        }
         let creator_fn: extern "C" fn(c: *const T) -> *const T = creator_fn;
 
         extern "C" fn destructor_fn<T>(ptr: *mut T) {
             unsafe {
                 std::ptr::read(ptr);
             }
-        };
+        }
         let destructor_fn: extern "C" fn(ptr: *mut T) = destructor_fn;
 
         extern "C" fn constructor_fn<T: Default + Clone>(dst: *mut T, c: *const T) -> *mut T {
@@ -66,7 +66,7 @@ fn register_metatype_common<T: QMetaType>(
                 std::ptr::write(dst, n);
             }
             dst
-        };
+        }
         let constructor_fn: extern "C" fn(ptr: *mut T, c: *const T) -> *mut T = constructor_fn;
 
         let name = CString::new(format!("{:?}", TypeId::of::<T>())).unwrap();
@@ -210,7 +210,7 @@ pub trait QMetaType: Clone + Default + 'static {
         if ptr.is_null() {
             None
         } else {
-            Some(unsafe {&*(ptr as *const Self)}.clone())
+            Some(unsafe { &*(ptr as *const Self) }.clone())
         }
     }
 
