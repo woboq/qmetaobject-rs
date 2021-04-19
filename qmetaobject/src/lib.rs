@@ -75,9 +75,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     # Basic types
 
-    The re-exported module [qttypes](qttypes/index.html) contains binding to the most usefull
-    basic types such as [QString](qttypes/struct.QString.html),
-    [QVariant](qttypes/struct.QVariant.html), ...
+    The re-exported crate [`qttypes`] contains binding to the most usefull
+    basic types such as [`QString`], [`QVariant`], ...
 
     You can also simply use rust type `String`, but using QString might avoid unecessary
     conversions in some case.
@@ -96,7 +95,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     impl QMetaType for MyPoint {};
     ```
 
-    With that it is also possible to put the type in a  [QVariant](qttypes/struct.QVariant.html)
+    With that it is also possible to put the type in a  [`QVariant`]
 
     # Object pinning
 
@@ -177,6 +176,8 @@ macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 use std::cell::RefCell;
 use std::os::raw::{c_char, c_void};
 
+pub use qttypes;
+
 pub use crate::log::*;
 pub use connections::RustSignal;
 pub use connections::{connect, Signal, SignalInner};
@@ -200,7 +201,6 @@ pub mod qrc;
 pub mod qtdeclarative;
 #[cfg(qt_5_7)]
 pub mod qtquickcontrols2;
-pub mod qttypes;
 pub mod scenegraph;
 pub mod tablemodel;
 #[cfg(feature = "webengine")]

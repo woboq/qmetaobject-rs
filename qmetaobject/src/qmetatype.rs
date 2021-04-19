@@ -415,3 +415,26 @@ fn test_qmetatype_register_wrong_type2() {
     // registering with the name of an existing type should panic
     MyType::register(Some(&std::ffi::CString::new("String").unwrap()));
 }
+
+#[test]
+fn test_qvariant_datetime() {
+    let dt = QDateTime::from_date_time_local_timezone(
+        QDate::from_y_m_d(2019, 10, 23),
+        QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)),
+    );
+    let v = QVariant::from(dt);
+    let qstring = QString::from_qvariant(v.clone()).unwrap();
+    let mut s = qstring.to_string();
+    if s.ends_with(".100") {
+        // Old version of qt did not include the milliseconds, so remove it
+        s.truncate(s.len() - 4);
+    }
+    assert_eq!(s, "2019-10-23T10:30:40");
+    let qdate = QDate::from_qvariant(v.clone()).unwrap();
+    assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
+    assert!(qdate != QDate::from_y_m_d(2019, 10, 24));
+
+    let qtime = QTime::from_qvariant(v.clone()).unwrap();
+    assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)));
+    assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), None));
+}

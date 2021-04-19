@@ -16,7 +16,8 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 //! Various bindings and wrappers for Qt classes, enums, member/static methods and functions.
-extern crate std;
+
+use cpp::{cpp, cpp_class};
 use std::convert::From;
 use std::fmt::Display;
 use std::iter::FromIterator;
@@ -24,8 +25,19 @@ use std::ops::{Index, IndexMut};
 use std::os::raw::c_char;
 use std::str::Utf8Error;
 
-#[cfg(feature = "chrono_qdatetime")]
+#[cfg(feature = "chrono")]
 use chrono::prelude::*;
+
+cpp! {{
+    #include <QtCore/QByteArray>
+    #include <QtCore/QString>
+    #include <QtCore/QDateTime>
+    #include <QtCore/QVariant>
+    #include <QtCore/QModelIndex>
+    #include <QtCore/QUrl>
+
+    #include <QtGui/QImage>
+}}
 
 cpp_class!(
     /// Wrapper around [`QByteArray`][class] class.
@@ -144,13 +156,13 @@ impl QDate {
         })
     }
 }
-#[cfg(feature = "chrono_qdatetime")]
+#[cfg(feature = "chrono")]
 impl From<NaiveDate> for QDate {
     fn from(a: NaiveDate) -> QDate {
         QDate::from_y_m_d(a.year() as i32, a.month() as i32, a.day() as i32)
     }
 }
-#[cfg(feature = "chrono_qdatetime")]
+#[cfg(feature = "chrono")]
 impl Into<NaiveDate> for QDate {
     fn into(self) -> NaiveDate {
         let (y, m, d) = self.get_y_m_d();
@@ -173,7 +185,7 @@ fn test_qdate_is_valid() {
     assert!(!invalid_qdate.is_valid());
 }
 
-#[cfg(feature = "chrono_qdatetime")]
+#[cfg(feature = "chrono")]
 #[test]
 fn test_qdate_chrono() {
     let chrono_date = NaiveDate::from_ymd(2019, 10, 22);
@@ -260,7 +272,7 @@ impl QTime {
     }
 }
 
-#[cfg(feature = "chrono_qdatetime")]
+#[cfg(feature = "chrono")]
 impl From<NaiveTime> for QTime {
     fn from(a: NaiveTime) -> QTime {
         QTime::from_h_m_s_ms(
@@ -272,7 +284,7 @@ impl From<NaiveTime> for QTime {
     }
 }
 
-#[cfg(feature = "chrono_qdatetime")]
+#[cfg(feature = "chrono")]
 impl Into<NaiveTime> for QTime {
     fn into(self) -> NaiveTime {
         let (h, m, s, ms) = self.get_h_m_s_ms();
@@ -286,7 +298,7 @@ fn test_qtime() {
     assert_eq!((10, 30, 40, 300), qtime.get_h_m_s_ms());
 }
 
-#[cfg(feature = "chrono_qdatetime")]
+#[cfg(feature = "chrono")]
 #[test]
 fn test_qtime_chrono() {
     let chrono_time = NaiveTime::from_hms(10, 30, 50);
@@ -873,31 +885,6 @@ mod tests {
         assert_eq!(qs1.to_string(), "hello");
         assert_eq!(qs2.to_string(), "hello");
         assert_eq!(qba4.to_string(), "hello");
-    }
-
-    #[test]
-    fn test_qvariant_datetime() {
-        use crate::QMetaType;
-
-        let dt = QDateTime::from_date_time_local_timezone(
-            QDate::from_y_m_d(2019, 10, 23),
-            QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)),
-        );
-        let v = QVariant::from(dt);
-        let qstring = QString::from_qvariant(v.clone()).unwrap();
-        let mut s = qstring.to_string();
-        if s.ends_with(".100") {
-            // Old version of qt did not include the milliseconds, so remove it
-            s.truncate(s.len() - 4);
-        }
-        assert_eq!(s, "2019-10-23T10:30:40");
-        let qdate = QDate::from_qvariant(v.clone()).unwrap();
-        assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
-        assert!(qdate != QDate::from_y_m_d(2019, 10, 24));
-
-        let qtime = QTime::from_qvariant(v.clone()).unwrap();
-        assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)));
-        assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), None));
     }
 }
 

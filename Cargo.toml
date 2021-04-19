@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    'qttypes',
     'qmetaobject_impl',
     'qmetaobject',
     'examples/todos',
