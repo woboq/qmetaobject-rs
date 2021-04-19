@@ -20,8 +20,8 @@ extern crate cpp_build;
 fn main() {
     let qt_include_path = std::env::var("DEP_QT_INCLUDE_PATH").unwrap();
     cpp_build::Config::new()
-        .include(qt_include_path.trim())
-        .include(qt_include_path.trim().to_owned() + "/QtQuick")
-        .include(qt_include_path.trim().to_owned() + "/QtCore")
+        .include(&qt_include_path)
+        .include(format!("{}/QtQuick", qt_include_path))
+        .include(format!("{}/QtCore", qt_include_path))
         .build("src/main.rs");
 }

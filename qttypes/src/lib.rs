@@ -15,7 +15,56 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-//! Various bindings and wrappers for Qt classes, enums, member/static methods and functions.
+//! This crate contains manually generated bindings to Qt basic value types.
+//! It is meant to be used by other crates, such as the `qmetaobject` crate which re-expose them
+//!
+//! The Qt types are basically exposed using the [`cpp`] crate. They have manually writen rust idiomatic
+//! API which expose the C++ API.
+//! These types are the direct equivalent of the Qt types and are exposed on the stack.
+//!
+//! In addition, the build script of this crate expose some metadata that are usefull to build.
+//! Build scripts of crates that depends directly from this crate will have the following
+//! environment variable when the build script is run:
+//! - `DEP_QT_VERSION`: The Qt version as given by qmake
+//! - `DEP_QT_INCLUDE_PATH`: The include directory to give to the `cpp_build` crate to locate the Qt headers
+//! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
+//!
+//! ## Usage with the `cpp` crate
+//!
+//! Here is an example that make use of the types exposed by this crate in combinaition with the `cpp` crate
+//! to call native API:
+//!
+//! In `Cargo.toml`
+//! ```toml
+//! #...
+//! [dependencies]
+//! qttype = "0.1"
+//! cpp = "0.5"
+//! #...
+//! [build-dependencies]
+//! cpp_build = "0.5.4"
+//! ```
+//!
+//! Then in the `build.rs` file:
+//! ```ignore
+//! fn main() {
+//!     cpp_build::Config::new()
+//!         .include(&qt_include_path)
+//!         .include(format!("{}/QtGui", qt_include_path))
+//!         .include(format!("{}/QtCore", qt_include_path))
+//!         .build("src/main.rs");
+//! }
+//! ```
+//!
+//! With that, you can now use the types inside your .rs files
+//!
+//! ```ignore
+//! let byte_array = qttypes::QByteArray::from("Hello World!");
+//! cpp::cpp!([byte_array as "QByteArray"] { qDebug() << byte_array; });
+//! ```
+//!
+//! You will find a small but working example in the
+//! [qmetaobject reporisoty](https://github.com/woboq/qmetaobject-rs/tree/master/examples/graph)
 
 use cpp::{cpp, cpp_class};
 use std::convert::From;
