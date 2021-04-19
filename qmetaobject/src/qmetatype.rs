@@ -380,8 +380,8 @@ fn test_qmetatype() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
     struct MyInt {
         x: u32,
-    };
-    impl QMetaType for MyInt {};
+    }
+    impl QMetaType for MyInt {}
 
     assert_eq!(MyInt::register(Some(&std::ffi::CString::new("MyInt").unwrap())), MyInt::id());
     let m42 = MyInt { x: 42 };
@@ -399,8 +399,8 @@ fn test_qmetatype() {
 #[should_panic(expected = "Attempt to register the same type with different name")]
 fn test_qmetatype_register_wrong_type1() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyType {};
-    impl QMetaType for MyType {};
+    struct MyType {}
+    impl QMetaType for MyType {}
     // registering with the name of an existing type should panic
     MyType::register(Some(&std::ffi::CString::new("QString").unwrap()));
 }
@@ -409,8 +409,8 @@ fn test_qmetatype_register_wrong_type1() {
 #[should_panic(expected = "Attempt to register the same type with different name")]
 fn test_qmetatype_register_wrong_type2() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyType {};
-    impl QMetaType for MyType {};
+    struct MyType {}
+    impl QMetaType for MyType {}
     String::register(Some(&std::ffi::CString::new("String").unwrap()));
     // registering with the name of an existing type should panic
     MyType::register(Some(&std::ffi::CString::new("String").unwrap()));

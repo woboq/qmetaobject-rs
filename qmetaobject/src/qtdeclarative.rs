@@ -537,7 +537,7 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
                 std::process::abort()
             }
         }
-    };
+    }
     let callback_fn: QmlRegisterSingletonTypeCallback = callback_fn::<T>;
 
     cpp!(unsafe [
