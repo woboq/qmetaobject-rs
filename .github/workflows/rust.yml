@@ -5,6 +5,7 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -45,4 +46,4 @@ jobs:
         cached: ${{ steps.cache-qt.outputs.cache-hit }}
         modules: 'qtwebengine'
     - name: Run tests
-      run: xvfb-run cargo test --all-features -- --nocapture
+      run: cargo test --all-features
