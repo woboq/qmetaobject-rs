@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! - `DEP_QT_VERSION`: The Qt version as given by qmake
 //! - `DEP_QT_INCLUDE_PATH`: The include directory to give to the `cpp_build` crate to locate the Qt headers
 //! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
+//! - `DEP_QT_FOUND`: set to 1 when qt was found, or 0 if qt was not found and the `mandatory` feature is not set
 //!
 //! ## Usage with the `cpp` crate
 //!
@@ -65,8 +66,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!
 //! You will find a small but working example in the
 //! [qmetaobject reporisoty](https://github.com/woboq/qmetaobject-rs/tree/master/examples/graph)
+//!
+//! ## Features
+//! - **`mandatory`**: When this feature is enabled (the default), the build script will panic with an error
+//!   if Qt is not found. Otherwise, when not enabled, the build will continue, but any use of the classes will
+//!   panic at runtime
+//! - **`chrono`**: enable the conversion between [`QDateTime`] related types and the types from the `chrono` crate.
+//! - **`qtquick`**, **`qtwebengine`**: link against these modules
 
-use cpp::{cpp, cpp_class};
+#![cfg_attr(no_qt, allow(unused))]
+
 use std::convert::From;
 use std::fmt::Display;
 use std::iter::FromIterator;
@@ -76,6 +85,36 @@ use std::str::Utf8Error;
 
 #[cfg(feature = "chrono")]
 use chrono::prelude::*;
+
+#[cfg(not(no_qt))]
+use cpp::{cpp, cpp_class};
+
+#[cfg(no_qt)]
+mod no_qt {
+    pub fn panic<T>() -> T {
+        panic!("Qt was not found during build")
+    }
+}
+
+#[cfg(no_qt)]
+macro_rules! cpp {
+    {{ $($t:tt)* }} => {};
+    {$(unsafe)? [$($a:tt)*] -> $ret:ty as $b:tt { $($t:tt)* } } => {
+        crate::no_qt::panic::<$ret>()
+    };
+    { $($t:tt)* } => {
+        crate::no_qt::panic::<()>()
+    };
+}
+
+#[cfg(no_qt)]
+macro_rules! cpp_class {
+    ($(#[$($attrs:tt)*])* $vis:vis unsafe struct $name:ident as $type:expr) => {
+        #[derive(Default, Ord, Eq, PartialEq, PartialOrd, Clone, Copy)]
+        #[repr(C)]
+        $vis struct $name;
+    };
+}
 
 cpp! {{
     #include <QtCore/QByteArray>

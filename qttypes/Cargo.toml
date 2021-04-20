@@ -12,10 +12,16 @@ repository = "https://github.com/woboq/qmetaobject-rs"
 links = "qt"
 
 [features]
+# When this feature is enabled (the default), the build script will panic with an error
+# if Qt is not found.
+required = []
+
 # Link against QtQuick
 qtquick = []
 # Link against QtWebEngine
 qtwebengine = []
+
+default = ["required"]
 
 [dependencies]
 cpp = "0.5.6"

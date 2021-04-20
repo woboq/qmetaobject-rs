@@ -21,17 +21,12 @@ use std::io::BufReader;
 use std::path::Path;
 use std::process::Command;
 
-fn qmake_query(var: &str) -> String {
+fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
-    String::from_utf8(
-        Command::new(qmake)
-            .env("QT_SELECT", "qt5")
-            .args(&["-query", var])
-            .output()
-            .expect("Failed to execute qmake. Make sure 'qmake' is in your path")
-            .stdout,
+    Ok(String::from_utf8(
+        Command::new(qmake).env("QT_SELECT", "qt5").args(&["-query", var]).output()?.stdout,
     )
-    .expect("UTF-8 conversion failed")
+    .expect("UTF-8 conversion failed"))
 }
 
 // qreal is a double, unless QT_COORD_TYPE says otherwise:
@@ -56,9 +51,24 @@ fn detect_qreal_size(qt_include_path: &str) {
 }
 
 fn main() {
-    let qt_include_path = qmake_query("QT_INSTALL_HEADERS");
-    let qt_library_path = qmake_query("QT_INSTALL_LIBS");
-    let qt_version = qmake_query("QT_VERSION");
+    let qt_version = match qmake_query("QT_VERSION") {
+        Ok(v) => v,
+        Err(_err) => {
+            #[cfg(feature = "required")]
+            panic!(
+                "Error: Failed to execute qmake. Make sure 'qmake' is in your path!\n{:?}",
+                _err
+            );
+            #[cfg(not(feature = "required"))]
+            {
+                println!("cargo:rustc-cfg=no_qt");
+                println!("cargo:FOUND=0");
+                return;
+            }
+        }
+    };
+    let qt_include_path = qmake_query("QT_INSTALL_HEADERS").unwrap();
+    let qt_library_path = qmake_query("QT_INSTALL_LIBS").unwrap();
 
     let mut config = cpp_build::Config::new();
 
@@ -74,6 +84,7 @@ fn main() {
     println!("cargo:VERSION={}", qt_version.trim());
     println!("cargo:LIBRARY_PATH={}", qt_library_path.trim());
     println!("cargo:INCLUDE_PATH={}", qt_include_path.trim());
+    println!("cargo:FOUND=1");
 
     let macos_lib_search = if cfg!(target_os = "macos") { "=framework" } else { "" };
     let macos_lib_framework = if cfg!(target_os = "macos") { "" } else { "5" };
@@ -85,6 +96,11 @@ fn main() {
     } else {
         ""
     };
+
+    if cfg!(target_os = "macos") {
+        println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", qt_library_path.trim());
+    }
+
     println!("cargo:rustc-link-search{}={}", macos_lib_search, qt_library_path.trim());
 
     let link_lib = |lib: &str| {
@@ -105,4 +121,6 @@ fn main() {
     link_lib("Qml");
     #[cfg(feature = "qtwebengine")]
     link_lib("WebEngine");
+
+    println!("cargo:rerun-if-changed=lib.rs");
 }

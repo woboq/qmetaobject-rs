@@ -33,4 +33,4 @@ tempfile = "^3"
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]
-rustc-args = [ "--cfg feature=\"docs-only\"" ]
+
