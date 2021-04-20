@@ -17,13 +17,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - qt: '5.15.2'
-            rust: stable
-          - qt: '5.9.9'
-            rust: stable
-          - qt: '5.12.9'
-            rust: nightly
+        qt: [5.15.2, 5.9.9, 5.12.9]
+        rust: [stable, nightly]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
