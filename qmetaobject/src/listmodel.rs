@@ -47,12 +47,9 @@ pub trait QAbstractListModel: QObject {
     fn role_names(&self) -> HashMap<i32, QByteArray> {
         HashMap::new()
     }
-}
 
-// FIXME! code duplication with impl QAbstractItemModel
-impl dyn QAbstractListModel {
     /// Refer to the Qt documentation of QAbstractListModel::beginInsertRows
-    pub fn begin_insert_rows(&mut self, first: i32, last: i32) {
+    fn begin_insert_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
         unsafe {
@@ -62,7 +59,7 @@ impl dyn QAbstractListModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endInsertRows
-    pub fn end_insert_rows(&mut self) {
+    fn end_insert_rows(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
@@ -71,7 +68,7 @@ impl dyn QAbstractListModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::beginRemoveRows
-    pub fn begin_remove_rows(&mut self, first: i32, last: i32) {
+    fn begin_remove_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
         unsafe {
@@ -81,7 +78,7 @@ impl dyn QAbstractListModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endRemoveRows
-    pub fn end_remove_rows(&mut self) {
+    fn end_remove_rows(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
@@ -90,7 +87,7 @@ impl dyn QAbstractListModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::beginResetModel
-    pub fn begin_reset_model(&mut self) {
+    fn begin_reset_model(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
@@ -99,7 +96,7 @@ impl dyn QAbstractListModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractListModel::endResetModel
-    pub fn end_reset_model(&mut self) {
+    fn end_reset_model(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*"]{
@@ -109,7 +106,7 @@ impl dyn QAbstractListModel {
     }
 
     /// Refer to the Qt documentation of QAbstractListModel::dataChanged
-    pub fn data_changed(&mut self, top_left: QModelIndex, bottom_right: QModelIndex) {
+    fn data_changed(&mut self, top_left: QModelIndex, bottom_right: QModelIndex) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
@@ -119,7 +116,7 @@ impl dyn QAbstractListModel {
     }
 
     /// Returns a QModelIndex for the given row (in the first column)
-    pub fn row_index(&self, i: i32) -> QModelIndex {
+    fn row_index(&self, i: i32) -> QModelIndex {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractListModel*", i as "int"] -> QModelIndex as "QModelIndex" {
