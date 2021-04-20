@@ -31,8 +31,13 @@ fn qmake_query(var: &str) -> Result<String, std::io::Error> {
 
 // qreal is a double, unless QT_COORD_TYPE says otherwise:
 // https://doc.qt.io/qt-5/qtglobal.html#qreal-typedef
-fn detect_qreal_size(qt_include_path: &str) {
-    let path = Path::new(qt_include_path).join("QtCore").join("qconfig.h");
+fn detect_qreal_size(qt_include_path: &str, qt_library_path: &str) {
+    let mut path = Path::new(qt_include_path).join("QtCore/qconfig.h");
+    if cfg!(target_os = "macos") {
+        if !path.exists() {
+            path = Path::new(qt_library_path).join("QtCore.framework/Headers/qconfig.h");
+        }
+    }
     let f = std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path));
     let b = BufReader::new(f);
 
@@ -77,7 +82,7 @@ fn main() {
         config.flag(qt_library_path.trim());
     }
 
-    detect_qreal_size(&qt_include_path.trim());
+    detect_qreal_size(&qt_include_path.trim(), qt_library_path.trim());
 
     config.include(qt_include_path.trim()).build("src/lib.rs");
 
