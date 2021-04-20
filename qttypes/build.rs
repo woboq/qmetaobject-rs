@@ -127,5 +127,5 @@ fn main() {
     #[cfg(feature = "qtwebengine")]
     link_lib("WebEngine");
 
-    println!("cargo:rerun-if-changed=lib.rs");
+    println!("cargo:rerun-if-changed=src/lib.rs");
 }
