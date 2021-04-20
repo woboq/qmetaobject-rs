@@ -18,7 +18,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! This crate contains manually generated bindings to Qt basic value types.
 //! It is meant to be used by other crates, such as the `qmetaobject` crate which re-expose them
 //!
-//! The Qt types are basically exposed using the [`cpp`] crate. They have manually writen rust idiomatic
+//! The Qt types are basically exposed using the [`mod@cpp`] crate. They have manually writen rust idiomatic
 //! API which expose the C++ API.
 //! These types are the direct equivalent of the Qt types and are exposed on the stack.
 //!

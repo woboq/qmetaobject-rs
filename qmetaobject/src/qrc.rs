@@ -23,7 +23,7 @@ Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
 
 /// Internal function used from qrc procedural macro.
 /// Unsafe because it can crash if the data structure are not proper.
-#[doc(ignore)]
+#[doc(hidden)]
 pub unsafe fn register_resource_data(
     version: i32,
     tree: &'static [u8],
