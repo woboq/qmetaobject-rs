@@ -86,6 +86,7 @@ cpp! {{
     #include <QtCore/QUrl>
 
     #include <QtGui/QImage>
+    #include <QtGui/QPixmap>
 }}
 
 cpp_class!(
@@ -1006,9 +1007,18 @@ impl QRectF {
         })
     }
 
-    // XXX: shouldn't it be a wrapper for cpp call?
+    /// Same as the [`topLeft`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qrectf.html#topLeft
     pub fn top_left(&self) -> QPointF {
         QPointF { x: self.x, y: self.y }
+    }
+
+    /// Same as the [`isValid`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qrectf.html#isValid
+    pub fn is_valid(&self) -> bool {
+        self.width > 0. && self.height > 0.
     }
 }
 
@@ -1037,6 +1047,16 @@ impl std::ops::AddAssign for QPointF {
     fn add_assign(&mut self, other: QPointF) {
         *self = QPointF { x: self.x + other.x, y: self.y + other.y };
     }
+}
+
+/// Bindings for [`QSizeF`][class] class.
+///
+/// [class]: https://doc.qt.io/qt-5/qsizef.html
+#[repr(C)]
+#[derive(Default, Clone, Copy, PartialEq, Debug)]
+pub struct QSizeF {
+    pub width: qreal,
+    pub height: qreal,
 }
 
 #[test]
@@ -1136,6 +1156,28 @@ pub struct QSize {
     pub height: u32,
 }
 
+/// Bindings for [`QPoint`][class] class.
+///
+/// [class]: https://doc.qt.io/qt-5/qpoint.html
+#[repr(C)]
+#[derive(Default, Clone, Copy, PartialEq, Debug)]
+pub struct QPoint {
+    pub x: i32,
+    pub y: i32,
+}
+
+/// Bindings for [`QMargins`][class] class.
+///
+/// [class]: https://doc.qt.io/qt-5/qmargins.html
+#[repr(C)]
+#[derive(Default, Clone, Copy, PartialEq, Debug)]
+pub struct QMargins {
+    pub left: i32,
+    pub top: i32,
+    pub right: i32,
+    pub bottom: i32,
+}
+
 /// Bindings for [`QImage::Format`][class] enum class.
 ///
 /// [class]: https://doc.qt.io/qt-5/qimage.html#Format-enum
@@ -1178,6 +1220,7 @@ cpp_class!(
     /// Wrapper around [`QImage`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qimage.html
+    #[derive(Default, Clone, PartialEq)]
     pub unsafe struct QImage as "QImage"
 );
 impl QImage {
@@ -1232,9 +1275,37 @@ impl QImage {
     /// Wrapper around [`pixelColor(const QPoint &)`][method] method.
     ///
     /// [method]: https://doc.qt.io/qt-5/qimage.html#pixelColor
-    pub fn get_pixel_color(&mut self, x: u32, y: u32) -> QColor {
-        cpp!(unsafe [self as "QImage*", x as "int", y as "int"] -> QColor as "QColor" {
+    pub fn get_pixel_color(&self, x: u32, y: u32) -> QColor {
+        cpp!(unsafe [self as "const QImage*", x as "int", y as "int"] -> QColor as "QColor" {
             return self->pixelColor(x, y);
         })
+    }
+}
+
+cpp_class!(
+    /// Wrapper around [`QPixmap`][class] class.
+    ///
+    /// [class]: https://doc.qt.io/qt-5/qpixmap.html
+    pub unsafe struct QPixmap as "QPixmap"
+);
+
+impl QPixmap {
+    /// Wrapper around [`size()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qpixmap.html#size
+    pub fn size(&self) -> QSize {
+        cpp!(unsafe [self as "const QPixmap*"] -> QSize as "QSize" { return self->size(); })
+    }
+}
+
+impl From<QPixmap> for QImage {
+    fn from(pixmap: QPixmap) -> Self {
+        cpp!(unsafe [pixmap as "QPixmap"] -> QImage as "QImage" { return pixmap.toImage(); })
+    }
+}
+
+impl From<QImage> for QPixmap {
+    fn from(image: QImage) -> Self {
+        cpp!(unsafe [image as "QImage"] -> QPixmap as "QPixmap" { return QPixmap::fromImage(image); })
     }
 }

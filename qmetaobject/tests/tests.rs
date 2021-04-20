@@ -961,3 +961,29 @@ fn component_status_changed() {
         assert_eq!(result.borrow().as_ref().unwrap().0, ComponentStatus::Loading);
     });
 }
+
+#[test]
+fn test_qvariant_qimage_qpixmap() {
+    let _lock = lock_for_test();
+    // QPixmap need a QApplication
+    let _app = QmlEngine::new();
+
+    let mut img = QImage::new(QSize { width: 12, height: 23 }, ImageFormat::ARGB32);
+    img.fill(QColor::from_name("red"));
+    img.set_pixel_color(2, 2, QColor::from_name("blue"));
+    let pix: QPixmap = img.clone().into();
+    assert_eq!(pix.size(), QSize { width: 12, height: 23 });
+    let img2 = QImage::from_qvariant(pix.clone().to_qvariant()).unwrap();
+    assert_eq!(img2.size(), QSize { width: 12, height: 23 });
+    dbg!(img2.get_pixel_color(3, 4).get_rgba());
+    assert!(img2.get_pixel_color(2, 2) == QColor::from_rgb_f(0., 0., 1.));
+    assert!(img2.get_pixel_color(3, 4) == QColor::from_rgb_f(1., 0., 0.));
+
+    let mut img3: QImage = pix.into();
+    assert!(img2 == img3);
+    assert_eq!(img3.size(), QSize { width: 12, height: 23 });
+    assert!(img3.get_pixel_color(2, 2) == QColor::from_rgb_f(0., 0., 1.));
+    assert!(img3.get_pixel_color(8, 4) == QColor::from_rgb_f(1., 0., 0.));
+    img3.set_pixel_color(8, 8, QColor::from_name("black"));
+    assert!(img2 != img3);
+}

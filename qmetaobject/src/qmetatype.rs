@@ -270,6 +270,9 @@ qdeclare_builtin_metatype! {QTime => 15}
 qdeclare_builtin_metatype! {QDateTime => 16}
 qdeclare_builtin_metatype! {QUrl => 17}
 qdeclare_builtin_metatype! {QRectF => 20}
+qdeclare_builtin_metatype! {QSize => 21}
+qdeclare_builtin_metatype! {QSizeF => 22}
+qdeclare_builtin_metatype! {QPoint => 25}
 qdeclare_builtin_metatype! {QPointF => 26}
 impl QMetaType for QVariant {
     fn register(_name: Option<&std::ffi::CStr>) -> i32 {
@@ -283,6 +286,7 @@ impl QMetaType for QVariant {
     }
 }
 qdeclare_builtin_metatype! {QModelIndex => 42}
+qdeclare_builtin_metatype! {QPixmap => 65}
 qdeclare_builtin_metatype! {QColor => 67}
 qdeclare_builtin_metatype! {QImage => 70}
 
@@ -437,4 +441,19 @@ fn test_qvariant_datetime() {
     let qtime = QTime::from_qvariant(v.clone()).unwrap();
     assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)));
     assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), None));
+}
+
+#[test]
+fn test_qvariant_qpoint_qrect() {
+    // test that conversion through a variant lead the the right data
+    assert_eq!(
+        QPoint::from_qvariant(QPointF { x: 23.1, y: 54.2 }.to_qvariant()),
+        Some(QPoint { x: 23, y: 54 })
+    );
+    let qrectf = QRectF { x: 4.1, y: 9.1, height: 7.3, width: 9.0 };
+    assert_eq!(QRectF::from_qvariant(qrectf.to_qvariant()), Some(qrectf));
+    assert_eq!(
+        QSize::from_qvariant(QSizeF { width: 123.1, height: 254.2 }.to_qvariant()),
+        Some(QSize { width: 123, height: 254 })
+    );
 }
