@@ -231,6 +231,13 @@ impl QmlEngine {
             self->engine->addImportPath(path);
         })
     }
+
+    /// Returns a pointer to the C++ object. The pointer is of the type `QQmlEngine *` in C++.
+    pub fn cpp_ptr(&self) -> *mut c_void {
+        cpp!(unsafe [self as "QmlEngineHolder *"] -> *mut c_void as "QQmlEngine *" {
+            return self->engine.get();
+        })
+    }
 }
 
 /// Bindings to a QQuickView
