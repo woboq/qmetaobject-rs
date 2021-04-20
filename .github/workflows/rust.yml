@@ -14,9 +14,9 @@ jobs:
   build:
     env:
       QT_QPA_PLATFORM: offscreen
-    runs-on: ubuntu-latest
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - qt: '5.15.2'
             rust: stable
@@ -24,7 +24,7 @@ jobs:
             rust: stable
           - qt: '5.12.9'
             rust: nightly
-
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
