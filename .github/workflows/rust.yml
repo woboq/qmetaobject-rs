@@ -1,0 +1,48 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - qt: '5.6.2'
+            rust: stable
+          - qt: '5.15.2'
+            rust: stable
+          - qt: '5.9.2'
+            rust: beta
+          - qt: '5.12.2'
+            rust: nightly
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt, clippy
+    - name: Cache Qt
+      id: cache-qt
+      uses: actions/cache@v1
+      with:
+        path: ../Qt
+        key: QtCache-${{ runner.os }}-${{ matrix.qt }}
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
+      with:
+        version: ${{ matrix.qt }}
+        cached: ${{ steps.cache-qt.outputs.cache-hit }}
+    - name: Run tests
+      run: cargo test --all-features
