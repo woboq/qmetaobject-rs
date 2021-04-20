@@ -21,7 +21,7 @@ jobs:
           - qt: '5.15.2'
             rust: stable
           - qt: '5.9.9'
-            rust: beta
+            rust: stable
           - qt: '5.12.9'
             rust: nightly
 
