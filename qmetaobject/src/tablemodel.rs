@@ -26,12 +26,9 @@ pub trait QAbstractTableModel: QObject {
     fn role_names(&self) -> HashMap<i32, QByteArray> {
         HashMap::new()
     }
-}
 
-// FIXME! code duplication with impl QAbstractItemModel AND QAbstractListModel
-impl dyn QAbstractTableModel {
     /// Refer to the Qt documentation of QAbstractItemModel::beginInsertRows
-    pub fn begin_insert_rows(&mut self, first: i32, last: i32) {
+    fn begin_insert_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
         unsafe {
@@ -41,7 +38,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::endInsertRows
-    pub fn end_insert_rows(&mut self) {
+    fn end_insert_rows(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*"]{
@@ -50,7 +47,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::beginInsertColumns
-    pub fn begin_insert_columns(&mut self, first: i32, last: i32) {
+    fn begin_insert_columns(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
         unsafe {
@@ -60,7 +57,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::endInsertColumns
-    pub fn end_insert_columns(&mut self) {
+    fn end_insert_columns(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*"]{
@@ -69,7 +66,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::beginRemoveRows
-    pub fn begin_remove_rows(&mut self, first: i32, last: i32) {
+    fn begin_remove_rows(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
         unsafe {
@@ -79,7 +76,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::endRemoveRows
-    pub fn end_remove_rows(&mut self) {
+    fn end_remove_rows(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*"]{
@@ -88,7 +85,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::beginRemoveColumns
-    pub fn begin_remove_columns(&mut self, first: i32, last: i32) {
+    fn begin_remove_columns(&mut self, first: i32, last: i32) {
         let p = QModelIndex::default();
         let obj = self.get_cpp_object();
         unsafe {
@@ -98,7 +95,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::endRemoveColumns
-    pub fn end_remove_columns(&mut self) {
+    fn end_remove_columns(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*"]{
@@ -107,7 +104,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::beginResetModel
-    pub fn begin_reset_model(&mut self) {
+    fn begin_reset_model(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*"]{
@@ -116,7 +113,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::endResetModel
-    pub fn end_reset_model(&mut self) {
+    fn end_reset_model(&mut self) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*"]{
@@ -125,7 +122,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Refer to the Qt documentation of QAbstractItemModel::dataChanged
-    pub fn data_changed(&mut self, top_left: QModelIndex, bottom_right: QModelIndex) {
+    fn data_changed(&mut self, top_left: QModelIndex, bottom_right: QModelIndex) {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*", top_left as "QModelIndex", bottom_right as "QModelIndex"]{
@@ -134,7 +131,7 @@ impl dyn QAbstractTableModel {
         }
     }
     /// Returns a QModelIndex for the given row and column
-    pub fn index(&self, row: i32, col: i32) -> QModelIndex {
+    fn index(&self, row: i32, col: i32) -> QModelIndex {
         let obj = self.get_cpp_object();
         unsafe {
             cpp!([obj as "Rust_QAbstractTableModel*", row as "int", col as "int"] -> QModelIndex as "QModelIndex" {
