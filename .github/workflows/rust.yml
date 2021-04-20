@@ -20,8 +20,10 @@ jobs:
         include:
           - qt: '5.15.2'
             rust: stable
-          #- qt: '5.9.9'
-          #  rust: beta
+          - qt: '5.9.9'
+            rust: stable
+          - qt: '5.15.2'
+            rust: beta
           #- qt: '5.12.9'
           #  rust: nightly
 
