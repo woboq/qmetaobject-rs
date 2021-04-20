@@ -42,5 +42,6 @@ jobs:
       with:
         version: ${{ matrix.qt }}
         cached: ${{ steps.cache-qt.outputs.cache-hit }}
+        modules: 'qtwebengine'
     - name: Run tests
       run: cargo test --all-features
