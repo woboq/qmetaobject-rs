@@ -44,4 +44,4 @@ jobs:
         cached: ${{ steps.cache-qt.outputs.cache-hit }}
         modules: 'qtwebengine'
     - name: Run tests
-      run: xvfb-run cargo test --all-features
+      run: xvfb-run cargo test --all-features -- --nocapture
