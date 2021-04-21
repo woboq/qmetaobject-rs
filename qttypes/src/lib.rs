@@ -22,9 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! API which expose the C++ API.
 //! These types are the direct equivalent of the Qt types and are exposed on the stack.
 //!
-//! In addition, the build script of this crate expose some metadata that are usefull to build.
+//! In addition, the build script of this crate expose some metadata to downstream crate that also
+//! want to use Qt's C++ API.
 //! Build scripts of crates that depends directly from this crate will have the following
-//! environment variable when the build script is run:
+//! environment variables set when the build script is run:
 //! - `DEP_QT_VERSION`: The Qt version as given by qmake
 //! - `DEP_QT_INCLUDE_PATH`: The include directory to give to the `cpp_build` crate to locate the Qt headers
 //! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
