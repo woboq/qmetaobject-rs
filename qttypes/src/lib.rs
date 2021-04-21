@@ -31,10 +31,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
 //! - `DEP_QT_FOUND`: set to 1 when qt was found, or 0 if qt was not found and the `mandatory` feature is not set
 //!
+//! ## Philosophy
+//!
+//! The goal of this crate is to expose a idiomatic Qt API for the core value type classes.
+//! The API is manually generated to expose required feature in the most rust-like API, while
+//! still keeping the similarities with the Qt API itself.
+//!
+//! It is not meant to expose all of the Qt API exhaustively, but only the part which is
+//! relevant for the usage in other crate.
+//! If you see a feature missing, feel free to write a issue or a pull request.
+//!
+//! Note that this crate concentrate on the value types, not the widgets or the
+//! the `QObject`.  For that, there is the `qmetaobject` crate.
+//!
 //! ## Usage with the `cpp` crate
 //!
-//! Here is an example that make use of the types exposed by this crate in combinaition with the `cpp` crate
-//! to call native API:
+//! Here is an example that make use of the types exposed by this crate in combinaition
+//! with the [`mod@cpp`] crate to call native API:
 //!
 //! In `Cargo.toml`
 //! ```toml
@@ -44,8 +57,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! cpp = "0.5"
 //! #...
 //! [build-dependencies]
-//! cpp_build = "0.5.4"
+//! cpp_build = "0.5"
 //! ```
+//!
+//! Note: It is importent to depend directly on `qttype`, it is not enough to rely on the
+//! dependency coming transitively from another dependencies, otherwie the `DEP_QT_*`
+//! environment variables won't be defined.
 //!
 //! Then in the `build.rs` file:
 //! ```ignore
@@ -66,14 +83,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! ```
 //!
 //! You will find a small but working example in the
-//! [qmetaobject reporisoty](https://github.com/woboq/qmetaobject-rs/tree/master/examples/graph)
+//! [qmetaobject-rs reporisoty](https://github.com/woboq/qmetaobject-rs/tree/master/examples/graph)
 //!
-//! ## Features
+//! ## Cargo Features
+//!
 //! - **`mandatory`**: When this feature is enabled (the default), the build script will panic with an error
 //!   if Qt is not found. Otherwise, when not enabled, the build will continue, but any use of the classes will
 //!   panic at runtime
 //! - **`chrono`**: enable the conversion between [`QDateTime`] related types and the types from the `chrono` crate.
-//! - **`qtquick`**, **`qtwebengine`**: link against these modules
+//! - **`qtquick`**, **`qtwebengine`**: link against these Qt modules
+//!
 
 #![cfg_attr(no_qt, allow(unused))]
 

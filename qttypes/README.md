@@ -14,3 +14,16 @@ want to use Qt's C++ API:
  - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
 
 See the [crate documentation](https://docs.rs/qttypes) for more info.
+
+## Philosophy
+
+The goal of this crate is to expose a idiomatic Qt API for the core value type classes.
+The API is manually generated to expose required feature in the most rust-like API, while
+still keeping the similarities with the Qt API itself.
+
+It is not meant to expose all of the Qt API exhaustively, but only the part which is
+relevant for the usage in other crate.
+If you see a feature missing, feel free to write a issue or a pull request.
+
+Note that this crate concentrate on the value types, not the widgets or the
+the `QObject`.  For that, there is the `qmetaobject` crate.
