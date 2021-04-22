@@ -5,7 +5,6 @@ use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
 use crate::connections::SignalArgArrayToTuple;
 
-
 static QT_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
     |s: *const ()| {
         RawWaker::new(
@@ -63,7 +62,7 @@ cpp! {{
             }
             completed = rust!(ProcessQtEvent [
                 this: *const () as "Waker *",
-                future: *mut dyn Future<Output=()> as "TraitObject"
+                future: *mut dyn Future<Output = ()> as "TraitObject"
             ] -> bool as "bool" {
                 poll_with_qt_waker(this, Pin::new_unchecked(&mut *future))
             });
@@ -90,7 +89,7 @@ cpp! {{
         }
 
         ~Waker() {
-            rust!(QtDestroyFuture [future: *mut dyn Future<Output=()> as "TraitObject"] {
+            rust!(QtDestroyFuture [future: *mut dyn Future<Output = ()> as "TraitObject"] {
                 std::mem::drop(Box::from_raw(future))
             });
         }
@@ -159,10 +158,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
 
     impl<Args: SignalArgArrayToTuple> Future for ConnectionFuture<Args> {
         type Output = <Args as SignalArgArrayToTuple>::Tuple;
-        fn poll(
-            mut self: Pin<&mut Self>,
-            ctx: &mut Context,
-        ) -> Poll<Self::Output> {
+        fn poll(mut self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
             let state = &mut self.0;
             *state = match std::mem::replace(state, ConnectionFutureState::Invalid) {
                 ConnectionFutureState::Finished { result } => {

@@ -129,8 +129,7 @@ pub trait QAbstractItemModel: QObject {
     /// Refer to the Qt documentation of QAbstractListModel::layoutAboutToBeChanged
     ///
     /// update_model_indexes need to be called between layout_about_to_be_changed and layout_changed
-    fn update_model_indexes(&self, f: &mut dyn FnMut(QModelIndex) -> QModelIndex)
-    {
+    fn update_model_indexes(&self, f: &mut dyn FnMut(QModelIndex) -> QModelIndex) {
         let obj = self.get_cpp_object();
         cpp!(unsafe [obj as "Rust_QAbstractItemModel *", f as "TraitObject"] {
             if (!obj) return;
