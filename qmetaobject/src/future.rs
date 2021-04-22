@@ -6,35 +6,33 @@ use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 use crate::connections::SignalArgArrayToTuple;
 
 
-static QT_WAKER_VTABLE: RawWakerVTable = unsafe {
-    RawWakerVTable::new(
-        |s: *const ()| {
-            RawWaker::new(
-                cpp!([s as "Waker *"] -> *const() as "Waker *" {
-                    s->refs++;
-                    return s;
-                }),
-                &QT_WAKER_VTABLE,
-            )
-        },
-        |s: *const ()| {
-            cpp!([s as "Waker *"] {
-                s->wake();
-                s->deref();
-            })
-        },
-        |s: *const ()| {
-            cpp!([s as "Waker *"] {
-                s->wake();
-            })
-        },
-        |s: *const ()| {
-            cpp!([s as "Waker *"] {
-                s->deref();
-            })
-        },
-    )
-};
+static QT_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
+    |s: *const ()| {
+        RawWaker::new(
+            cpp!(unsafe [s as "Waker *"] -> *const() as "Waker *" {
+                s->refs++;
+                return s;
+            }),
+            &QT_WAKER_VTABLE,
+        )
+    },
+    |s: *const ()| {
+        cpp!(unsafe [s as "Waker *"] {
+            s->wake();
+            s->deref();
+        })
+    },
+    |s: *const ()| {
+        cpp!(unsafe [s as "Waker *"] {
+            s->wake();
+        })
+    },
+    |s: *const ()| {
+        cpp!(unsafe [s as "Waker *"] {
+            s->deref();
+        })
+    },
+);
 
 cpp! {{
 
