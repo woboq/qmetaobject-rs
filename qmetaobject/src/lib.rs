@@ -532,12 +532,27 @@ impl<'pin, T: QObject + 'pin> QObjectPinned<'pin, T> {
     }
 }
 
+impl<'pin, T: QObject + 'pin> From<QObjectPinned<'pin, T>> for QVariant {
+    fn from(obj: QObjectPinned<'pin, T>) -> Self {
+        let x = obj.get_or_create_cpp_object();
+        cpp!(unsafe [x as "QObject *"] -> QVariant as "QVariant" {
+            return QVariant::fromValue(x);
+        })
+    }
+}
+
 /// A wrapper around RefCell<T>, whose content cannot be move in memory
 pub struct QObjectBox<T: QObject + ?Sized>(Box<RefCell<T>>);
 
 impl<T: QObject> QObjectBox<T> {
     pub fn new(obj: T) -> Self {
         QObjectBox(Box::new(RefCell::new(obj)))
+    }
+}
+
+impl<T: QObject + Default> Default for QObjectBox<T> {
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }
 
