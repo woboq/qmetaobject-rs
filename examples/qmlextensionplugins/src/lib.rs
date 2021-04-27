@@ -1,9 +1,11 @@
-extern crate qmetaobject;
-use qmetaobject::*;
-extern crate chrono;
-use chrono::Timelike;
+use std::ffi::CStr;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
+
+use chrono::Timelike;
+use cstr::cstr;
+
+use qmetaobject::*;
 
 #[derive(Default)]
 struct AbortCondVar {
@@ -75,13 +77,8 @@ struct QExampleQmlPlugin {
 }
 
 impl QQmlExtensionPlugin for QExampleQmlPlugin {
-    fn register_types(&mut self, uri: &std::ffi::CStr) {
-        //assert_eq!(uri, std::ffi::CStr::from_bytes_with_nul(b"TimeExample\0"));
-        qml_register_type::<TimeModel>(
-            uri,
-            1,
-            0,
-            std::ffi::CStr::from_bytes_with_nul(b"Time\0").unwrap(),
-        );
+    fn register_types(&mut self, uri: &CStr) {
+        //assert_eq!(uri, cstr!("TimeExample"));
+        qml_register_type::<TimeModel>(uri, 1, 0, cstr!("Time"));
     }
 }

@@ -18,9 +18,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #![allow(dead_code)]
 
-use qmetaobject::*;
 use std::cell::RefCell;
 use std::sync::Mutex;
+
+use qmetaobject::*;
 
 lazy_static! {
     pub static ref TEST_MUTEX: Mutex<()> = Mutex::new(());

@@ -21,8 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     # Example:
 
     ```
-    #[macro_use] extern crate cstr;
-
+    use cstr::cstr;
     use qmetaobject::*;
 
     // The `QObject` custom derive macro allows to expose a class to Qt and QML
@@ -155,18 +154,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))] // Too many of that for qt types. (FIXME)
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
 
-#[macro_use]
-extern crate cpp;
-
 #[doc(hidden)]
 pub use qmetaobject_impl::*;
 
 // In order to be able to use the lazy_static macro from the QObject custom derive, we re-export
 // it under a new name qmetaobject_lazy_static.
-extern crate lazy_static;
 #[allow(unused_imports)]
 #[doc(hidden)]
-pub use lazy_static::*;
+pub use lazy_static::lazy_static;
 #[doc(hidden)]
 #[macro_export]
 macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
@@ -174,6 +169,8 @@ macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 use std::cell::{RefCell, RefMut};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
+
+use cpp::{cpp, cpp_class};
 
 pub use qttypes;
 

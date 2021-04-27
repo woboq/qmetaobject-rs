@@ -1,7 +1,8 @@
 use cpp::cpp;
 
 use qmetaobject::scenegraph::SGNode;
-use qmetaobject::{qrc, QColor, QQuickItem, QRectF};
+use qmetaobject::{qrc, QQuickItem};
+use qttypes::{QColor, QRectF};
 
 qrc! {
     init_resource,

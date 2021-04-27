@@ -18,13 +18,11 @@ Presentation Blog Post: https://woboq.com/blog/qmetaobject-from-rust.html
 ## Overview
 
 ```rust
-#[macro_use] extern crate cstr;
-extern crate qmetaobject;
-
+use cstr::cstr;
 use qmetaobject::*;
 
 // The `QObject` custom derive macro allows to expose a class to Qt and QML
-#[derive(QObject,Default)]
+#[derive(QObject, Default)]
 struct Greeter {
     // Specify the base class with the qt_base_class macro
     base: qt_base_class!(trait QObject),

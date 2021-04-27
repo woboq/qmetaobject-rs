@@ -4,6 +4,8 @@ use std::os::raw::c_void;
 use std::pin::Pin;
 use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
+use cpp::cpp;
+
 use crate::connections::SignalArgArrayToTuple;
 
 static QT_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(

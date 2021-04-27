@@ -15,6 +15,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+use cpp::cpp;
 
 use super::*;
 
@@ -118,7 +119,6 @@ impl SGNode<ContainerNode> {
     /// call reset() if you want to change the size.
     ///
     /// ```
-    /// extern crate qttypes;
     /// # use qmetaobject::{QObject, qtdeclarative::QQuickItem};
     /// use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
     /// use qttypes::QRectF;
@@ -181,7 +181,6 @@ impl SGNode<ContainerNode> {
     /// In this example, the node has two children node
     ///
     /// ```
-    /// extern crate qttypes;
     /// # use qmetaobject::{QObject, qtdeclarative::QQuickItem};
     /// use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
     /// use qttypes::QRectF;

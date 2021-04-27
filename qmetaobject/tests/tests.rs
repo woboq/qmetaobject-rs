@@ -15,18 +15,15 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-extern crate qmetaobject;
-use qmetaobject::*;
-
-extern crate lazy_static;
 use std::cell::RefCell;
 use std::ffi::CStr;
 use std::rc::Rc;
 
-extern crate tempfile;
+use if_rust_version::if_rust_version;
+use qmetaobject::*;
 
 mod common;
-use common::*;
+use self::common::*;
 
 #[test]
 fn self_test() {
@@ -552,7 +549,7 @@ fn connect_rust_signal() {
     let mut result = None;
     let mut result2 = None;
     let mut con = unsafe {
-        qmetaobject::connections::connect(
+        connect(
             obj_ptr,
             f.borrow().my_signal.to_cpp_representation(&*f.borrow()),
             |xx: &u32, yy: &String| {
@@ -563,7 +560,7 @@ fn connect_rust_signal() {
     assert!(con.is_valid());
 
     let con2 = unsafe {
-        qmetaobject::connections::connect(
+        connect(
             obj_ptr,
             f.borrow().my_signal2.to_cpp_representation(&*f.borrow()),
             |yy: &String| {
@@ -598,13 +595,9 @@ fn connect_cpp_signal() {
     let obj_ptr = unsafe { QObjectPinned::new(&f).get_or_create_cpp_object() };
     let mut result = None;
     let con = unsafe {
-        qmetaobject::connections::connect(
-            obj_ptr,
-            QObject::object_name_changed_signal(),
-            |name: &QString| {
-                result = Some(name.clone());
-            },
-        )
+        connect(obj_ptr, QObject::object_name_changed_signal(), |name: &QString| {
+            result = Some(name.clone());
+        })
     };
     assert!(con.is_valid());
     (&*f.borrow() as &dyn QObject).set_object_name("YOYO".into());
@@ -665,7 +658,7 @@ fn qpointer() {
     {
         #[derive(Default)]
         struct XX(QString);
-        impl qmetaobject::listmodel::SimpleListItem for XX {
+        impl SimpleListItem for XX {
             fn get(&self, _idx: i32) -> QVariant {
                 self.0.clone().into()
             }
@@ -673,12 +666,12 @@ fn qpointer() {
                 vec![QByteArray::from("a")]
             }
         }
-        let mut obj = qmetaobject::listmodel::SimpleListModel::<XX>::default();
+        let mut obj = SimpleListModel::<XX>::default();
         obj.push(XX("foo".into()));
         let obj = RefCell::new(obj);
         unsafe { QObjectPinned::new(&obj).get_or_create_cpp_object() };
-        let obj_ref: &dyn qmetaobject::listmodel::QAbstractListModel = &*obj.borrow();
-        ptr = QPointer::<dyn qmetaobject::listmodel::QAbstractListModel>::from(obj_ref);
+        let obj_ref: &dyn QAbstractListModel = &*obj.borrow();
+        ptr = QPointer::<dyn QAbstractListModel>::from(obj_ref);
         pt2 = ptr.clone();
         assert_eq!(ptr.as_ref().map_or(898, |x| x.row_count()), 1);
         assert_eq!(pt2.as_ref().map_or(898, |x| x.row_count()), 1);
@@ -790,7 +783,7 @@ fn threading() {
         recompute_result: qt_method!(
             fn recompute_result(&self, name: String) {
                 let qptr = QPointer::from(&*self);
-                let set_value = qmetaobject::queued_callback(move |val: QString| {
+                let set_value = queued_callback(move |val: QString| {
                     qptr.as_pinned().map(|self_| {
                         self_.borrow_mut().result = val;
                         self_.borrow().result_changed();
@@ -810,7 +803,7 @@ fn threading() {
     let obj = std::cell::RefCell::new(MyAsyncObject::default());
     let engine = QmlEngine::new();
     unsafe {
-        qmetaobject::connect(
+        connect(
             QObject::cpp_construct(&obj),
             obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),
             || engine.quit(),
@@ -841,7 +834,7 @@ fn load_data_as() {
 
 #[test]
 fn test_future() {
-    if_rust_version::if_rust_version!(>= 1.39 {
+    if_rust_version!(>= 1.39 {
         let _lock = lock_for_test();
 
         #[derive(QObject, Default)]
@@ -858,12 +851,12 @@ fn test_future() {
         {
             let result2 = result.clone();
             let fut = unsafe {
-                qmetaobject::future::wait_on_signal(
+                future::wait_on_signal(
                     obj_ptr,
                     o.borrow().sig_with_args.to_cpp_representation(&*o.borrow()),
                 )
             };
-            qmetaobject::future::execute_async(async move {
+            future::execute_async(async move {
                 let (xx, yy) = fut.await;
                 *result2.borrow_mut() = Some(format!("{}={}", yy, xx));
             });
@@ -873,13 +866,13 @@ fn test_future() {
         let engine = Rc::new(QmlEngine::new());
         {
             let fut = unsafe {
-                qmetaobject::future::wait_on_signal(
+                future::wait_on_signal(
                     obj_ptr,
                     o.borrow().sig.to_cpp_representation(&*o.borrow()),
                 )
             };
             let engine2 = engine.clone();
-            qmetaobject::future::execute_async(async move {
+            future::execute_async(async move {
                 fut.await;
                 engine2.quit();
             });
@@ -914,7 +907,7 @@ fn create_component() {
 
 #[test]
 fn component_status_changed() {
-    if_rust_version::if_rust_version!(>= 1.39 {
+    if_rust_version!(>= 1.39 {
         let _lock = lock_for_test();
         let engine = Rc::new(QmlEngine::new());
         let o = Rc::new(RefCell::new(QmlComponent::new(&engine)));

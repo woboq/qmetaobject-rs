@@ -3,6 +3,8 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
+use cpp::{cpp, cpp_class};
+
 #[cfg(feature = "log")]
 use log::{logger, Level, Record, RecordBuilder};
 

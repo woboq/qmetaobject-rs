@@ -5,4 +5,5 @@ edition = "2018"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 
 [dependencies]
-qmetaobject = { path = "../../qmetaobject"}
+qmetaobject = { path = "../../qmetaobject" }
+cstr = "0.2"
