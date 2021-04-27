@@ -15,8 +15,8 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-use super::scenegraph::*;
-use super::*;
+use crate::scenegraph::*;
+use crate::*;
 
 /// Qt is not thread safe, and the engine can only be created once and in one thread.
 /// So this is a guard that will be used to panic if the engine is created twice
@@ -80,8 +80,6 @@ cpp_class!(
 impl QmlEngine {
     /// Create a new QmlEngine
     pub fn new() -> QmlEngine {
-        use std::ffi::CString;
-
         let mut arguments: Vec<*mut c_char> = std::env::args()
             .map(|arg| CString::new(arg.into_bytes()).expect("argument contains invalid c-string!"))
             .map(|arg| arg.into_raw())
@@ -387,10 +385,10 @@ impl QmlComponent {
 ///
 /// Refer to the Qt documentation for qmlRegisterType.
 pub fn qml_register_type<T: QObject + Default + Sized>(
-    uri: &std::ffi::CStr,
+    uri: &CStr,
     version_major: u32,
     version_minor: u32,
-    qml_name: &std::ffi::CStr,
+    qml_name: &CStr,
 ) {
     let uri_ptr = uri.as_ptr();
     let qml_name_ptr = qml_name.as_ptr();
@@ -517,10 +515,10 @@ pub trait QSingletonInit {
 ///
 /// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterSingletonType-3
 pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default>(
-    uri: &std::ffi::CStr,
+    uri: &CStr,
     version_major: u32,
     version_minor: u32,
-    qml_name: &std::ffi::CStr,
+    qml_name: &CStr,
 ) {
     let uri_ptr = uri.as_ptr();
     let qml_name_ptr = qml_name.as_ptr();
@@ -615,10 +613,10 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
 // XXX: replace link with real documentation, when it will be generated.
 #[cfg(qt_5_14)]
 pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
-    uri: &std::ffi::CStr,
+    uri: &CStr,
     version_major: u32,
     version_minor: u32,
-    type_name: &std::ffi::CStr,
+    type_name: &CStr,
     obj: T,
 ) {
     let uri_ptr = uri.as_ptr();
@@ -654,10 +652,10 @@ pub fn qml_register_singleton_instance<T: QObject + Sized + Default>(
 /// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterUncreatableMetaObject
 #[cfg(qt_5_8)]
 pub fn qml_register_enum<T: QEnum>(
-    uri: &std::ffi::CStr,
+    uri: &CStr,
     version_major: u32,
     version_minor: u32,
-    qml_name: &std::ffi::CStr,
+    qml_name: &CStr,
 ) {
     let uri_ptr = uri.as_ptr();
     let qml_name_ptr = qml_name.as_ptr();
@@ -974,7 +972,9 @@ mod qjsvalue_tests {
 /// See also the 'qmlextensionplugins' example.
 ///
 /// ```
-/// # extern crate qmetaobject; use qmetaobject::*;
+/// use qmetaobject::*;
+/// use std::ffi::CStr;
+///
 /// #[derive(Default, QObject)]
 /// struct QExampleQmlPlugin {
 ///     base: qt_base_class!(trait QQmlExtensionPlugin),
@@ -982,12 +982,11 @@ mod qjsvalue_tests {
 /// }
 ///
 /// impl QQmlExtensionPlugin for QExampleQmlPlugin {
-///     fn register_types(&mut self, uri: &std::ffi::CStr) {
+///     fn register_types(&mut self, uri: &CStr) {
 ///         // call `qml_register_type` here
 ///     }
 /// }
 /// ```
-
 pub trait QQmlExtensionPlugin: QObject {
     #[doc(hidden)] // implementation detail for the QObject custom derive
     fn get_object_description() -> &'static QObjectDescription
@@ -1002,7 +1001,7 @@ pub trait QQmlExtensionPlugin: QObject {
     }
 
     /// Refer to the Qt documentation of QQmlExtensionPlugin::registerTypes
-    fn register_types(&mut self, uri: &std::ffi::CStr);
+    fn register_types(&mut self, uri: &CStr);
 }
 
 cpp! {{
@@ -1013,9 +1012,9 @@ cpp! {{
         void registerTypes(const char *uri) override  {
             rust!(Rust_QQmlExtensionPlugin_registerTypes[
                 rust_object: QObjectPinned<dyn QQmlExtensionPlugin> as "TraitObject",
-                uri: *const std::os::raw::c_char as "const char *"
+                uri: *const c_char as "const char *"
             ] {
-                rust_object.borrow_mut().register_types(unsafe { std::ffi::CStr::from_ptr(uri) });
+                rust_object.borrow_mut().register_types(unsafe { CStr::from_ptr(uri) });
             });
         }
     };

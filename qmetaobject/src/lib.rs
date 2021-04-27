@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     ```
     #[macro_use] extern crate cstr;
-    extern crate qmetaobject;
 
     use qmetaobject::*;
 
@@ -88,7 +87,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     All the method are provided so you can just implement the QMetaType like this:
 
     ```rust
-    # use qmetaobject::QMetaType;
+    use qmetaobject::QMetaType;
+
     #[derive(Default, Clone)]
     struct MyPoint(u32, u32);
 
@@ -115,19 +115,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     This can be done like so:
 
     ```
-    # extern crate qmetaobject;
-    # use qmetaobject::*;
-    #[derive(QObject,Default)]
+    use qmetaobject::*;
+    # use std::cell::RefCell;
+
+    #[derive(QObject, Default)]
     struct MyAsyncObject {
         base: qt_base_class!(trait QObject),
         result: qt_property!(QString; NOTIFY result_changed),
         result_changed: qt_signal!(),
         recompute_result: qt_method!(fn recompute_result(&self, name: String) {
             let qptr = QPointer::from(&*self);
-            let set_value = qmetaobject::queued_callback(move |val: QString| {
-                qptr.as_pinned().map(|self_| {
-                    self_.borrow_mut().result = val;
-                    self_.borrow().result_changed();
+            let set_value = queued_callback(move |val: QString| {
+                qptr.as_pinned().map(|this| {
+                    this.borrow_mut().result = val;
+                    this.borrow().result_changed();
                 });
             });
             std::thread::spawn(move || {
@@ -137,9 +138,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             }).join();
         })
     }
-    # let obj = std::cell::RefCell::new(MyAsyncObject::default());
+    # let obj = RefCell::new(MyAsyncObject::default());
     # let mut engine = QmlEngine::new();
-    # unsafe { qmetaobject::connect(
+    # unsafe { connect(
     #     QObject::cpp_construct(&obj),
     #     obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),
     #     || engine.quit()
@@ -157,9 +158,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #[macro_use]
 extern crate cpp;
 
-#[allow(unused_imports)]
-#[macro_use]
-extern crate qmetaobject_impl;
 #[doc(hidden)]
 pub use qmetaobject_impl::*;
 
@@ -173,7 +171,8 @@ pub use lazy_static::*;
 #[macro_export]
 macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
 
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
+use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
 
 pub use qttypes;
@@ -440,11 +439,11 @@ impl<T: QObject + ?Sized> Clone for QPointer<T> {
 /// Same as std::cell::RefMut, but does not allow to move from
 pub struct QObjectRefMut<'b, T: QObject + ?Sized + 'b> {
     old_value: *mut c_void,
-    inner: std::cell::RefMut<'b, T>,
+    inner: RefMut<'b, T>,
 }
 
 impl<'b, T: QObject + ?Sized> std::ops::Deref for QObjectRefMut<'b, T> {
-    type Target = std::cell::RefMut<'b, T>;
+    type Target = RefMut<'b, T>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -543,7 +542,7 @@ impl<T: QObject + ?Sized> QObjectBox<T> {
 pub fn into_leaked_cpp_ptr<T: QObject>(obj: T) -> *mut c_void {
     let b = Box::new(RefCell::new(obj));
     let obj_ptr = unsafe { QObject::cpp_construct(&b) };
-    std::boxed::Box::into_raw(b);
+    Box::into_raw(b);
     obj_ptr
 }
 
@@ -640,7 +639,8 @@ unsafe impl Send for QMetaObject {}
 /// The trait needs to be like the QObject trait, see the documentation of the QObject trait.
 ///
 /// ```
-/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// use qmetaobject::*;
+///
 /// #[derive(QObject)]
 /// struct Foo {
 ///    base : qt_base_class!(trait QObject),
@@ -670,7 +670,8 @@ macro_rules! qt_base_class {
 /// `ALIAS` followed by an identifier allow to give a different name than the actual field name.
 ///
 /// ```
-/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// use qmetaobject::*;
+///
 /// #[derive(QObject)]
 /// struct Foo {
 ///    base: qt_base_class!(trait QObject),
@@ -696,7 +697,8 @@ macro_rules! qt_property {
 /// Can be used within a struct that derives from QObject or QGadget
 ///
 /// ```
-/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// use qmetaobject::*;
+///
 /// #[derive(QObject)]
 /// struct Foo {
 ///    base: qt_base_class!(trait QObject),
@@ -726,7 +728,8 @@ macro_rules! qt_method {
 /// To be used within a struct that derives from QObject
 ///
 /// ```
-/// # #[macro_use] extern crate qmetaobject; use qmetaobject::QObject;
+/// use qmetaobject::*;
+///
 /// #[derive(QObject)]
 /// struct Foo {
 ///    base: qt_base_class!(trait QObject),
@@ -748,15 +751,16 @@ macro_rules! qt_signal {
 /// the IID
 ///
 /// ```
-/// # #[macro_use] extern crate qmetaobject;
-/// # use qmetaobject::qtdeclarative::QQmlExtensionPlugin;
+/// use qmetaobject::*;
+/// # use std::ffi::CStr;
+///
 /// #[derive(Default, QObject)]
 /// struct MyPlugin {
 ///     base: qt_base_class!(trait QQmlExtensionPlugin),
 ///     plugin: qt_plugin!("org.qt-project.Qt.QQmlExtensionInterface/1.0")
 /// }
 /// # impl QQmlExtensionPlugin for MyPlugin {
-/// #     fn register_types(&mut self, uri: &std::ffi::CStr) {}
+/// #     fn register_types(&mut self, uri: &CStr) {}
 /// # }
 /// ```
 #[macro_export]
@@ -841,8 +845,8 @@ where
 /// callback will not be recieved.
 ///
 /// ```
-/// # extern crate qmetaobject;
-/// # use qmetaobject::queued_callback;
+/// use qmetaobject::queued_callback;
+///
 /// let callback = queued_callback(|()| println!("hello from main thread"));
 /// std::thread::spawn(move || {callback(());}).join();
 /// ```
@@ -989,10 +993,9 @@ pub const USER_ROLE: i32 = 0x0100;
 /// ```
 /// then the following Rust code:
 /// ```
-/// # extern crate qmetaobject;
-/// # use qmetaobject::qrc;
+/// use qmetaobject::qrc;
 /// # // For maintainers: this is actually tested against real files.
-/// // private fn, and base directory shortcut
+/// // private fn, base directory shortcut
 /// qrc!(my_resource_1,
 ///     "tests/qml" as "foo1" {
 ///         "main.qml",
@@ -1016,6 +1019,7 @@ pub const USER_ROLE: i32 = 0x0100;
 /// # fn use_resource(_r: &str) {
 /// #     // at the time of writing, it is the only way to test the existence of a resource.
 /// #     use qmetaobject::*;
+/// #
 /// #     let mut engine = QmlEngine::new();
 /// #     let mut c = QmlComponent::new(&engine);
 /// #     c.load_url(QUrl::from(QString::from("qrc:/foo2/baz/Foo.qml")), CompilationMode::PreferSynchronous);

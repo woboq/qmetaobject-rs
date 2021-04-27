@@ -223,7 +223,7 @@ where
             QVariant::default()
         }
     }
-    fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
+    fn role_names(&self) -> HashMap<i32, QByteArray> {
         T::names().iter().enumerate().map(|(i, x)| (i as i32 + USER_ROLE, x.clone())).collect()
     }
 }

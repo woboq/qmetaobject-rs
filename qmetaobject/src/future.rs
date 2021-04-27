@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::mem::replace;
 use std::os::raw::c_void;
 use std::pin::Pin;
 use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
@@ -90,7 +91,7 @@ cpp! {{
 
         ~Waker() {
             rust!(QtDestroyFuture [future: *mut dyn Future<Output = ()> as "TraitObject"] {
-                std::mem::drop(Box::from_raw(future))
+                drop(Box::from_raw(future));
             });
         }
     };
@@ -160,7 +161,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
         type Output = <Args as SignalArgArrayToTuple>::Tuple;
         fn poll(mut self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
             let state = &mut self.0;
-            *state = match std::mem::replace(state, ConnectionFutureState::Invalid) {
+            *state = match replace(state, ConnectionFutureState::Invalid) {
                 ConnectionFutureState::Finished { result } => {
                     return Poll::Ready(result);
                 }
@@ -181,7 +182,7 @@ pub unsafe fn wait_on_signal<Args: SignalArgArrayToTuple>(
         for *mut ConnectionFutureState<Args>
     {
         unsafe fn apply(&mut self, a: *const *const c_void) {
-            if let ConnectionFutureState::Started { mut handle, waker } = std::mem::replace(
+            if let ConnectionFutureState::Started { mut handle, waker } = replace(
                 &mut **self,
                 ConnectionFutureState::Finished { result: Args::args_array_to_tuple(a) },
             ) {

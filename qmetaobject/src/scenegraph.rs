@@ -16,9 +16,7 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#[cfg(qt_5_8)]
 use super::*;
-use std::os::raw::c_void;
 
 /// A typed node in the scene graph
 ///
@@ -120,12 +118,15 @@ impl SGNode<ContainerNode> {
     /// call reset() if you want to change the size.
     ///
     /// ```
-    /// # use qmetaobject::{QRectF, QObject, qtdeclarative::QQuickItem};
-    /// # use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
+    /// extern crate qttypes;
+    /// # use qmetaobject::{QObject, qtdeclarative::QQuickItem};
+    /// use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
+    /// use qttypes::QRectF;
+    ///
     /// # struct Dummy<T> { items : Vec<QRectF>, _phantom :T }
     /// # impl<T> QQuickItem for Dummy<T> where Dummy<T> : QObject  {
     /// // in the reimplementation of  QQuickItem::update_paint_node
-    /// fn update_paint_node(&mut self, mut node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> {
+    /// fn update_paint_node(&mut self, mut node: SGNode<ContainerNode>) -> SGNode<ContainerNode> {
     ///    let items : &Vec<QRectF> = &self.items;
     ///    node.update_dynamic(items.iter(),
     ///        |i, mut n| -> SGNode<RectangleNode> { n.create(self); n.set_rect(*i); n });
@@ -180,8 +181,11 @@ impl SGNode<ContainerNode> {
     /// In this example, the node has two children node
     ///
     /// ```
-    /// # use qmetaobject::{QRectF, QObject, qtdeclarative::QQuickItem};
-    /// # use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
+    /// extern crate qttypes;
+    /// # use qmetaobject::{QObject, qtdeclarative::QQuickItem};
+    /// use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
+    /// use qttypes::QRectF;
+    ///
     /// # struct Dummy<T> { items : Vec<QRectF>, _phantom :T }
     /// # impl<T> QQuickItem for Dummy<T> where Dummy<T> : QObject  {
     /// // in the reimplementation of  QQuickItem::update_paint_node
@@ -339,9 +343,10 @@ impl SGNode {
 pub enum RectangleNode {}
 
 cpp! {{
-#if QT_VERSION < QT_VERSION_CHECK(5, 8, 0)
+    // Just a stub for compatibility
+    #if QT_VERSION < QT_VERSION_CHECK(5, 8, 0)
     struct QSGRectangleNode{};
-#endif
+    #endif
 }}
 
 #[cfg(qt_5_8)]
@@ -349,18 +354,18 @@ impl SGNode<RectangleNode> {
     pub fn set_color(&mut self, color: QColor) {
         let raw = self.raw;
         cpp!(unsafe [raw as "QSGRectangleNode*", color as "QColor"] {
-        #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-                    if(raw) raw->setColor(color);
-        #endif
-                });
+            #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+            if(raw) raw->setColor(color);
+            #endif
+        });
     }
     pub fn set_rect(&mut self, rect: QRectF) {
         let raw = self.raw;
         cpp!(unsafe [raw as "QSGRectangleNode*", rect as "QRectF"] {
-        #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-                    if (raw) raw->setRect(rect);
-        #endif
-                });
+            #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+            if (raw) raw->setRect(rect);
+            #endif
+        });
     }
 
     pub fn create(&mut self, item: &dyn QQuickItem) {
@@ -369,13 +374,13 @@ impl SGNode<RectangleNode> {
         }
         let item = item.get_cpp_object();
         self.raw = cpp!(unsafe [item as "QQuickItem*"] -> *mut c_void as "void*" {
-                    if (!item) return nullptr;
-        #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-                    if (auto window = item->window())
-                        return window->createRectangleNode();
-        #endif
-                    return nullptr;
-                });
+            #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+            if (!item) return nullptr;
+            if (auto window = item->window())
+                return window->createRectangleNode();
+            #endif
+            return nullptr;
+        });
     }
 }
 

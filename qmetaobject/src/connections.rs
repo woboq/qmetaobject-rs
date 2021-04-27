@@ -282,8 +282,9 @@ impl<Args> Signal<Args> {
     /// # Example
     ///
     /// ```
-    /// # #[macro_use] extern crate cpp;
-    /// # use qmetaobject::*;
+    /// #[macro_use] extern crate cpp;
+    /// use qmetaobject::*;
+    ///
     /// fn object_name_changed() -> Signal<fn(QString)> {
     ///     unsafe {
     ///         Signal::new(cpp!([] -> SignalInner as "SignalInner"  {
