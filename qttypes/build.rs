@@ -72,8 +72,14 @@ fn main() {
             }
         }
     };
-    let qt_include_path = qmake_query("QT_INSTALL_HEADERS").unwrap();
-    let qt_library_path = qmake_query("QT_INSTALL_LIBS").unwrap();
+    let qt_include_path = match std::env::var("DEP_QT_INCLUDE_PATH") {
+        Ok(p) => p,
+        Err(_) => qmake_query("QT_INSTALL_HEADERS").unwrap(),
+    };
+    let qt_library_path = match std::env::var("DEP_QT_LIBRARY_PATH") {
+        Ok(p) => p,
+        Err(_) => qmake_query("QT_INSTALL_LIBS").unwrap(),
+    };
 
     let mut config = cpp_build::Config::new();
 
