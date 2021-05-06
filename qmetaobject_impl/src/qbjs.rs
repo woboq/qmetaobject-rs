@@ -15,7 +15,6 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-use std;
 
 // That's the same as parent::write_u32, but it should always be little endian
 fn write_u32(val: u32) -> [u8; 4] {
@@ -33,7 +32,7 @@ fn write_u16(val: u16) -> [u8; 2] {
 }
 
 pub enum Value {
-    String(std::string::String),
+    String(String),
     Double(f64),
     Bool(bool),
     // TODO: other things

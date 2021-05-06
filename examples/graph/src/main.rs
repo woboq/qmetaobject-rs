@@ -1,13 +1,11 @@
 #![allow(non_snake_case)]
 #![allow(unused_variables)]
-#[macro_use]
-extern crate qmetaobject;
+
+use cpp::cpp;
+use cstr::cstr;
+
 use qmetaobject::scenegraph::*;
 use qmetaobject::*;
-#[macro_use]
-extern crate cstr;
-#[macro_use]
-extern crate cpp;
 
 mod nodes;
 

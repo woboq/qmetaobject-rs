@@ -16,23 +16,24 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 use proc_macro::TokenStream;
-use syn;
+use quote::quote;
+use syn::{parse_macro_input, Data, DeriveInput, Ident, Visibility};
 
 pub fn derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as syn::DeriveInput);
+    let input = parse_macro_input!(input as DeriveInput);
     let crate_ = super::get_crate(&input);
 
-    let values = if let syn::Data::Struct(ref data) = input.data {
+    let values = if let Data::Struct(ref data) = input.data {
         data.fields
             .iter()
             .filter_map(|field| {
-                if let syn::Visibility::Public(_) = field.vis {
+                if let Visibility::Public(_) = field.vis {
                     field.ident.clone()
                 } else {
                     None
                 }
             })
-            .collect::<Vec<syn::Ident>>()
+            .collect::<Vec<Ident>>()
     } else {
         panic!("#[derive(SimpleListItem)] is only defined for structs");
     };

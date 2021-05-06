@@ -16,10 +16,13 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-use super::*;
 use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::ops::Index;
+
+use cpp::cpp;
+
+use super::*;
 
 /// This trait allow to override a Qt QAbstractListModel
 pub trait QAbstractListModel: QObject {
@@ -223,7 +226,7 @@ where
             QVariant::default()
         }
     }
-    fn role_names(&self) -> std::collections::HashMap<i32, QByteArray> {
+    fn role_names(&self) -> HashMap<i32, QByteArray> {
         T::names().iter().enumerate().map(|(i, x)| (i as i32 + USER_ROLE, x.clone())).collect()
     }
 }

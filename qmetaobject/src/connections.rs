@@ -84,6 +84,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #![deny(missing_docs)]
 use std::os::raw::c_void;
 
+use cpp::{cpp, cpp_class};
+
 use super::*;
 
 /// Inner functor type of a `QRustClosureSlotObject` class.
@@ -282,8 +284,9 @@ impl<Args> Signal<Args> {
     /// # Example
     ///
     /// ```
-    /// # #[macro_use] extern crate cpp;
-    /// # use qmetaobject::*;
+    /// use cpp::cpp;
+    /// use qmetaobject::*;
+    ///
     /// fn object_name_changed() -> Signal<fn(QString)> {
     ///     unsafe {
     ///         Signal::new(cpp!([] -> SignalInner as "SignalInner"  {

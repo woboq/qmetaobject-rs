@@ -22,14 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))] // Because we copy-paste constants from Qt
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
 
-#[macro_use]
-extern crate syn;
-#[macro_use]
-extern crate quote;
-
-extern crate proc_macro;
-extern crate proc_macro2;
 use proc_macro::TokenStream;
+use quote::{quote, ToTokens};
+use syn::DeriveInput;
 
 mod qbjs;
 mod qobject_impl;
@@ -38,7 +33,7 @@ mod simplelistitem_impl;
 
 /// Get the tokens to refer to the qmetaobject crate. By default, return "::qmetaobject" unless
 /// the QMetaObjectCrate is specified
-fn get_crate(input: &syn::DeriveInput) -> impl quote::ToTokens {
+fn get_crate(input: &DeriveInput) -> impl ToTokens {
     for i in input.attrs.iter() {
         if let Ok(x) = i.parse_meta() {
             if x.path().is_ident("QMetaObjectCrate") {

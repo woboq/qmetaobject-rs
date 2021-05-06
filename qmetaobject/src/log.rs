@@ -1,6 +1,9 @@
 //! Logging facilities and forwarding
 
+use std::ffi::CStr;
 use std::os::raw::c_char;
+
+use cpp::{cpp, cpp_class};
 
 #[cfg(feature = "log")]
 use log::{logger, Level, Record, RecordBuilder};
@@ -33,7 +36,7 @@ impl QMessageLogContext {
             if x.is_null() {
                 return "";
             }
-            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+            CStr::from_ptr(x).to_str().unwrap()
         }
     }
 
@@ -46,7 +49,7 @@ impl QMessageLogContext {
             if x.is_null() {
                 return "";
             }
-            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+            CStr::from_ptr(x).to_str().unwrap()
         }
     }
 
@@ -59,7 +62,7 @@ impl QMessageLogContext {
             if x.is_null() {
                 return "";
             }
-            std::ffi::CStr::from_ptr(x).to_str().unwrap()
+            CStr::from_ptr(x).to_str().unwrap()
         }
     }
 }

@@ -9,5 +9,6 @@ name = "qmlqtimeexampleplugin"
 crate-type = ["cdylib"]
 
 [dependencies]
-qmetaobject = { path = "../../qmetaobject"}
+qmetaobject = { path = "../../qmetaobject" }
 chrono = "^0.4"
+cstr = "0.2"

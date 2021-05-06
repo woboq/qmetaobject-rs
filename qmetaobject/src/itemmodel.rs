@@ -15,8 +15,9 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-
 use std::collections::HashMap;
+
+use cpp::cpp;
 
 use crate::*;
 
@@ -58,6 +59,7 @@ pub trait QAbstractItemModel: QObject {
     fn role_names(&self) -> HashMap<i32, QByteArray> {
         HashMap::new()
     }
+
     /// Refer to the Qt documentation of QAbstractListModel::beginInsertRows
     fn begin_insert_rows(&self, parent: QModelIndex, first: i32, last: i32) {
         let obj = self.get_cpp_object();

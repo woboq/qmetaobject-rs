@@ -1,4 +1,3 @@
-extern crate qmetaobject;
 use qmetaobject::*;
 
 qrc!(my_resource,

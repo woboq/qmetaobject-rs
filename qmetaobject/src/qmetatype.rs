@@ -15,15 +15,16 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+use cpp::cpp;
+
 use super::*;
 
 fn register_metatype_common<T: QMetaType>(
-    name: *const std::os::raw::c_char,
+    name: *const c_char,
     gadget_metaobject: *const QMetaObject,
 ) -> i32 {
     use std::any::TypeId;
     use std::collections::{HashMap, HashSet};
-    use std::ffi::{CStr, CString};
     use std::sync::Mutex;
 
     lazy_static! {
@@ -164,7 +165,8 @@ fn register_metatype_qobject<T: QObject>() -> i32 {
 /// as a parameter of a qt_method!
 ///
 /// ```
-/// # use ::qmetaobject::QMetaType;
+/// use qmetaobject::QMetaType;
+///
 /// #[derive(Default, Clone)]
 /// struct MyStruct(u32, String);
 ///
@@ -176,7 +178,7 @@ pub trait QMetaType: Clone + Default + 'static {
     /// See the Qt documentation of qRegisterMetaType()
     ///
     /// The default implementation should work for most types
-    fn register(name: Option<&std::ffi::CStr>) -> i32 {
+    fn register(name: Option<&CStr>) -> i32 {
         register_metatype_common::<Self>(
             name.map_or(std::ptr::null(), |x| x.as_ptr()),
             std::ptr::null(),
@@ -240,7 +242,7 @@ impl QMetaType for String {
 macro_rules! qdeclare_builtin_metatype {
     ($name:ty => $value:expr) => {
         impl QMetaType for $name {
-            fn register(_name: Option<&std::ffi::CStr>) -> i32 {
+            fn register(_name: Option<&CStr>) -> i32 {
                 $value
             }
         }
@@ -275,7 +277,7 @@ qdeclare_builtin_metatype! {QSizeF => 22}
 qdeclare_builtin_metatype! {QPoint => 25}
 qdeclare_builtin_metatype! {QPointF => 26}
 impl QMetaType for QVariant {
-    fn register(_name: Option<&std::ffi::CStr>) -> i32 {
+    fn register(_name: Option<&CStr>) -> i32 {
         41
     }
     fn to_qvariant(&self) -> QVariant {
@@ -305,7 +307,7 @@ impl QMetaType for QJSValue {}
 ///
 /// Don't implement this trait, implement the QMetaType trait.
 pub trait PropertyType {
-    fn register_type(name: &std::ffi::CStr) -> i32;
+    fn register_type(name: &CStr) -> i32;
     // Note: this is &mut self because of the lazy initialization of the QObject* for the QObject impl
     unsafe fn pass_to_qt(&mut self, a: *mut c_void);
     unsafe fn read_from_qt(a: *const c_void) -> Self;
@@ -315,7 +317,7 @@ impl<T: QMetaType> PropertyType for T
 where
     T: QMetaType,
 {
-    fn register_type(name: &std::ffi::CStr) -> i32 {
+    fn register_type(name: &CStr) -> i32 {
         <T as QMetaType>::register(Some(name))
     }
 
@@ -332,21 +334,21 @@ where
     }
 }
 
-impl<T> PropertyType for ::std::cell::RefCell<T>
+impl<T> PropertyType for RefCell<T>
 where
     T: QObject,
 {
-    fn register_type(_name: &::std::ffi::CStr) -> i32 {
+    fn register_type(_name: &CStr) -> i32 {
         register_metatype_qobject::<T>()
     }
 
-    unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
+    unsafe fn pass_to_qt(&mut self, a: *mut c_void) {
         let pinned = QObjectPinned::new(self);
-        let r = a as *mut *const ::std::os::raw::c_void;
+        let r = a as *mut *const c_void;
         *r = pinned.get_or_create_cpp_object()
     }
 
-    unsafe fn read_from_qt(_a: *const ::std::os::raw::c_void) -> Self {
+    unsafe fn read_from_qt(_a: *const c_void) -> Self {
         panic!("Cannot write into an Object property");
     }
 }
@@ -355,21 +357,21 @@ impl<T> PropertyType for QPointer<T>
 where
     T: QObject,
 {
-    fn register_type(_name: &::std::ffi::CStr) -> i32 {
+    fn register_type(_name: &CStr) -> i32 {
         register_metatype_qobject::<T>()
     }
 
-    unsafe fn pass_to_qt(&mut self, a: *mut ::std::os::raw::c_void) {
+    unsafe fn pass_to_qt(&mut self, a: *mut c_void) {
         let pinned = self.as_pinned();
-        let r = a as *mut *const ::std::os::raw::c_void;
+        let r = a as *mut *const c_void;
         match pinned {
             Some(pinned) => *r = pinned.get_or_create_cpp_object(),
             None => *r = std::ptr::null(),
         }
     }
 
-    unsafe fn read_from_qt(a: *const ::std::os::raw::c_void) -> Self {
-        let r = a as *const *mut ::std::os::raw::c_void;
+    unsafe fn read_from_qt(a: *const c_void) -> Self {
+        let r = a as *const *mut c_void;
         if a.is_null() || (*r).is_null() {
             Self::default()
         } else {
@@ -387,7 +389,7 @@ fn test_qmetatype() {
     }
     impl QMetaType for MyInt {}
 
-    assert_eq!(MyInt::register(Some(&std::ffi::CString::new("MyInt").unwrap())), MyInt::id());
+    assert_eq!(MyInt::register(Some(&CString::new("MyInt").unwrap())), MyInt::id());
     let m42 = MyInt { x: 42 };
     let m43 = MyInt { x: 43 };
 
@@ -406,7 +408,7 @@ fn test_qmetatype_register_wrong_type1() {
     struct MyType {}
     impl QMetaType for MyType {}
     // registering with the name of an existing type should panic
-    MyType::register(Some(&std::ffi::CString::new("QString").unwrap()));
+    MyType::register(Some(&CString::new("QString").unwrap()));
 }
 
 #[test]
@@ -415,9 +417,9 @@ fn test_qmetatype_register_wrong_type2() {
     #[derive(Default, Clone, Debug, Eq, PartialEq)]
     struct MyType {}
     impl QMetaType for MyType {}
-    String::register(Some(&std::ffi::CString::new("String").unwrap()));
+    String::register(Some(&CString::new("String").unwrap()));
     // registering with the name of an existing type should panic
-    MyType::register(Some(&std::ffi::CString::new("String").unwrap()));
+    MyType::register(Some(&CString::new("String").unwrap()));
 }
 
 #[test]
