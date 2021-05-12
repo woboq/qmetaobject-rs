@@ -31,6 +31,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
 //! - `DEP_QT_FOUND`: set to 1 when qt was found, or 0 if qt was not found and the `mandatory` feature is not set
 //!
+//! ## Finding Qt
+//!
+//! This is the algorithm used to find Qt.
+//!
+//! - You can set the environment variable `QT_INCLUDE_PATH` and `QT_LIBRARY_PATH` to be a single
+//!   directory where the Qt headers and Qt libraries are installed.
+//! - Otherwise youo can specify a `QMAKE` environment variable with the absolute path of the
+//!   `qmake` executable which will be used to querty these paths
+//! - If none of these environment variable is set, the `qmake` executable found in `$PATH`
+//!
 //! ## Philosophy
 //!
 //! The goal of this crate is to expose a idiomatic Qt API for the core value type classes.
@@ -87,7 +97,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!
 //! ## Cargo Features
 //!
-//! - **`mandatory`**: When this feature is enabled (the default), the build script will panic with an error
+//! - **`required`**: When this feature is enabled (the default), the build script will panic with an error
 //!   if Qt is not found. Otherwise, when not enabled, the build will continue, but any use of the classes will
 //!   panic at runtime
 //! - **`chrono`**: enable the conversion between [`QDateTime`] related types and the types from the `chrono` crate.

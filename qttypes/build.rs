@@ -18,7 +18,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
@@ -29,16 +29,23 @@ fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     .expect("UTF-8 conversion failed"))
 }
 
+fn open_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> std::fs::File {
+    let mut path = PathBuf::from(qt_include_path);
+    path.push("QtCore");
+    path.push(file);
+    if cfg!(target_os = "macos") {
+        if !path.exists() {
+            path = Path::new(qt_library_path).join("QtCore.framework/Headers");
+            path.push(file);
+        }
+    }
+    std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path))
+}
+
 // qreal is a double, unless QT_COORD_TYPE says otherwise:
 // https://doc.qt.io/qt-5/qtglobal.html#qreal-typedef
 fn detect_qreal_size(qt_include_path: &str, qt_library_path: &str) {
-    let mut path = Path::new(qt_include_path).join("QtCore/qconfig.h");
-    if cfg!(target_os = "macos") {
-        if !path.exists() {
-            path = Path::new(qt_library_path).join("QtCore.framework/Headers/qconfig.h");
-        }
-    }
-    let f = std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path));
+    let f = open_header("qconfig.h", qt_include_path, qt_library_path);
     let b = BufReader::new(f);
 
     // Find declaration of QT_COORD_TYPE
@@ -55,26 +62,58 @@ fn detect_qreal_size(qt_include_path: &str, qt_library_path: &str) {
     }
 }
 
+fn detect_version_from_header(qt_include_path: &str, qt_library_path: &str) -> String {
+    let f = open_header("qtcoreversion.h", qt_include_path, qt_library_path);
+    let b = BufReader::new(f);
+
+    // Find declaration of QTCORE_VERSION_STR
+    for line in b.lines() {
+        let line = line.expect("qtcoreversion.h is valid UTF-8");
+        if line.contains("QTCORE_VERSION_STR") {
+            return line.split('\"').nth(1).expect("Parsing QTCORE_VERSION_STR").into();
+        }
+    }
+    panic!("Could not detect Qt version from include paths")
+}
+
 fn main() {
-    let qt_version = match qmake_query("QT_VERSION") {
-        Ok(v) => v,
-        Err(_err) => {
-            #[cfg(feature = "required")]
-            panic!(
-                "Error: Failed to execute qmake. Make sure 'qmake' is in your path!\n{:?}",
-                _err
-            );
-            #[cfg(not(feature = "required"))]
-            {
-                println!("cargo:rerun-if-env-changed=QMAKE");
-                println!("cargo:rustc-cfg=no_qt");
-                println!("cargo:FOUND=0");
-                return;
-            }
+    println!("cargo:rerun-if-env-changed=QT_INCLUDE_PATH");
+    println!("cargo:rerun-if-env-changed=QT_LIBRARY_PATH");
+    let (qt_version, qt_include_path, qt_library_path) = match (
+        std::env::var("QT_INCLUDE_PATH").ok().filter(|x| !x.is_empty()),
+        std::env::var("QT_LIBRARY_PATH").ok().filter(|x| !x.is_empty()),
+    ) {
+        (Some(qt_include_path), Some(qt_library_path)) => {
+            let qt_version = detect_version_from_header(&qt_include_path, &qt_library_path);
+            (qt_version, qt_include_path, qt_library_path)
+        }
+        (Some(_), None) | (None, Some(_)) => {
+            panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set ")
+        }
+        (None, None) => {
+            let qt_version = match qmake_query("QT_VERSION") {
+                Ok(v) => v,
+                Err(_err) => {
+                    #[cfg(feature = "required")]
+                    panic!(
+                        "Error: Failed to execute qmake. Make sure 'qmake' is in your path!\n{:?}",
+                        _err
+                    );
+                    #[cfg(not(feature = "required"))]
+                    {
+                        println!("cargo:rerun-if-env-changed=QMAKE");
+                        println!("cargo:rustc-cfg=no_qt");
+                        println!("cargo:FOUND=0");
+                        return;
+                    }
+                }
+            };
+            let qt_include_path = qmake_query("QT_INSTALL_HEADERS").unwrap();
+            let qt_library_path = qmake_query("QT_INSTALL_LIBS").unwrap();
+            println!("cargo:rerun-if-env-changed=QMAKE");
+            (qt_version, qt_include_path, qt_library_path)
         }
     };
-    let qt_include_path = qmake_query("QT_INSTALL_HEADERS").unwrap();
-    let qt_library_path = qmake_query("QT_INSTALL_LIBS").unwrap();
 
     let mut config = cpp_build::Config::new();
 
@@ -129,5 +168,4 @@ fn main() {
     link_lib("WebEngine");
 
     println!("cargo:rerun-if-changed=src/lib.rs");
-    println!("cargo:rerun-if-env-changed=QMAKE");
 }
