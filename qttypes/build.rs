@@ -66,6 +66,7 @@ fn main() {
             );
             #[cfg(not(feature = "required"))]
             {
+                println!("cargo:rerun-if-env-changed=QMAKE");
                 println!("cargo:rustc-cfg=no_qt");
                 println!("cargo:FOUND=0");
                 return;
@@ -128,4 +129,5 @@ fn main() {
     link_lib("WebEngine");
 
     println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-env-changed=QMAKE");
 }
