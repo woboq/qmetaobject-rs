@@ -1193,7 +1193,13 @@ impl QColor {
         let res = (0., 0., 0., 0.);
         let (ref r, ref g, ref b, ref a) = res;
         cpp!(unsafe [self as "const QColor*", r as "qreal*", g as "qreal*", b as "qreal*", a as "qreal*"] {
+        #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+            float r_, g_, b_, a_;
+            self->getRgbF(&r_, &g_, &b_, &a_);
+            *r = r_; *g = g_; *b = b_; *a = a_;
+        #else
             return self->getRgbF(r, g, b, a);
+        #endif
         });
         res
     }

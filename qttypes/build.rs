@@ -124,6 +124,9 @@ fn main() {
 
     detect_qreal_size(&qt_include_path.trim(), qt_library_path.trim());
 
+    if qt_version.trim().starts_with("6.") {
+        config.flag_if_supported("-std=c++17");
+    }
     config.include(qt_include_path.trim()).build("src/lib.rs");
 
     println!("cargo:VERSION={}", qt_version.trim());
@@ -132,7 +135,11 @@ fn main() {
     println!("cargo:FOUND=1");
 
     let macos_lib_search = if cfg!(target_os = "macos") { "=framework" } else { "" };
-    let macos_lib_framework = if cfg!(target_os = "macos") { "" } else { "5" };
+    let vers_suffix = if cfg!(target_os = "macos") {
+        String::new()
+    } else {
+        qt_version.split(".").next().unwrap_or("").to_string()
+    };
 
     let debug = std::env::var("DEBUG").ok().map_or(false, |s| s == "true");
     let windows_dbg_suffix = if debug && cfg!(target_os = "windows") {
@@ -152,7 +159,7 @@ fn main() {
         println!(
             "cargo:rustc-link-lib{search}=Qt{vers}{lib}{suffix}",
             search = macos_lib_search,
-            vers = macos_lib_framework,
+            vers = vers_suffix,
             lib = lib,
             suffix = windows_dbg_suffix
         )

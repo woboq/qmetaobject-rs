@@ -145,8 +145,13 @@ struct RustObject : Base {
             if (_id < methodCount)
                 mo->d.static_metacall(this, _c, _id, _a);
             _id -= methodCount;
-        } else if ((_c >= QMetaObject::ReadProperty && _c <= QMetaObject::QueryPropertyUser)
-            || _c == QMetaObject::RegisterPropertyMetaType) {
+        } else if ((_c >= QMetaObject::ReadProperty && _c <=
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                QMetaObject::QueryPropertyUser
+#else
+                QMetaObject::ResetProperty
+#endif
+            ) || _c == QMetaObject::RegisterPropertyMetaType) {
             int propertyCount = mo->propertyCount();
             if (_id < propertyCount)
                 mo->d.static_metacall(this, _c, _id, _a);

@@ -33,11 +33,19 @@ fn main() {
         config.flag("-F");
         config.flag(qt_library_path.trim());
     }
+    if qt_version >= Version::new(6, 0, 0) {
+        config.flag_if_supported("-std=c++17");
+    }
     config.include(qt_include_path.trim()).build("src/lib.rs");
 
     for minor in 7..=15 {
         if qt_version >= Version::new(5, minor, 0) {
             println!("cargo:rustc-cfg=qt_{}_{}", 5, minor);
         }
+    }
+    let mut minor = 0;
+    while qt_version >= Version::new(6, minor, 0) {
+        println!("cargo:rustc-cfg=qt_{}_{}", 6, minor);
+        minor += 1;
     }
 }
