@@ -960,6 +960,12 @@ impl From<bool> for QJSValue {
     }
 }
 
+impl QMetaType for QJSValue {
+    fn register(name: Option<&CStr>) -> i32 {
+        cpp!(unsafe [] -> i32 as "int" { return qMetaTypeId<QJSValue>(); })
+    }
+}
+
 #[cfg(test)]
 mod qjsvalue_tests {
     use super::*;

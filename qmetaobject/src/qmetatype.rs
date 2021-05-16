@@ -397,6 +397,21 @@ pub trait QMetaType: Clone + Default + 'static {
     const CONVERSION_FROM_STRING: Option<fn(&QString) -> Self> = None;
 }
 
+#[doc(hidden)]
+#[cfg(qt_6_0)]
+/// Return the internal pointer to `QtPrivate::QMetaTypeInterface`
+pub fn qmetatype_interface_ptr<T: PropertyType>(name: &CStr) -> *const c_void {
+    let id = T::register_type(name);
+    cpp!(unsafe [id as "int"] -> *const c_void as "const void*" {
+    #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+        QMetaType(id).iface();
+    #else
+        Q_UNUSED(id);
+        return nullptr;
+    #endif
+    })
+}
+
 /// QGadget are automatically QMetaType
 impl<T: QGadget> QMetaType for T
 where
@@ -476,8 +491,6 @@ qdeclare_builtin_metatype! {usize  => 3} // That's QMetaType::UInt
 qdeclare_builtin_metatype! {isize  => 4} // That's QMetaType::LongLong
 #[cfg(target_pointer_width = "64")]
 qdeclare_builtin_metatype! {usize  => 5} // That's QMetaType::ULongLong
-
-impl QMetaType for QJSValue {}
 
 /// Internal trait used to pass or read the type in a Q_PROPERTY
 ///

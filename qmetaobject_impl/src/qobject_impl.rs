@@ -22,6 +22,9 @@ use syn::{parse_macro_input, parse_quote, DeriveInput, Token};
 
 use super::qbjs;
 
+/// 5 or 6
+type QtVersion = u8;
+
 macro_rules! unwrap_parse_error(
     ($e:expr) => {
         match $e {
@@ -123,31 +126,50 @@ struct MetaEnum {
     variants: Vec<syn::Ident>,
 }
 
-#[derive(Default)]
 struct MetaObject {
+    qt_version: QtVersion,
     int_data: Vec<proc_macro2::TokenStream>,
+    meta_types: Vec<proc_macro2::TokenStream>,
     string_data: Vec<String>,
 }
 impl MetaObject {
+    fn new_with_qt_version(qt_version: QtVersion) -> Self {
+        Self {
+            qt_version,
+            int_data: Default::default(),
+            string_data: Default::default(),
+            meta_types: Default::default(),
+        }
+    }
+
     fn build_string_data(&self, target_pointer_width: u32) -> Vec<u8> {
         let mut result: Vec<u8> = Vec::new();
 
-        let sizeof_qbytearraydata = if target_pointer_width == 64 { 24 } else { 16 };
-        let mut ofs = sizeof_qbytearraydata * self.string_data.len() as i32;
-        for s in self.string_data.iter() {
-            result.extend_from_slice(&write_u32(-1)); // ref (-1)
-            result.extend_from_slice(&write_u32(s.len() as i32)); // size
-            result.extend_from_slice(&write_u32(0)); // alloc / capacityReserved
-            if target_pointer_width == 64 {
-                result.extend_from_slice(&write_u32(0)); // padding
-            }
-            result.extend_from_slice(&write_u32(ofs)); // offset (LSB)
-            if target_pointer_width == 64 {
-                result.extend_from_slice(&write_u32(0)); // offset (MSB)
-            }
+        if self.qt_version == 5 {
+            let sizeof_qbytearraydata = if target_pointer_width == 64 { 24 } else { 16 };
+            let mut ofs = sizeof_qbytearraydata * self.string_data.len() as i32;
+            for s in self.string_data.iter() {
+                result.extend_from_slice(&write_u32(-1)); // ref (-1)
+                result.extend_from_slice(&write_u32(s.len() as i32)); // size
+                result.extend_from_slice(&write_u32(0)); // alloc / capacityReserved
+                if target_pointer_width == 64 {
+                    result.extend_from_slice(&write_u32(0)); // padding
+                }
+                result.extend_from_slice(&write_u32(ofs)); // offset (LSB)
+                if target_pointer_width == 64 {
+                    result.extend_from_slice(&write_u32(0)); // offset (MSB)
+                }
 
-            ofs += s.len() as i32 + 1; // +1 for the '\0'
-            ofs -= sizeof_qbytearraydata;
+                ofs += s.len() as i32 + 1; // +1 for the '\0'
+                ofs -= sizeof_qbytearraydata;
+            }
+        } else {
+            let mut ofs = 2 * 4 * self.string_data.len() as i32;
+            for s in self.string_data.iter() {
+                result.extend_from_slice(&write_u32(ofs));
+                result.extend_from_slice(&write_u32(s.len() as i32));
+                ofs += s.len() as i32 + 1; // +1 for the '\0'
+            }
         }
 
         for s in self.string_data.iter() {
@@ -159,6 +181,11 @@ impl MetaObject {
 
     fn push_int(&mut self, i: u32) {
         self.int_data.push(quote!(#i));
+    }
+
+    fn add_meta_type(&mut self, ty: &syn::Type) -> u32 {
+        self.meta_types.push(quote!(#ty));
+        self.meta_types.len() as u32 - 1
     }
 
     fn extend_from_int_slice(&mut self, slice: &[u32]) {
@@ -179,14 +206,24 @@ impl MetaObject {
         self.add_string(class_name);
         self.add_string("".to_owned());
 
+        let method_size = if self.qt_version == 6 { 6 } else { 5 };
+        let property_size = if self.qt_version == 6 {
+            5
+        } else if has_notify {
+            4
+        } else {
+            3
+        };
+        let enum_size = if self.qt_version == 6 { 5 } else { 4 };
+
         let mut offset = 14;
-        let property_offset = offset + methods.len() as u32 * 5;
-        let enum_offset =
-            property_offset + properties.len() as u32 * (if has_notify { 4 } else { 3 });
+        let property_offset = offset + methods.len() as u32 * method_size;
+
+        let enum_offset = property_offset + properties.len() as u32 * property_size;
 
         self.extend_from_int_slice(&[
-            7, // revision
-            0, // classname
+            if self.qt_version == 6 { 9 } else { 7 }, // revision
+            0,                                        // classname
             0,
             0, // class info count and offset
             methods.len() as u32,
@@ -201,11 +238,22 @@ impl MetaObject {
             signal_count as u32, // signalCount
         ]);
 
-        offset = enum_offset + enums.len() as u32 * 4;
+        offset = enum_offset + enums.len() as u32 * enum_size;
+
+        for p in properties {
+            self.add_meta_type(&p.typ);
+        }
 
         for m in methods {
             let n = self.add_string(m.name.to_string());
             self.extend_from_int_slice(&[n, m.args.len() as u32, offset, 1, m.flags]);
+            if self.qt_version == 6 {
+                let r = self.add_meta_type(&m.ret_type);
+                self.push_int(r);
+                for a in m.args.iter() {
+                    self.add_meta_type(&a.typ);
+                }
+            }
             offset += 1 + 2 * m.args.len() as u32;
         }
 
@@ -213,16 +261,33 @@ impl MetaObject {
             let n = self.add_string(p.alias.as_ref().unwrap_or(&p.name).to_string());
             let type_id = self.add_type(p.typ.clone());
             self.extend_from_int_slice(&[n, type_id, p.flags]);
+            if self.qt_version == 6 {
+                match p.notify_signal {
+                    None => self.push_int(0 as u32),
+                    Some(ref signal) => self.push_int(
+                        methods
+                            .iter()
+                            .position(|x| x.name == *signal && (x.flags & 0x4) != 0)
+                            .expect("Invalid NOTIFY signal") as u32,
+                    ),
+                };
+                self.push_int(0); // revision
+            }
         }
 
         for e in enums {
             let n = self.add_string(e.name.to_string());
-            // name, flag, count, data offset
-            self.extend_from_int_slice(&[n, 0x2, e.variants.len() as u32, offset]);
+            if self.qt_version == 5 {
+                // name, flag, count, data offset
+                self.extend_from_int_slice(&[n, 0x2, e.variants.len() as u32, offset]);
+            } else {
+                // name, alias, flag, count, data offset
+                self.extend_from_int_slice(&[n, n, 0x2, e.variants.len() as u32, offset]);
+            }
             offset += 2 * e.variants.len() as u32;
         }
 
-        if has_notify {
+        if self.qt_version == 5 && has_notify {
             for p in properties {
                 match p.notify_signal {
                     None => self.push_int(0 as u32),
@@ -314,7 +379,7 @@ fn map_method_parameters2(
         .collect()
 }
 
-pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
+pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
 
     let name = &ast.ident;
@@ -519,14 +584,42 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
     methods2.extend(methods);
     let methods = methods2;
 
-    let mut mo: MetaObject = Default::default();
-    mo.compute_int_data(name.to_string(), &properties, &methods, &[], signals.len());
-
-    let str_data32 = mo.build_string_data(32);
-    let str_data64 = mo.build_string_data(64);
-    let int_data = mo.int_data;
+    let mut meta_obj = MetaObject::new_with_qt_version(qt_version);
+    meta_obj.compute_int_data(name.to_string(), &properties, &methods, &[], signals.len());
+    let str_data = if qt_version == 6 {
+        let str_data = meta_obj.build_string_data(32);
+        quote! {
+            static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
+        }
+    } else {
+        let str_data32 = meta_obj.build_string_data(32);
+        let str_data64 = meta_obj.build_string_data(64);
+        quote! {
+            #[cfg(target_pointer_width = "64")]
+            static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
+            #[cfg(target_pointer_width = "32")]
+            static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
+        }
+    };
+    let int_data = meta_obj.int_data;
 
     use self::MetaObjectCall::*;
+
+    let meta_types_init = if qt_version == 6 {
+        let len = meta_obj.meta_types.len();
+        let meta_types = meta_obj.meta_types;
+        quote!({
+            qmetaobject_lazy_static! {
+                static ref ARRAY : [usize; #len] = [
+                    #(qmetatype_interface_ptr::<#meta_types>(
+                        &::std::ffi::CString::new(stringify!(#meta_types)).unwrap()) as usize),*
+                ];
+            }
+            ARRAY.as_ptr() as *const ::std::os::raw::c_void
+        })
+    } else {
+        quote!(::std::ptr::null())
+    };
 
     let get_object = if is_qobject {
         quote! {
@@ -773,7 +866,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: Some(static_metacall),
-                meta_types: ::std::ptr::null(),
+                related_meta_objects: ::std::ptr::null(),
+                meta_types: #meta_types_init,
                 extra_data: ::std::ptr::null(),
             };};
             return &*MO;
@@ -802,7 +896,8 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: Some(static_metacall #turbo_generics),
-                    meta_types: ::std::ptr::null(),
+                    related_meta_objects: ::std::ptr::null(),
+                    meta_types: #meta_types_init,
                     extra_data: ::std::ptr::null(),
             }));
             return &**mo;
@@ -886,11 +981,7 @@ pub fn generate(input: TokenStream, is_qobject: bool) -> TokenStream {
 
             fn static_meta_object() -> *const #crate_::QMetaObject {
 
-                #[cfg(target_pointer_width = "64")]
-                static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
-                #[cfg(target_pointer_width = "32")]
-                static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
-
+                #str_data
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
                 #[allow(unused_variables)]
@@ -988,7 +1079,7 @@ fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
     }
 }
 
-pub fn generate_enum(input: TokenStream) -> TokenStream {
+pub fn generate_enum(input: TokenStream, qt_version: QtVersion) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
 
     let name = &ast.ident;
@@ -1023,11 +1114,24 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
     }
 
     let enums = vec![meta_enum];
-    let mut mo: MetaObject = Default::default();
-    mo.compute_int_data(name.to_string(), &[], &[], &enums, 0);
-    let str_data32 = mo.build_string_data(32);
-    let str_data64 = mo.build_string_data(64);
-    let int_data = mo.int_data;
+    let mut meta_obj = MetaObject::new_with_qt_version(qt_version);
+    meta_obj.compute_int_data(name.to_string(), &[], &[], &enums, 0);
+    let str_data = if qt_version == 6 {
+        let str_data = meta_obj.build_string_data(32);
+        quote! {
+            static STRING_DATA : &'static [u8] = & [ #(#str_data),* ];
+        }
+    } else {
+        let str_data32 = meta_obj.build_string_data(32);
+        let str_data64 = meta_obj.build_string_data(64);
+        quote! {
+            #[cfg(target_pointer_width = "64")]
+            static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
+            #[cfg(target_pointer_width = "32")]
+            static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
+        }
+    };
+    let int_data = meta_obj.int_data;
 
     let mo = if ast.generics.params.is_empty() {
         quote! {
@@ -1036,6 +1140,7 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: None,
+                related_meta_objects: ::std::ptr::null(),
                 meta_types: ::std::ptr::null(),
                 extra_data: ::std::ptr::null(),
             };};
@@ -1048,12 +1153,7 @@ pub fn generate_enum(input: TokenStream) -> TokenStream {
     let body = quote! {
         impl #crate_::QEnum for #name {
             fn static_meta_object() -> *const #crate_::QMetaObject {
-
-                #[cfg(target_pointer_width = "64")]
-                static STRING_DATA : &'static [u8] = & [ #(#str_data64),* ];
-                #[cfg(target_pointer_width = "32")]
-                static STRING_DATA : &'static [u8] = & [ #(#str_data32),* ];
-
+                #str_data
                 static INT_DATA : &'static [u32] = & [ #(#int_data),* ];
 
                 #mo

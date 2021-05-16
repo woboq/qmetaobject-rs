@@ -56,19 +56,37 @@ fn get_crate(input: &DeriveInput) -> impl ToTokens {
 /// Implementation of #[derive(QObject)]
 #[proc_macro_derive(QObject, attributes(QMetaObjectCrate, qt_base_class))]
 pub fn qobject_impl(input: TokenStream) -> TokenStream {
-    qobject_impl::generate(input, true)
+    qobject_impl::generate(input, true, 5)
+}
+
+/// Implementation of #[derive(QObject)]
+#[proc_macro_derive(QObject6, attributes(QMetaObjectCrate, qt_base_class))]
+pub fn qobject_impl6(input: TokenStream) -> TokenStream {
+    qobject_impl::generate(input, true, 6)
 }
 
 /// Implementation of #[derive(QGadget)]
 #[proc_macro_derive(QGadget, attributes(QMetaObjectCrate))]
 pub fn qgadget_impl(input: TokenStream) -> TokenStream {
-    qobject_impl::generate(input, false)
+    qobject_impl::generate(input, false, 5)
+}
+
+/// Implementation of #[derive(QGadget)]
+#[proc_macro_derive(QGadget6, attributes(QMetaObjectCrate))]
+pub fn qgadget_impl6(input: TokenStream) -> TokenStream {
+    qobject_impl::generate(input, false, 6)
 }
 
 /// Implementation of #[derive(QEnum)]
 #[proc_macro_derive(QEnum, attributes(QMetaObjectCrate))]
 pub fn qenum_impl(input: TokenStream) -> TokenStream {
-    qobject_impl::generate_enum(input)
+    qobject_impl::generate_enum(input, 5)
+}
+
+/// Implementation of #[derive(QEnum)]
+#[proc_macro_derive(QEnum6, attributes(QMetaObjectCrate))]
+pub fn qenum_impl6(input: TokenStream) -> TokenStream {
+    qobject_impl::generate_enum(input, 6)
 }
 
 /// Implementation of the qmetaobject::qrc! macro

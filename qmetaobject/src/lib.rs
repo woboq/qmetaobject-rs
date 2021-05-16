@@ -155,7 +155,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
 
 #[doc(hidden)]
-pub use qmetaobject_impl::*;
+pub use qmetaobject_impl::{qrc_internal, SimpleListItem};
+
+#[doc(hidden)]
+#[cfg(not(qt_6_0))]
+pub use qmetaobject_impl::{QEnum, QGadget, QObject};
+#[doc(hidden)]
+#[cfg(qt_6_0)]
+pub use qmetaobject_impl::{QEnum6 as QEnum, QGadget6 as QGadget, QObject6 as QObject};
 
 // In order to be able to use the lazy_static macro from the QObject custom derive, we re-export
 // it under a new name qmetaobject_lazy_static.
@@ -621,6 +628,7 @@ pub struct QMetaObject {
     pub string_data: *const u8,
     pub data: *const u32,
     pub static_metacall: StaticMetacallFunction,
+    pub related_meta_objects: *const c_void,
     pub meta_types: *const c_void,
     pub extra_data: *const c_void,
 }
