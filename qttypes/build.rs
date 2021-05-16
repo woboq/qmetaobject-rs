@@ -173,6 +173,16 @@ fn main() {
     link_lib("Qml");
     #[cfg(feature = "qtwebengine")]
     link_lib("WebEngine");
+    #[cfg(feature = "qtquickcontrols2")]
+    link_lib("QuickControls2");
+    #[cfg(feature = "qtmultimedia")]
+    link_lib("Multimedia");
+    #[cfg(feature = "qtmultimediawidgets")]
+    link_lib("MultimediaWidgets");
+    #[cfg(feature = "qtsql")]
+    link_lib("Sql");
+    #[cfg(feature = "qttest")]
+    link_lib("Test");
 
     println!("cargo:rerun-if-changed=src/lib.rs");
 }
