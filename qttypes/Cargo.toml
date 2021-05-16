@@ -21,6 +21,16 @@ required = []
 qtquick = []
 # Link against QtWebEngine
 qtwebengine = []
+# Link against QtQuickControls2
+qtquickcontrols2 = []
+# Link against QtMultimedia
+qtmultimedia = []
+# Link against QtMultimediaWidgets
+qtmultimediawidgets = []
+# Link against QtSql
+qtsql = []
+# Link against QtTest
+qttest = []
 
 default = ["required"]
 
