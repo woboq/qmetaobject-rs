@@ -571,7 +571,11 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
         ] {
 
             QQmlPrivate::RegisterSingletonType api = {
+    #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
                 /*version*/ 2, // for now we are happy with pre-5.14 version 2
+    #else
+                /*structVersion */ 0,
+    #endif
 
                 /*uri*/ uri_ptr,
     #if QT_VERSION < QT_VERSION_CHECK(6,0,0)

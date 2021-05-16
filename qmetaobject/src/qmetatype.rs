@@ -479,9 +479,9 @@ impl QMetaType for QVariant {
     }
 }
 qdeclare_builtin_metatype! {QModelIndex => 42}
-qdeclare_builtin_metatype! {QPixmap => 65}
-qdeclare_builtin_metatype! {QColor => 67}
-qdeclare_builtin_metatype! {QImage => 70}
+qdeclare_builtin_metatype! {QPixmap => if cfg!(qt_6_0) { 0x1001 } else { 65 }}
+qdeclare_builtin_metatype! {QColor => if cfg!(qt_6_0) { 0x1003 } else { 67 }}
+qdeclare_builtin_metatype! {QImage => if cfg!(qt_6_0) { 0x1006 } else { 70 }}
 
 #[cfg(target_pointer_width = "32")]
 qdeclare_builtin_metatype! {isize  => 2} // That's QMetaType::Int

@@ -52,6 +52,8 @@ mod MetaObjectCall {
     pub const IndexOfMethod: u32 = 10;
     pub const RegisterPropertyMetaType: u32 = 11;
     pub const RegisterMethodArgumentMetaType: u32 = 12;
+
+    pub const Qt6MetaObjectCallOffset: u32 = QueryPropertyUser - ResetProperty;
 }
 
 fn builtin_type(ty: &syn::Type) -> u32 {
@@ -969,6 +971,8 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
         quote! { QGadget }
     };
 
+    let qt6_offset = if qt_version == 6 { Qt6MetaObjectCallOffset } else { 0 };
+
     let mut body = quote! {
         #[allow(non_snake_case)]
         impl #impl_generics #name #ty_generics #where_clause {
@@ -998,9 +1002,9 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                             #(#method_meta_call)*
                             _ => { let _ = obj; }
                         }
-                    }} else if c == #IndexOfMethod {
+                    }} else if c == #IndexOfMethod - #qt6_offset {
                         #(#index_of_method)*
-                    } else if c == #RegisterMethodArgumentMetaType {
+                    } else if c == #RegisterMethodArgumentMetaType - #qt6_offset {
                         match idx {
                             #(#register_arguments)*
                             _ => {}
