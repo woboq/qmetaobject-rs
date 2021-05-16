@@ -208,18 +208,3 @@ const RustObjectDescription *rustObjectDescription() {
     };
     return &desc;
 }
-
-using CreatorFunction = void (*)(void *);
-
-namespace QtPrivate {
-// Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor
-// is a friend
-template<>
-struct ConverterFunctor<TraitObject, TraitObject, TraitObject> : public AbstractConverterFunction
-{
-    using AbstractConverterFunction::AbstractConverterFunction;
-    bool registerConverter(int from, int to) {
-        return QMetaType::registerConverterFunction(this, from, to);
-    }
-};
-}

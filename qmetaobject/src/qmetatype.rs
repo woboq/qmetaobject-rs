@@ -19,6 +19,58 @@ use cpp::cpp;
 
 use super::*;
 
+cpp! {{
+
+namespace QtPrivate {
+// Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor
+// is a friend
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+template<>
+struct ConverterFunctor<TraitObject, TraitObject, TraitObject> : public AbstractConverterFunction
+{
+    using AbstractConverterFunction::AbstractConverterFunction;
+    bool registerConverter(int from, int to) {
+        return QMetaType::registerConverterFunction(this, from, to);
+    }
+};
+#else
+template<>
+struct IsMetaTypePair<TraitObject, true>
+{
+    inline static bool registerConverter(QMetaType::ConverterFunction f, QMetaType from, QMetaType to) {
+        return QMetaType::registerConverterFunction(f, from, to);
+    }
+};
+#endif
+}
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    using RustQMetaType = QMetaType;
+    using RustMetaTypeConverterFn = QtPrivate::AbstractConverterFunction::Converter;
+    static void rust_register_qmetatype_conversion(int from, int to, RustMetaTypeConverterFn converter_fn) {
+        // NOTE: the ConverterFunctor are gonna be leaking (in Qt, they are supposed to be allocated in static storage
+        auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
+        if (!c->registerConverter(from, to))
+            delete c;
+    }
+#else
+    struct RustQMetaType : QtPrivate::QMetaTypeInterface {
+        // some typedef that are gone in Qt5
+        typedef void (*Deleter)(void *);
+        typedef void (*Creator)(const QtPrivate::QMetaTypeInterface*, void *, const void *); // copy
+        typedef void (*Destructor)(const QtPrivate::QMetaTypeInterface*, void *);
+        typedef void (*Constructor)(const QtPrivate::QMetaTypeInterface*, void *);
+
+        const QMetaObject *metaObject;
+        QByteArray name;
+    };
+    typedef bool (*RustMetaTypeConverterFn)(const void *src, void *dst);
+    static void rust_register_qmetatype_conversion(int from, int to, RustMetaTypeConverterFn converter_fn) {
+        QtPrivate::IsMetaTypePair<TraitObject, true>::registerConverter(converter_fn, QMetaType(from), QMetaType(to));
+    }
+#endif
+}}
+
 fn register_metatype_common<T: QMetaType>(
     name: *const c_char,
     gadget_metaobject: *const QMetaObject,
@@ -35,12 +87,19 @@ fn register_metatype_common<T: QMetaType>(
     let mut h = HASHMAP.lock().unwrap_or_else(|e| e.into_inner());
     let e = h.entry(TypeId::of::<T>()).or_insert_with(|| {
         let size = std::mem::size_of::<T>() as u32;
+        let align = std::mem::align_of::<T>() as u16;
 
+        #[cfg(not(qt_6_0))]
         extern "C" fn deleter_fn<T>(v: *mut T) {
             let _ = unsafe { Box::from_raw(v) };
         }
+        #[cfg(not(qt_6_0))]
         let deleter_fn: extern "C" fn(v: *mut T) = deleter_fn;
 
+        #[cfg(qt_6_0)]
+        let deleter_fn: *const c_void = core::ptr::null();
+
+        #[cfg(not(qt_6_0))]
         extern "C" fn creator_fn<T: Default + Clone>(c: *const T) -> *const T {
             if c.is_null() {
                 Box::into_raw(Box::new(Default::default()))
@@ -48,15 +107,17 @@ fn register_metatype_common<T: QMetaType>(
                 Box::into_raw(Box::new(unsafe { (*c).clone() }))
             }
         }
-        let creator_fn: extern "C" fn(c: *const T) -> *const T = creator_fn;
+        #[cfg(not(qt_6_0))]
+        let creator_or_copy_fn: extern "C" fn(c: *const T) -> *const T = creator_fn;
 
-        extern "C" fn destructor_fn<T>(ptr: *mut T) {
+        extern "C" fn destructor_fn<T>(#[cfg(qt_6_0)] _ : *const c_void, ptr: *mut T) {
             unsafe {
                 std::ptr::read(ptr);
             }
         }
-        let destructor_fn: extern "C" fn(ptr: *mut T) = destructor_fn;
+        let destructor_fn: extern "C" fn(#[cfg(qt_6_0)] _ : *const c_void, ptr: *mut T) = destructor_fn;
 
+        #[cfg(not(qt_6_0))]
         extern "C" fn constructor_fn<T: Default + Clone>(dst: *mut T, c: *const T) -> *mut T {
             unsafe {
                 let n = if c.is_null() {
@@ -68,56 +129,129 @@ fn register_metatype_common<T: QMetaType>(
             }
             dst
         }
+        #[cfg(not(qt_6_0))]
         let constructor_fn: extern "C" fn(ptr: *mut T, c: *const T) -> *mut T = constructor_fn;
+
+        #[cfg(qt_6_0)]
+        unsafe extern "C" fn copy_constructor_fn<T: Clone>(_: *const c_void, dst: *mut T, c: *const T) {
+            std::ptr::write(dst, (*c).clone());
+        }
+        #[cfg(qt_6_0)]
+        let creator_or_copy_fn: unsafe extern "C" fn(_: *const c_void, ptr: *mut T, c: *const T)  = copy_constructor_fn;
+
+        #[cfg(qt_6_0)]
+        unsafe extern "C" fn default_constructor_fn<T: Default>(_: *const c_void, dst: *mut T) {
+            std::ptr::write(dst, T::default());
+        }
+        #[cfg(qt_6_0)]
+        let constructor_fn: unsafe extern "C" fn(_: *const c_void, dst: *mut T) = default_constructor_fn;
 
         let name = CString::new(format!("{:?}", TypeId::of::<T>())).unwrap();
         let name = name.as_ptr();
         let type_id = cpp!(unsafe [
             name as "const char *",
-            size as "int",
-            deleter_fn as "QMetaType::Deleter",
-            creator_fn as "QMetaType::Creator",
-            destructor_fn as "QMetaType::Destructor",
-            constructor_fn as "QMetaType::Constructor",
+            size as "uint",
+            align as "ushort",
+            deleter_fn as "RustQMetaType::Deleter",
+            creator_or_copy_fn as "RustQMetaType::Creator",
+            destructor_fn as "RustQMetaType::Destructor",
+            constructor_fn as "RustQMetaType::Constructor",
             gadget_metaobject as "const QMetaObject *"
         ] -> i32 as "int" {
             QMetaType::TypeFlags extraFlag(gadget_metaobject ? QMetaType::IsGadget : 0);
+            auto flags = QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType | extraFlag;
+        #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+            Q_UNUSED(align);
             return QMetaType::registerType(
                 gadget_metaobject ? gadget_metaobject->className() : name,
                 deleter_fn,
-                creator_fn,
+                creator_or_copy_fn,
                 destructor_fn,
                 constructor_fn,
                 size,
-                QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType | extraFlag,
+                flags,
                 gadget_metaobject
             );
+        #else
+            QByteArray name_ba(gadget_metaobject ? gadget_metaobject->className() : name);
+            Q_UNUSED(deleter_fn)
+            // FIXME: the rust code generate Qt5 compatible function and we wrap them in the Qt6 ones, it would be better
+            // to just use the Qt6 signature directly
+            // We should also consider building this structure at compile time!
+            auto mt = new RustQMetaType {
+                QtPrivate::QMetaTypeInterface {
+                    /*.revision=*/ 0,
+                    /*.alignment=*/ align,
+                    /*.size=*/ size,
+                    /*.flags=*/ flags,
+                    /*.typeId=*/ 0,
+                    /*.metaObjectFn=*/ [](const QtPrivate::QMetaTypeInterface *iface) { return static_cast<const RustQMetaType *>(iface)->metaObject; },
+                    /*.name=*/ name_ba.constData(),
+                    /*.defaultCtr=*/ constructor_fn,
+                    /*.copyCtr=*/ creator_or_copy_fn,
+                    /*.moveCtr=*/ nullptr,
+                    /*.dtor=*/ destructor_fn,
+                    /*.equals=*/ nullptr,
+                    /*.lessThan=*/ nullptr,
+                    /*.debugStream=*/ nullptr,
+                    /*.dataStreamOut=*/ nullptr,
+                    /*.dataStreamIn=*/ nullptr,
+                    /*.legacyRegisterOp=*/ nullptr,
+                }, gadget_metaobject, name_ba
+            };
+            return QMetaType(mt).id();
+        #endif
         });
 
+
+        /*
+        #[cfg(qt_6_0)]
+        let type_id = {
+            #[repr(C)]
+            #[allow(style)]
+            struct QMetaTypeInterface {
+                revision: u16,
+                alignment: u16,
+                size: u32,
+                flags: u32,
+                typeId: core::sync::atomic::AtomicI32,
+                metaObjectFn: extern "C" fn(*const QMetaTypeInterface)-> *const QMetaObject,
+                name: *const c_char,
+                defaultCtr:  extern "C" fn(*const QMetaTypeInterface, *mut c_void),
+                copyCtr:  extern "C" fn(*const QMetaTypeInterface, *mut c_void, *const c_void),
+                moveCtr:  extern "C" fn(*const QMetaTypeInterface, *mut c_void, *mut c_void),
+                dtor: extern "C" fn(*const QMetaTypeInterface, *mut c_void),
+                equals: usize,
+                lessThan: usize,
+                debugStream: usize,
+                dataStreamOut: usize,
+                dataStreamIn: usize,
+                legacyRegisterOp: usize,
+
+                /// Added for the rust one
+                meta_object: *const QMetaObject,
+            };
+        };*/
+
         if T::CONVERSION_TO_STRING.is_some() {
-            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src: &T, dst : *mut QString) -> bool {
+            extern "C" fn converter_fn<T : QMetaType>(#[cfg(not(qt_6_0))] _ : *const c_void, src: &T, dst : *mut QString) -> bool {
                 unsafe { std::ptr::write(dst, (T::CONVERSION_TO_STRING.unwrap())(src)) };
                 true
             }
-            let converter_fn: extern "C" fn(*const c_void, &T, *mut QString) -> bool = converter_fn;
-            cpp!(unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
-                // NOTE: the ConverterFunctor are gonna be leaking (in Qt, they are supposed to be allocated in static storage
-                auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
-                if (!c->registerConverter(type_id, QMetaType::QString))
-                    delete c;
+            let converter_fn: extern "C" fn(#[cfg(not(qt_6_0))] *const c_void, &T, *mut QString) -> bool = converter_fn;
+            cpp!(unsafe [type_id as "int", converter_fn as "RustMetaTypeConverterFn"] {
+                rust_register_qmetatype_conversion(type_id, QMetaType::QString, converter_fn);
             });
         };
 
         if T::CONVERSION_FROM_STRING.is_some() {
-            extern "C" fn converter_fn<T : QMetaType>(_ : *const c_void, src : &QString, dst : *mut T) -> bool {
+            extern "C" fn converter_fn<T : QMetaType>(#[cfg(not(qt_6_0))] _ : *const c_void, src : &QString, dst : *mut T) -> bool {
                 unsafe { std::ptr::write(dst, (T::CONVERSION_FROM_STRING.unwrap())(src)) };
                 true
             }
-            let converter_fn: extern "C" fn(*const c_void, &QString, *mut T) -> bool = converter_fn;
-            cpp!(unsafe [type_id as "int", converter_fn as "QtPrivate::AbstractConverterFunction::Converter"] {
-                auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
-                if (!c->registerConverter(QMetaType::QString, type_id))
-                    delete c;
+            let converter_fn: extern "C" fn(#[cfg(not(qt_6_0))] *const c_void, &QString, *mut T) -> bool = converter_fn;
+            cpp!(unsafe [type_id as "int", converter_fn as "RustMetaTypeConverterFn"] {
+                rust_register_qmetatype_conversion(QMetaType::QString, type_id, converter_fn);
             });
         };
         (type_id, HashSet::new())
@@ -132,7 +266,12 @@ fn register_metatype_common<T: QMetaType>(
                 }
                 return exist;
             }
+        #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
             return QMetaType::registerTypedef(name, id);
+        #else
+            QMetaType::registerNormalizedTypedef(QMetaObject::normalizedType(name), QMetaType(id));
+            return id;
+        #endif
         });
         assert_eq!(x, id, "Attempt to register the same type with different name");
         e.1.insert(unsafe { CStr::from_ptr(name) }.to_owned());
@@ -143,8 +282,11 @@ fn register_metatype_common<T: QMetaType>(
 fn register_metatype_qobject<T: QObject>() -> i32 {
     let metaobject = T::static_meta_object();
     cpp!(unsafe [metaobject as "const QMetaObject *"] -> i32 as "int" {
+        QByteArray name_ba(metaobject->className());
+        name_ba += "*";
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         return QMetaType::registerType(
-            metaobject->className(),
+            name_ba.constData(),
             [](void *p) { delete static_cast<void **>(p); },
             [](const void *p) -> void * {
                 using T = void *;
@@ -156,6 +298,36 @@ fn register_metatype_qobject<T: QObject>() -> i32 {
             QMetaType::MovableType | QMetaType::PointerToQObject,
             metaobject
         );
+    #else
+        // TODO: We should also consider building this structure at compile time!
+        auto mt = new RustQMetaType {
+            QtPrivate::QMetaTypeInterface {
+                /*.revision=*/ 0,
+                /*.alignment=*/ alignof(void *),
+                /*.size=*/ sizeof(void *),
+                /*.flags=*/ QMetaType::RelocatableType | QMetaType::PointerToQObject,
+                /*.typeId=*/ 0,
+                /*.metaObjectFn=*/ [](const QtPrivate::QMetaTypeInterface *iface)
+                    { return static_cast<const RustQMetaType *>(iface)->metaObject; },
+                /*.name=*/ name_ba.constData(),
+                /*.defaultCtr=*/ [](const QtPrivate::QMetaTypeInterface *, void *dst)
+                    { *static_cast<void**>(dst) = nullptr; },
+                /*.copyCtr=*/ [](const QtPrivate::QMetaTypeInterface *, void *dst, const void *src)
+                    { *static_cast<void**>(dst) = *static_cast<void*const*>(src); },
+                /*.moveCtr=*/ [](const QtPrivate::QMetaTypeInterface *, void *dst, void *src)
+                    { *static_cast<void**>(dst) = *static_cast<void*const*>(src); },
+                /*.dtor=*/ nullptr,
+                /*.equals=*/ [](const QtPrivate::QMetaTypeInterface *, const void *a, const void *b)
+                    { return *static_cast<void*const*>(a) == *static_cast<void*const*>(b); },
+                /*.lessThan=*/ nullptr,
+                /*.debugStream=*/ nullptr,
+                /*.dataStreamOut=*/ nullptr,
+                /*.dataStreamIn=*/ nullptr,
+                /*.legacyRegisterOp=*/ nullptr,
+            }, metaobject, name_ba
+        };
+        return QMetaType(mt).id();
+    #endif
     })
 }
 
@@ -193,7 +365,11 @@ pub trait QMetaType: Clone + Default + 'static {
     fn to_qvariant(&self) -> QVariant {
         let id: i32 = Self::id();
         cpp!(unsafe [self as "const void *", id as "int"] -> QVariant as "QVariant" {
+        #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
             return QVariant(id, self);
+        #else
+            return QVariant(QMetaType(id), self);
+        #endif
         })
     }
 

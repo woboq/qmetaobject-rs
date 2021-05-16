@@ -70,6 +70,12 @@ cpp! {{
         return child->inherits(check);
 #endif
     }
+
+#if QT_VERSION <= QT_VERSION_CHECK(6, 0, 0)
+    using CreatorFunction = void (*)(void *);
+#else
+    using CreatorFunction = void (*)(void *, void*);
+#endif
 }}
 
 cpp_class!(
@@ -402,7 +408,10 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         })
     }
 
-    extern "C" fn creator_fn<T: QObject + Default + Sized>(c: *mut c_void) {
+    extern "C" fn creator_fn<T: QObject + Default + Sized>(
+        c: *mut c_void,
+        #[cfg(qt_6_0)] _: *mut c_void,
+    ) {
         let b: Box<RefCell<T>> = Box::new(RefCell::new(T::default()));
         let ed: extern "C" fn(c: *mut c_void) = extra_destruct;
         unsafe {
@@ -410,9 +419,11 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         }
         Box::leak(b);
     }
-    let creator_fn: extern "C" fn(c: *mut c_void) = creator_fn::<T>;
+    let creator_fn: extern "C" fn(c: *mut c_void, #[cfg(qt_6_0)] _: *mut c_void) = creator_fn::<T>;
 
     let size = T::cpp_size();
+
+    let type_id = <RefCell<T> as PropertyType>::register_type(Default::default());
 
     cpp!(unsafe [
         qml_name_ptr as "char *",
@@ -421,15 +432,10 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         version_minor as "int",
         meta_object as "const QMetaObject *",
         creator_fn as "CreatorFunction",
-        size as "size_t"
+        size as "size_t",
+        type_id as "int"
     ] {
-        const char *className = qml_name_ptr;
         // BEGIN: From QML_GETTYPENAMES
-        const int nameLen = int(strlen(className));
-        QVarLengthArray<char, 48> pointerName(nameLen + 2);
-        memcpy(pointerName.data(), className, size_t(nameLen));
-        pointerName[nameLen] = '*';
-        pointerName[nameLen + 1] = '\0';
         // FIXME: list type?
         /*const int listLen = int(strlen("QQmlListProperty<"));
         QVarLengthArray<char,64> listName(listLen + nameLen + 2);
@@ -439,15 +445,6 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         listName[listLen+nameLen+1] = '\0';*/
         // END
 
-        auto ptrType = QMetaType::registerNormalizedType(
-            pointerName.constData(),
-            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Destruct,
-            QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Construct,
-            int(sizeof(void *)),
-            QMetaType::MovableType | QMetaType::PointerToQObject,
-            meta_object
-        );
-
         int parserStatusCast = meta_object && qmeta_inherits(meta_object, &QQuickItem::staticMetaObject)
             ? QQmlPrivate::StaticCastSelector<QQuickItem, QQmlParserStatus>::cast()
             : -1;
@@ -455,15 +452,29 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         QQmlPrivate::RegisterType api = {
             /*version*/ 0,
 
-            /*typeId*/ ptrType,
-            /*listId*/ 0,  // FIXME: list type?
+        #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+            /*typeId*/ type_id,
+        #else
+            /*typeId*/ QMetaType(type_id),
+        #endif
+            /*listId*/ {},  // FIXME: list type?
             /*objectSize*/ int(size),
             /*create*/ creator_fn,
+        #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+            /* userdata */ nullptr,
+        #endif
             /*noCreationReason*/ QString(),
+        #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+            /* createValueType */ nullptr,
+        #endif
 
             /*uri*/ uri_ptr,
+        #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
             /*versionMajor*/ version_major,
             /*versionMinor*/ version_minor,
+        #else
+            /*version*/ QTypeRevision::fromVersion(version_major, version_minor),
+        #endif
             /*elementName*/ qml_name_ptr,
             /*metaObject*/ meta_object,
 
@@ -477,7 +488,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
             /*extensionObjectCreate*/ nullptr,
             /*extensionMetaObject*/ nullptr,
             /*customParser*/ nullptr,
-            /*revision*/ 0  // FIXME: support revisions?
+            /*revision*/ {}  // FIXME: support revisions?
         };
         QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &api);
     })
@@ -547,38 +558,28 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
     }
     let callback_fn: QmlRegisterSingletonTypeCallback = callback_fn::<T>;
 
+    let type_id = <RefCell<T> as PropertyType>::register_type(Default::default());
+
     cpp!(unsafe [
             uri_ptr as "const char *",
             version_major as "int",
             version_minor as "int",
             qml_name_ptr as "const char *",
             meta_object as "const QMetaObject *",
-            callback_fn as "QmlRegisterSingletonTypeCallback"
+            callback_fn as "QmlRegisterSingletonTypeCallback",
+            type_id as "int"
         ] {
-            const char *className = qml_name_ptr;
-            // BEGIN: From QML_GETTYPENAMES
-            const int nameLen = int(strlen(className));
-            QVarLengthArray<char, 48> pointerName(nameLen + 2);
-            memcpy(pointerName.data(), className, size_t(nameLen));
-            pointerName[nameLen] = '*';
-            pointerName[nameLen + 1] = '\0';
-            // END
-
-            auto ptrType = QMetaType::registerNormalizedType(
-                pointerName.constData(),
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Destruct,
-                QtMetaTypePrivate::QMetaTypeFunctionHelper<void *>::Construct,
-                int(sizeof(void *)),
-                QMetaType::MovableType | QMetaType::PointerToQObject,
-                meta_object
-            );
 
             QQmlPrivate::RegisterSingletonType api = {
                 /*version*/ 2, // for now we are happy with pre-5.14 version 2
 
                 /*uri*/ uri_ptr,
+    #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
                 /*versionMajor*/ version_major,
                 /*versionMinor*/ version_minor,
+    #else
+                /*version*/ QTypeRevision::fromVersion(version_major, version_minor),
+    #endif
                 /*typeName*/ qml_name_ptr,
 
                 /*scriptApi*/ nullptr,
@@ -586,9 +587,17 @@ pub fn qml_register_singleton_type<T: QObject + QSingletonInit + Sized + Default
                 // new in version 1
                 /*instanceMetaObject*/ meta_object,
                 // new in version 2
-                /*typeId*/ ptrType,
-                /*revision*/ 0,
-    #if QT_VERSION >= QT_VERSION_CHECK(5,14,0)
+    #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+                /*typeId*/ type_id,
+    #else
+                /*typeId*/ QMetaType(type_id),
+    #endif
+    #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+                /* extensionObjectCreate */ nullptr,
+                /* extensionMetaObject */ nullptr,
+    #endif
+                /*revision*/ {},
+    #if QT_VERSION >= QT_VERSION_CHECK(5,14,0) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
                 // new in version 3
                 /*generalizedQobjectApi*/ {}
     #endif
@@ -718,6 +727,12 @@ cpp! {{
     #include <qmetaobject_rust.hpp>
     #include <QtQuick/QQuickItem>
 
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        #define QT_QQUICKITEM_GEOMETRYCHANGE geometryChanged
+    #else
+        #define QT_QQUICKITEM_GEOMETRYCHANGE geometryChange
+    #endif
+
     struct Rust_QQuickItem : RustObject<QQuickItem> {
     /*
         virtual QRectF boundingRect() const;
@@ -779,8 +794,7 @@ cpp! {{
         virtual void dropEvent(QDropEvent *);
         virtual bool childMouseEventFilter(QQuickItem *, QEvent *);
         virtual void windowDeactivateEvent();*/
-        virtual void geometryChanged(const QRectF &new_geometry,
-                                     const QRectF &old_geometry) {
+        void QT_QQUICKITEM_GEOMETRYCHANGE (const QRectF &new_geometry, const QRectF &old_geometry) override{
             rust!(Rust_QQuickItem_geometryChanged[
                 rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject",
                 new_geometry: QRectF as "QRectF",
@@ -788,7 +802,7 @@ cpp! {{
             ] {
                 rust_object.borrow_mut().geometry_changed(new_geometry, old_geometry);
             });
-            QQuickItem::geometryChanged(new_geometry, old_geometry);
+            QQuickItem::QT_QQUICKITEM_GEOMETRYCHANGE(new_geometry, old_geometry);
         }
 
         QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
