@@ -61,8 +61,34 @@ struct IsMetaTypePair<TraitObject, true>
         typedef void (*Destructor)(const QtPrivate::QMetaTypeInterface*, void *);
         typedef void (*Constructor)(const QtPrivate::QMetaTypeInterface*, void *);
 
+
+
         const QMetaObject *metaObject;
         QByteArray name;
+
+        RustQMetaType(const QMetaObject *metaObject, QByteArray name,
+                ushort align, uint size, uint flags, Constructor constructor_fn, Creator creator_or_copy_fn, Destructor destructor_fn,
+                QtPrivate::QMetaTypeInterface::EqualsFn equals_fn = nullptr)
+            : QtPrivate::QMetaTypeInterface {
+                /*.revision=*/ 0,
+                /*.alignment=*/ align,
+                /*.size=*/ size,
+                /*.flags=*/ flags,
+                /*.typeId=*/ 0,
+                /*.metaObjectFn=*/ [](const QtPrivate::QMetaTypeInterface *iface) { return static_cast<const RustQMetaType *>(iface)->metaObject; },
+                /*.name=*/ name.constData(),
+                /*.defaultCtr=*/ constructor_fn,
+                /*.copyCtr=*/ creator_or_copy_fn,
+                /*.moveCtr=*/ nullptr,
+                /*.dtor=*/ destructor_fn,
+                /*.equals=*/ equals_fn,
+                /*.lessThan=*/ nullptr,
+                /*.debugStream=*/ nullptr,
+                /*.dataStreamOut=*/ nullptr,
+                /*.dataStreamIn=*/ nullptr,
+                /*.legacyRegisterOp=*/ nullptr,
+            }
+            , metaObject(metaObject), name(std::move(name)) {}
     };
     typedef bool (*RustMetaTypeConverterFn)(const void *src, void *dst);
     static void rust_register_qmetatype_conversion(int from, int to, RustMetaTypeConverterFn converter_fn) {
@@ -178,27 +204,7 @@ fn register_metatype_common<T: QMetaType>(
             // FIXME: the rust code generate Qt5 compatible function and we wrap them in the Qt6 ones, it would be better
             // to just use the Qt6 signature directly
             // We should also consider building this structure at compile time!
-            auto mt = new RustQMetaType {
-                QtPrivate::QMetaTypeInterface {
-                    /*.revision=*/ 0,
-                    /*.alignment=*/ align,
-                    /*.size=*/ size,
-                    /*.flags=*/ flags,
-                    /*.typeId=*/ 0,
-                    /*.metaObjectFn=*/ [](const QtPrivate::QMetaTypeInterface *iface) { return static_cast<const RustQMetaType *>(iface)->metaObject; },
-                    /*.name=*/ name_ba.constData(),
-                    /*.defaultCtr=*/ constructor_fn,
-                    /*.copyCtr=*/ creator_or_copy_fn,
-                    /*.moveCtr=*/ nullptr,
-                    /*.dtor=*/ destructor_fn,
-                    /*.equals=*/ nullptr,
-                    /*.lessThan=*/ nullptr,
-                    /*.debugStream=*/ nullptr,
-                    /*.dataStreamOut=*/ nullptr,
-                    /*.dataStreamIn=*/ nullptr,
-                    /*.legacyRegisterOp=*/ nullptr,
-                }, gadget_metaobject, name_ba
-            };
+            auto mt = new RustQMetaType(gadget_metaobject, name_ba, align, size, flags, constructor_fn, creator_or_copy_fn, destructor_fn);
             return QMetaType(mt).id();
         #endif
         });
@@ -300,32 +306,15 @@ fn register_metatype_qobject<T: QObject>() -> i32 {
         );
     #else
         // TODO: We should also consider building this structure at compile time!
-        auto mt = new RustQMetaType {
-            QtPrivate::QMetaTypeInterface {
-                /*.revision=*/ 0,
-                /*.alignment=*/ alignof(void *),
-                /*.size=*/ sizeof(void *),
-                /*.flags=*/ QMetaType::RelocatableType | QMetaType::PointerToQObject,
-                /*.typeId=*/ 0,
-                /*.metaObjectFn=*/ [](const QtPrivate::QMetaTypeInterface *iface)
-                    { return static_cast<const RustQMetaType *>(iface)->metaObject; },
-                /*.name=*/ name_ba.constData(),
-                /*.defaultCtr=*/ [](const QtPrivate::QMetaTypeInterface *, void *dst)
+        auto mt = new RustQMetaType(metaobject, name_ba,
+            alignof(void *), sizeof(void *), QMetaType::RelocatableType | QMetaType::PointerToQObject,
+                [](const QtPrivate::QMetaTypeInterface *, void *dst)
                     { *static_cast<void**>(dst) = nullptr; },
-                /*.copyCtr=*/ [](const QtPrivate::QMetaTypeInterface *, void *dst, const void *src)
+                [](const QtPrivate::QMetaTypeInterface *, void *dst, const void *src)
                     { *static_cast<void**>(dst) = *static_cast<void*const*>(src); },
-                /*.moveCtr=*/ [](const QtPrivate::QMetaTypeInterface *, void *dst, void *src)
-                    { *static_cast<void**>(dst) = *static_cast<void*const*>(src); },
-                /*.dtor=*/ nullptr,
-                /*.equals=*/ [](const QtPrivate::QMetaTypeInterface *, const void *a, const void *b)
-                    { return *static_cast<void*const*>(a) == *static_cast<void*const*>(b); },
-                /*.lessThan=*/ nullptr,
-                /*.debugStream=*/ nullptr,
-                /*.dataStreamOut=*/ nullptr,
-                /*.dataStreamIn=*/ nullptr,
-                /*.legacyRegisterOp=*/ nullptr,
-            }, metaobject, name_ba
-        };
+                nullptr,
+                [](const QtPrivate::QMetaTypeInterface *, const void *a, const void *b)
+                    { return *static_cast<void*const*>(a) == *static_cast<void*const*>(b); });
         return QMetaType(mt).id();
     #endif
     })
@@ -404,7 +393,7 @@ pub fn qmetatype_interface_ptr<T: PropertyType>(name: &CStr) -> *const c_void {
     let id = T::register_type(name);
     cpp!(unsafe [id as "int"] -> *const c_void as "const void*" {
     #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
-        QMetaType(id).iface();
+        return QMetaType(id).iface();
     #else
         Q_UNUSED(id);
         return nullptr;
