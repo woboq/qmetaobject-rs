@@ -81,6 +81,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!         .include(&qt_include_path)
 //!         .include(format!("{}/QtGui", qt_include_path))
 //!         .include(format!("{}/QtCore", qt_include_path))
+//!         .flag_if_supported("-std=c++17")
+//!         .flag_if_supported("/std:c++17")
 //!         .build("src/main.rs");
 //! }
 //! ```
