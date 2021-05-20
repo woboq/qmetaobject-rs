@@ -50,3 +50,37 @@ jobs:
       # I'm getting error i don't know how to solve 'dyld: Library not loaded: @rpath/QtCore.framework/Versions/5/QtCore
       if: matrix.os != 'macos-latest'
       run: cargo test --all-features
+
+
+  # Qt6 is in a different job right now because it does not have many modules and most example don't compile
+  qt6:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      QT_QPA_PLATFORM: offscreen
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+    - name: Cache Qt
+      id: cache-qt6
+      uses: actions/cache@v1
+      with:
+        path: ../Qt
+        key: QtCache-${{ runner.os }}-6
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
+      with:
+        version: 6.1.0
+        cached: ${{ steps.cache-qt6.outputs.cache-hit }}
+    - name: Test
+      run: |
+        cargo test --manifest-path qttypes/Cargo.toml
+        cargo test --manifest-path qmetaobject_impl/Cargo.toml
+        cargo test --manifest-path qmetaobject/Cargo.toml
