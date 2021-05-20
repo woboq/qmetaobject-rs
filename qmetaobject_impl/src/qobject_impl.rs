@@ -611,7 +611,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
         let len = meta_obj.meta_types.len();
         let meta_types = meta_obj.meta_types;
         quote!({
-            qmetaobject_lazy_static! {
+            #crate_::qmetaobject_lazy_static! {
                 static ref ARRAY : [usize; #len] = [
                     #(qmetatype_interface_ptr::<#meta_types>(
                         &::std::ffi::CString::new(stringify!(#meta_types)).unwrap()) as usize),*
@@ -863,7 +863,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
 
     let mo = if ast.generics.params.is_empty() {
         quote! {
-            qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
+            #crate_::qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
                 super_data: #base_meta_object,
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
@@ -887,7 +887,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
             use ::std::any::TypeId;
 
             // FIXME! this could be global
-            qmetaobject_lazy_static! {
+            #crate_::qmetaobject_lazy_static! {
                 static ref HASHMAP: Mutex<HashMap<TypeId, Box<#crate_::QMetaObject>>> =
                     Mutex::new(HashMap::new());
             };
@@ -1139,7 +1139,7 @@ pub fn generate_enum(input: TokenStream, qt_version: QtVersion) -> TokenStream {
 
     let mo = if ast.generics.params.is_empty() {
         quote! {
-            qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
+            #crate_::qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
                 super_data: ::std::ptr::null(),
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
