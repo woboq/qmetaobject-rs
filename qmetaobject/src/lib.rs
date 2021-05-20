@@ -625,6 +625,8 @@ type StaticMetacallFunction = Option<
 pub struct QMetaObject {
     // fields are slightly renamed from Qt to match Rust code style
     pub super_data: *const QMetaObject,
+    #[cfg(all(qt_6_0, target_os = "windows"))] // QT_NO_DATA_RELOCATION
+    pub super_data_getter: Option<extern "C" fn() -> *const QMetaObject>,
     pub string_data: *const u8,
     pub data: *const u32,
     pub static_metacall: StaticMetacallFunction,

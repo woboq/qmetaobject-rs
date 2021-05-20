@@ -607,20 +607,26 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
 
     use self::MetaObjectCall::*;
 
-    let meta_types_init = if qt_version == 6 {
+    let (meta_types_init, super_data_getter) = if qt_version == 6 {
         let len = meta_obj.meta_types.len();
         let meta_types = meta_obj.meta_types;
-        quote!({
-            #crate_::qmetaobject_lazy_static! {
-                static ref ARRAY : [usize; #len] = [
-                    #(qmetatype_interface_ptr::<#meta_types>(
-                        &::std::ffi::CString::new(stringify!(#meta_types)).unwrap()) as usize),*
-                ];
-            }
-            ARRAY.as_ptr() as *const ::std::os::raw::c_void
-        })
+        (
+            quote!({
+                #crate_::qmetaobject_lazy_static! {
+                    static ref ARRAY : [usize; #len] = [
+                        #(qmetatype_interface_ptr::<#meta_types>(
+                            &::std::ffi::CString::new(stringify!(#meta_types)).unwrap()) as usize),*
+                    ];
+                }
+                ARRAY.as_ptr() as *const ::std::os::raw::c_void
+            }),
+            quote!(
+                #[cfg(target_os = "windows")]
+                super_data_getter: None,
+            ),
+        )
     } else {
-        quote!(::std::ptr::null())
+        (quote!(::std::ptr::null()), quote!())
     };
 
     let get_object = if is_qobject {
@@ -865,6 +871,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
         quote! {
             #crate_::qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
                 super_data: #base_meta_object,
+                #super_data_getter
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: Some(static_metacall),
@@ -895,6 +902,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
             let mo = h.entry(TypeId::of::<#name #ty_generics>()).or_insert_with(
                 || Box::new(#crate_::QMetaObject {
                     super_data: #base_meta_object,
+                    #super_data_getter
                     string_data: STRING_DATA.as_ptr(),
                     data: INT_DATA.as_ptr(),
                     static_metacall: Some(static_metacall #turbo_generics),
@@ -1137,10 +1145,20 @@ pub fn generate_enum(input: TokenStream, qt_version: QtVersion) -> TokenStream {
     };
     let int_data = meta_obj.int_data;
 
+    let super_data_getter = if qt_version == 6 {
+        quote!(
+            #[cfg(target_os = "windows")]
+            super_data_getter: None,
+        )
+    } else {
+        quote!()
+    };
+
     let mo = if ast.generics.params.is_empty() {
         quote! {
             #crate_::qmetaobject_lazy_static! { static ref MO: #crate_::QMetaObject = #crate_::QMetaObject {
                 super_data: ::std::ptr::null(),
+                #super_data_getter
                 string_data: STRING_DATA.as_ptr(),
                 data: INT_DATA.as_ptr(),
                 static_metacall: None,
