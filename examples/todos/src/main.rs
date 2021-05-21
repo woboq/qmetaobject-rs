@@ -1,6 +1,6 @@
 use cstr::cstr;
 
-use qmetaobject::*;
+use qmetaobject::prelude::*;
 
 mod implementation;
 
