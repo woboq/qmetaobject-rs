@@ -614,7 +614,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
             quote!({
                 #crate_::qmetaobject_lazy_static! {
                     static ref ARRAY : [usize; #len] = [
-                        #(qmetatype_interface_ptr::<#meta_types>(
+                        #(#crate_::qmetatype_interface_ptr::<#meta_types>(
                             &::std::ffi::CString::new(stringify!(#meta_types)).unwrap()) as usize),*
                     ];
                 }
