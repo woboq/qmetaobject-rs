@@ -150,7 +150,7 @@ fn main() {
         ""
     };
 
-    if cfg!(any(target_os = "macos", target_os = "linux")) {
+    if std::env::var("CARGO_CFG_TARGET_FAMILY").as_ref().map(|s| s.as_ref()) == Ok("unix") {
         println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", qt_library_path.trim());
     }
 
