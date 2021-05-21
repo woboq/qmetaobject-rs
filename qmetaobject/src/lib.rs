@@ -171,7 +171,7 @@ pub use qmetaobject_impl::{QEnum6 as QEnum, QGadget6 as QGadget, QObject6 as QOb
 pub use lazy_static::lazy_static;
 #[doc(hidden)]
 #[macro_export]
-macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { lazy_static!($($t)*) } }
+macro_rules! qmetaobject_lazy_static { ($($t:tt)*) => { $crate::lazy_static!($($t)*) } }
 
 use std::cell::{RefCell, RefMut};
 use std::ffi::{CStr, CString};
