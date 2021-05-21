@@ -5,7 +5,7 @@ use std::thread::JoinHandle;
 use chrono::Timelike;
 use cstr::cstr;
 
-use qmetaobject::*;
+use qmetaobject::prelude::*;
 
 #[derive(Default)]
 struct AbortCondVar {

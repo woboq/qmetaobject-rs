@@ -1,4 +1,5 @@
-use qmetaobject::*;
+use qmetaobject::prelude::*;
+use qmetaobject::webengine;
 
 qrc!(my_resource,
     "webengine" {

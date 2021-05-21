@@ -19,7 +19,7 @@ Presentation Blog Post: https://woboq.com/blog/qmetaobject-from-rust.html
 
 ```rust
 use cstr::cstr;
-use qmetaobject::*;
+use qmetaobject::prelude::*;
 
 // The `QObject` custom derive macro allows to expose a class to Qt and QML
 #[derive(QObject, Default)]

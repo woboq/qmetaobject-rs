@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     ```
     use cstr::cstr;
-    use qmetaobject::*;
+    use qmetaobject::prelude::*;
 
     // The `QObject` custom derive macro allows to expose a class to Qt and QML
     #[derive(QObject,Default)]
@@ -114,7 +114,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     This can be done like so:
 
     ```
-    use qmetaobject::*;
+    use qmetaobject::prelude::*;
     # use std::cell::RefCell;
 
     #[derive(QObject, Default)]
@@ -124,7 +124,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         result_changed: qt_signal!(),
         recompute_result: qt_method!(fn recompute_result(&self, name: String) {
             let qptr = QPointer::from(&*self);
-            let set_value = queued_callback(move |val: QString| {
+            let set_value = qmetaobject::queued_callback(move |val: QString| {
                 qptr.as_pinned().map(|this| {
                     this.borrow_mut().result = val;
                     this.borrow().result_changed();
@@ -139,7 +139,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     }
     # let obj = RefCell::new(MyAsyncObject::default());
     # let mut engine = QmlEngine::new();
-    # unsafe { connect(
+    # unsafe { qmetaobject::connect(
     #     QObject::cpp_construct(&obj),
     #     obj.borrow().result_changed.to_cpp_representation(&*obj.borrow()),
     #     || engine.quit()
@@ -208,6 +208,16 @@ pub mod scenegraph;
 pub mod tablemodel;
 #[cfg(feature = "webengine")]
 pub mod webengine;
+
+/// Module intended for glob import.
+pub mod prelude {
+    pub use crate::{
+        qml_register_type, qrc, qt_base_class, qt_method, qt_plugin, qt_property, qt_signal,
+        QAbstractListModel, QByteArray, QColor, QDate, QDateTime, QModelIndex, QObject, QObjectBox,
+        QPointer, QQmlExtensionPlugin, QQuickItem, QQuickView, QRectF, QString, QTime, QVariant,
+        QmlEngine,
+    };
+}
 
 cpp! {{
     #include <qmetaobject_rust.hpp>

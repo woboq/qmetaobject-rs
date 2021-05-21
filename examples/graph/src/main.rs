@@ -4,8 +4,8 @@
 use cpp::cpp;
 use cstr::cstr;
 
+use qmetaobject::prelude::*;
 use qmetaobject::scenegraph::*;
-use qmetaobject::*;
 
 mod nodes;
 
