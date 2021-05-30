@@ -715,6 +715,8 @@ pub trait QQuickItem: QObject {
 
     fn component_complete(&mut self) {}
 
+    fn release_resources(&mut self) {}
+
     /// Handle mouse press, release, or move events. Returns true if the event was accepted.
     fn mouse_event(&mut self, _event: QMouseEvent) -> bool {
         false
@@ -819,8 +821,16 @@ cpp! {{
                 })
             });
         }
+
+        void releaseResources() override {
+            QQuickItem::releaseResources();
+            rust!(Rust_QQuickItem_releaseResources[
+                rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject"
+            ] {
+                rust_object.borrow_mut().release_resources();
+            });
+        }
         /*
-        virtual void releaseResources();
         virtual void updatePolish();
         */
     };
