@@ -9,7 +9,7 @@ build = "build.rs"
 qmetaobject = { path = "../../qmetaobject"}
 qttypes = { path = "../../qttypes"} # required to get the DEP_QT_* env variables
 cstr = "0.2"
-cpp = "0.5"
+cpp = "0.5.6"
 
 [build-dependencies]
-cpp_build = "0.5"
+cpp_build = "0.5.6"
