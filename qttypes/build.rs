@@ -30,10 +30,12 @@ fn qmake_query(var: &str) -> Result<String, std::io::Error> {
 }
 
 fn open_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> std::fs::File {
+    let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+
     let mut path = PathBuf::from(qt_include_path);
     path.push("QtCore");
     path.push(file);
-    if cfg!(target_os = "macos") {
+    if cargo_target_os == "macos" {
         if !path.exists() {
             path = Path::new(qt_library_path).join("QtCore.framework/Headers");
             path.push(file);
@@ -77,6 +79,11 @@ fn detect_version_from_header(qt_include_path: &str, qt_library_path: &str) -> S
 }
 
 fn main() {
+    // Simple cfg!(target_* = "...") doesn't work in build scripts the way it does in crate's code.
+    // https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
+    let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let cargo_target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap();
+
     println!("cargo:rerun-if-env-changed=QT_INCLUDE_PATH");
     println!("cargo:rerun-if-env-changed=QT_LIBRARY_PATH");
     let (qt_version, qt_include_path, qt_library_path) = match (
@@ -117,7 +124,7 @@ fn main() {
 
     let mut config = cpp_build::Config::new();
 
-    if cfg!(target_os = "macos") {
+    if cargo_target_os == "macos" {
         config.flag("-F");
         config.flag(qt_library_path.trim());
     }
@@ -135,15 +142,16 @@ fn main() {
     println!("cargo:INCLUDE_PATH={}", qt_include_path.trim());
     println!("cargo:FOUND=1");
 
-    let macos_lib_search = if cfg!(target_os = "macos") { "=framework" } else { "" };
-    let vers_suffix = if cfg!(target_os = "macos") {
-        String::new()
+    let macos_lib_search = if cargo_target_os == "macos" { "=framework" } else { "" };
+    let vers_suffix = if cargo_target_os == "macos" {
+        "".to_string()
     } else {
         qt_version.split(".").next().unwrap_or("").to_string()
     };
 
+    // Windows debug suffix exclusively from MSVC land
     let debug = std::env::var("DEBUG").ok().map_or(false, |s| s == "true");
-    let windows_dbg_suffix = if debug && cfg!(target_os = "windows") {
+    let windows_dbg_suffix = if debug && (cargo_target_os == "windows") && (cargo_target_env == "msvc") {
         println!("cargo:rustc-link-lib=msvcrtd");
         "d"
     } else {
