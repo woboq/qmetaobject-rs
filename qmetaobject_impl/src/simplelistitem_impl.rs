@@ -47,7 +47,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .enumerate()
         .map(|(i, ref ident)| {
             let i = i as i32;
-            quote! { #i => QMetaType::to_qvariant(&self.#ident), }
+            quote! { #i => #crate_::QMetaType::to_qvariant(&self.#ident), }
         })
         .collect::<Vec<_>>();
 
@@ -56,14 +56,14 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     quote!(
         impl #impl_generics #crate_::listmodel::SimpleListItem for #name #ty_generics #where_clause {
-            fn get(&self, idx : i32) -> QVariant {
+            fn get(&self, idx : i32) -> #crate_::QVariant {
                 match idx {
                     #(#arms)*
-                    _ => QVariant::default()
+                    _ => #crate_::QVariant::default()
                 }
             }
-            fn names() -> Vec<QByteArray> {
-                vec![ #(QByteArray::from(stringify!(#values))),* ]
+            fn names() -> Vec<#crate_::QByteArray> {
+                vec![ #(#crate_::QByteArray::from(stringify!(#values))),* ]
             }
         }
     ).into()
