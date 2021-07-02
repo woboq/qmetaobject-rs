@@ -1,10 +1,11 @@
 # QMetaObject crate for Rust
 
-The qmetaobject crate is a crate which is used to expose rust object to Qt and QML.
-
 [![Appveyor Build status](https://ci.appveyor.com/api/projects/status/8l5te3wlj2ie4njc/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/qmetaobject-rs/branch/master)
 [![Crates.io](https://img.shields.io/crates/v/qmetaobject.svg)](https://crates.io/crates/qmetaobject)
 [![Documentation](https://docs.rs/qmetaobject/badge.svg)](https://docs.rs/qmetaobject/)
+
+A framework empowering everyone to create Qt/QML applications with Rust.
+It does so by building `QMetaObject`s at compile time, registering QML types (optionally via exposing `QQmlExtensionPlugin`s) and providing native wrappers.
 
 ## Objectives
 
