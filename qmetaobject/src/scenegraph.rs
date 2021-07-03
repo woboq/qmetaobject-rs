@@ -62,12 +62,12 @@ impl<T> Drop for SGNode<T> {
 pub enum ContainerNode {}
 
 cpp! {{
-struct ContainerNode : QSGNode {
-    quint64 type_id = 0;
-    std::size_t size = 0; // -1 for static
-    quint64 mask = 0; // one bit for every child, if it is set, or not
-    ContainerNode(quint64 type_id, std::size_t size) : type_id(type_id), size(size) {}
-};
+    struct ContainerNode : QSGNode {
+        quint64 type_id = 0;
+        std::size_t size = 0; // -1 for static
+        quint64 mask = 0; // one bit for every child, if it is set, or not
+        ContainerNode(quint64 type_id, std::size_t size) : type_id(type_id), size(size) {}
+    };
 }}
 
 /// Represent a tuple of `Fn(`[`SGNode`]`<...>) -> SGNode<...>)`,
@@ -445,7 +445,7 @@ struct SGGeometryNode {
     node : SGNode,
 }
 
-cpp!{{
+cpp! {{
 struct RustGeometryNode : QSGGeometryNode {
     QSGGeometry geo;
     RustGeometryNode(const QSGGeometry::AttributeSet &attribs, int vertexCount)

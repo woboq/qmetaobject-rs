@@ -18,8 +18,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use cpp::cpp;
 
 cpp! {{
-Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
-                                         const unsigned char *, const unsigned char *);
+    Q_CORE_EXPORT bool qRegisterResourceData(int, const unsigned char *,
+                                             const unsigned char *, const unsigned char *);
 }}
 
 /// Internal function used from qrc procedural macro.

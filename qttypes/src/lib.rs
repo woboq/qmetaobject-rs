@@ -151,11 +151,11 @@ macro_rules! cpp_class {
 
 cpp! {{
     #include <QtCore/QByteArray>
-    #include <QtCore/QString>
     #include <QtCore/QDateTime>
-    #include <QtCore/QVariant>
     #include <QtCore/QModelIndex>
+    #include <QtCore/QString>
     #include <QtCore/QUrl>
+    #include <QtCore/QVariant>
 
     #include <QtGui/QImage>
     #include <QtGui/QPixmap>
