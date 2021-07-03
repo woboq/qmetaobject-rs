@@ -5,7 +5,7 @@
 [![Documentation](https://docs.rs/qmetaobject/badge.svg)](https://docs.rs/qmetaobject/)
 
 A framework empowering everyone to create Qt/QML applications with Rust.
-It does so by building `QMetaObject`s at compile time, registering QML types (optionally via exposing `QQmlExtensionPlugin`s) and providing native wrappers.
+It does so by building `QMetaObject`s at compile time, registering QML types (optionally via exposing `QQmlExtensionPlugin`s) and providing idiomatic wrappers.
 
 ## Objectives
 
