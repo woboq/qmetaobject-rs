@@ -559,81 +559,86 @@ where
     }
 }
 
-#[test]
-fn test_qmetatype() {
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyInt {
-        x: u32,
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_qmetatype() {
+        #[derive(Default, Clone, Debug, Eq, PartialEq)]
+        struct MyInt {
+            x: u32,
+        }
+        impl QMetaType for MyInt {}
+
+        assert_eq!(MyInt::register(Some(&CString::new("MyInt").unwrap())), MyInt::id());
+        let m42 = MyInt { x: 42 };
+        let m43 = MyInt { x: 43 };
+
+        assert_eq!(Some(m42.clone()), MyInt::from_qvariant(m42.clone().to_qvariant()));
+        assert_eq!(Some(m43.clone()), MyInt::from_qvariant(m43.clone().to_qvariant()));
+
+        assert_eq!(None, u32::from_qvariant(m43.to_qvariant()));
+        assert_eq!(None, MyInt::from_qvariant(45u32.to_qvariant()));
+        assert_eq!(Some(45), u32::from_qvariant(45u32.to_qvariant()));
     }
-    impl QMetaType for MyInt {}
 
-    assert_eq!(MyInt::register(Some(&CString::new("MyInt").unwrap())), MyInt::id());
-    let m42 = MyInt { x: 42 };
-    let m43 = MyInt { x: 43 };
-
-    assert_eq!(Some(m42.clone()), MyInt::from_qvariant(m42.clone().to_qvariant()));
-    assert_eq!(Some(m43.clone()), MyInt::from_qvariant(m43.clone().to_qvariant()));
-
-    assert_eq!(None, u32::from_qvariant(m43.to_qvariant()));
-    assert_eq!(None, MyInt::from_qvariant(45u32.to_qvariant()));
-    assert_eq!(Some(45), u32::from_qvariant(45u32.to_qvariant()));
-}
-
-#[test]
-#[should_panic(expected = "Attempt to register the same type with different name")]
-fn test_qmetatype_register_wrong_type1() {
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyType {}
-    impl QMetaType for MyType {}
-    // registering with the name of an existing type should panic
-    MyType::register(Some(&CString::new("QString").unwrap()));
-}
-
-#[test]
-#[should_panic(expected = "Attempt to register the same type with different name")]
-fn test_qmetatype_register_wrong_type2() {
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyType {}
-    impl QMetaType for MyType {}
-    String::register(Some(&CString::new("String").unwrap()));
-    // registering with the name of an existing type should panic
-    MyType::register(Some(&CString::new("String").unwrap()));
-}
-
-#[test]
-fn test_qvariant_datetime() {
-    let dt = QDateTime::from_date_time_local_timezone(
-        QDate::from_y_m_d(2019, 10, 23),
-        QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)),
-    );
-    let v = QVariant::from(dt);
-    let qstring = QString::from_qvariant(v.clone()).unwrap();
-    let mut s = qstring.to_string();
-    if s.ends_with(".100") {
-        // Old version of qt did not include the milliseconds, so remove it
-        s.truncate(s.len() - 4);
+    #[test]
+    #[should_panic(expected = "Attempt to register the same type with different name")]
+    fn test_qmetatype_register_wrong_type1() {
+        #[derive(Default, Clone, Debug, Eq, PartialEq)]
+        struct MyType {}
+        impl QMetaType for MyType {}
+        // registering with the name of an existing type should panic
+        MyType::register(Some(&CString::new("QString").unwrap()));
     }
-    assert_eq!(s, "2019-10-23T10:30:40");
-    let qdate = QDate::from_qvariant(v.clone()).unwrap();
-    assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
-    assert!(qdate != QDate::from_y_m_d(2019, 10, 24));
 
-    let qtime = QTime::from_qvariant(v.clone()).unwrap();
-    assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)));
-    assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), None));
-}
+    #[test]
+    #[should_panic(expected = "Attempt to register the same type with different name")]
+    fn test_qmetatype_register_wrong_type2() {
+        #[derive(Default, Clone, Debug, Eq, PartialEq)]
+        struct MyType {}
+        impl QMetaType for MyType {}
+        String::register(Some(&CString::new("String").unwrap()));
+        // registering with the name of an existing type should panic
+        MyType::register(Some(&CString::new("String").unwrap()));
+    }
 
-#[test]
-fn test_qvariant_qpoint_qrect() {
-    // test that conversion through a variant lead the the right data
-    assert_eq!(
-        QPoint::from_qvariant(QPointF { x: 23.1, y: 54.2 }.to_qvariant()),
-        Some(QPoint { x: 23, y: 54 })
-    );
-    let qrectf = QRectF { x: 4.1, y: 9.1, height: 7.3, width: 9.0 };
-    assert_eq!(QRectF::from_qvariant(qrectf.to_qvariant()), Some(qrectf));
-    assert_eq!(
-        QSize::from_qvariant(QSizeF { width: 123.1, height: 254.2 }.to_qvariant()),
-        Some(QSize { width: 123, height: 254 })
-    );
+    #[test]
+    fn test_qvariant_datetime() {
+        let dt = QDateTime::from_date_time_local_timezone(
+            QDate::from_y_m_d(2019, 10, 23),
+            QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)),
+        );
+        let v = QVariant::from(dt);
+        let qstring = QString::from_qvariant(v.clone()).unwrap();
+        let mut s = qstring.to_string();
+        if s.ends_with(".100") {
+            // Old version of qt did not include the milliseconds, so remove it
+            s.truncate(s.len() - 4);
+        }
+        assert_eq!(s, "2019-10-23T10:30:40");
+        let qdate = QDate::from_qvariant(v.clone()).unwrap();
+        assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
+        assert!(qdate != QDate::from_y_m_d(2019, 10, 24));
+
+        let qtime = QTime::from_qvariant(v.clone()).unwrap();
+        assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)));
+        assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), None));
+    }
+
+    #[test]
+    fn test_qvariant_qpoint_qrect() {
+        // test that conversion through a variant lead the the right data
+        assert_eq!(
+            QPoint::from_qvariant(QPointF { x: 23.1, y: 54.2 }.to_qvariant()),
+            Some(QPoint { x: 23, y: 54 })
+        );
+        let qrectf = QRectF { x: 4.1, y: 9.1, height: 7.3, width: 9.0 };
+        assert_eq!(QRectF::from_qvariant(qrectf.to_qvariant()), Some(qrectf));
+        assert_eq!(
+            QSize::from_qvariant(QSizeF { width: 123.1, height: 254.2 }.to_qvariant()),
+            Some(QSize { width: 123, height: 254 })
+        );
+    }
 }
