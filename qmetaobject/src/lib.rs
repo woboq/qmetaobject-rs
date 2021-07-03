@@ -953,6 +953,7 @@ pub const USER_ROLE: i32 = 0x0100;
 /// # Input
 ///
 /// The macro accepts the following formal grammar in pseudo [rust macro syntax][macro-doc]:
+///
 /// ```txt
 /// macro call ::= qrc!( $f:Function $( $r:Recource ),* )
 /// Function   ::= $v:vis $name:ident
@@ -979,7 +980,7 @@ pub const USER_ROLE: i32 = 0x0100;
 ///  - `$base_dir:physical`: optional path to base directory on local file
 ///    system, separated from the prefix by the `as` keyword.
 ///    By default, base directory is the cargo project's root - directory with
-///    Cargo.toml, a.k.a. [`$CARGO_MANIFEST_DIR`][].
+///    _Cargo.toml_, a.k.a. [`$CARGO_MANIFEST_DIR`][].
 ///    (Custom extention which does not interfere with qrc format,
 ///    but merely resolves physical path of files in this resource relative
 ///    to the base directory, and helps keeping both project's root directory
@@ -1013,6 +1014,7 @@ pub const USER_ROLE: i32 = 0x0100;
 /// # Example
 ///
 /// Consider this project files structure:
+///
 /// ```text
 /// .
 /// ├── Cargo.toml
@@ -1023,7 +1025,9 @@ pub const USER_ROLE: i32 = 0x0100;
 /// └── src
 ///     └── main.rs
 /// ```
+///
 /// then the following Rust code:
+///
 /// ```
 /// use qmetaobject::qrc;
 /// # // For maintainers: this is actually tested against real files.
@@ -1068,7 +1072,9 @@ pub const USER_ROLE: i32 = 0x0100;
 /// use_resource("qrc:/foo2/baz/Foo.qml");
 /// # }
 /// ```
+///
 /// corresponds to the .qrc (`tests/qml/qml.qrc`) file:
+///
 /// ```xml
 /// <RCC>
 ///     <qresource prefix="/foo">
