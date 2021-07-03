@@ -32,5 +32,12 @@ fn main() {
         .include(&qt_include_path)
         .include(format!("{}/QtQuick", qt_include_path))
         .include(format!("{}/QtCore", qt_include_path))
+        // See https://github.com/woboq/qmetaobject-rs/pull/168
+        //
+        // QSGSimpleMaterial{,Shader} classes ain't going to be removed from Qt5
+        // which is on a life support at this point; and we know for sure they are
+        // already gone in Qt6. So, there's just no point seeing these warning
+        // over and over again.
+        .flag_if_supported("-Wno-deprecated-declarations")
         .build("src/main.rs");
 }
