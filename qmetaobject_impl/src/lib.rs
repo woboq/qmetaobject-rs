@@ -89,7 +89,7 @@ pub fn qenum_impl6(input: TokenStream) -> TokenStream {
     qobject_impl::generate_enum(input, 6)
 }
 
-/// Implementation of the qmetaobject::qrc! macro
+// Implementation of the qmetaobject::qrc! macro
 #[proc_macro]
 pub fn qrc_internal(input: TokenStream) -> TokenStream {
     qrc_impl::process_qrc(input)

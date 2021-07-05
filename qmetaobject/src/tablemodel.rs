@@ -145,70 +145,68 @@ pub trait QAbstractTableModel: QObject {
 }
 
 cpp! {{
-#include <qmetaobject_rust.hpp>
-#include <QtCore/QAbstractTableModel>
-}}
+    #include <qmetaobject_rust.hpp>
+    #include <QtCore/QAbstractTableModel>
 
-cpp! {{
-struct Rust_QAbstractTableModel : RustObject<QAbstractTableModel> {
+    struct Rust_QAbstractTableModel : RustObject<QAbstractTableModel> {
 
-    using QAbstractTableModel::beginInsertRows;
-    using QAbstractTableModel::endInsertRows;
-    using QAbstractTableModel::beginInsertColumns;
-    using QAbstractTableModel::endInsertColumns;
-    using QAbstractTableModel::beginRemoveRows;
-    using QAbstractTableModel::endRemoveRows;
-    using QAbstractTableModel::beginRemoveColumns;
-    using QAbstractTableModel::endRemoveColumns;
-    using QAbstractTableModel::beginResetModel;
-    using QAbstractTableModel::endResetModel;
+        using QAbstractTableModel::beginInsertRows;
+        using QAbstractTableModel::endInsertRows;
+        using QAbstractTableModel::beginInsertColumns;
+        using QAbstractTableModel::endInsertColumns;
+        using QAbstractTableModel::beginRemoveRows;
+        using QAbstractTableModel::endRemoveRows;
+        using QAbstractTableModel::beginRemoveColumns;
+        using QAbstractTableModel::endRemoveColumns;
+        using QAbstractTableModel::beginResetModel;
+        using QAbstractTableModel::endResetModel;
 
-    int rowCount(const QModelIndex & = QModelIndex()) const override {
-        return rust!(Rust_QAbstractTableModel_rowCount[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject"]
-                -> i32 as "int" {
-            rust_object.borrow().row_count()
-        });
-    }
+        int rowCount(const QModelIndex & = QModelIndex()) const override {
+            return rust!(Rust_QAbstractTableModel_rowCount[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject"]
+                    -> i32 as "int" {
+                rust_object.borrow().row_count()
+            });
+        }
 
-    int columnCount(const QModelIndex & = QModelIndex()) const override {
-        return rust!(Rust_QAbstractTableModel_columnCount[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject"]
-                -> i32 as "int" {
-            rust_object.borrow().column_count()
-        });
-    }
+        int columnCount(const QModelIndex & = QModelIndex()) const override {
+            return rust!(Rust_QAbstractTableModel_columnCount[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject"]
+                    -> i32 as "int" {
+                rust_object.borrow().column_count()
+            });
+        }
 
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        return rust!(Rust_QAbstractTableModel_data[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject",
-                index : QModelIndex as "QModelIndex", role : i32 as "int"] -> QVariant as "QVariant" {
-            rust_object.borrow().data(index, role)
-        });
-    }
+        QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
+            return rust!(Rust_QAbstractTableModel_data[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject",
+                    index : QModelIndex as "QModelIndex", role : i32 as "int"] -> QVariant as "QVariant" {
+                rust_object.borrow().data(index, role)
+            });
+        }
 
-    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
-        return rust!(Rust_QAbstractTableModel_setData[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject",
-                index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
-                -> bool as "bool" {
-            rust_object.borrow_mut().set_data(index, &value, role)
-        });
-    }
+        bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override {
+            return rust!(Rust_QAbstractTableModel_setData[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject",
+                    index : QModelIndex as "QModelIndex", value : QVariant as "QVariant", role : i32 as "int"]
+                    -> bool as "bool" {
+                rust_object.borrow_mut().set_data(index, &value, role)
+            });
+        }
 
-    //Qt::ItemFlags flags(const QModelIndex &index) const override;
+        //Qt::ItemFlags flags(const QModelIndex &index) const override;
 
-    //QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+        //QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
-    QHash<int, QByteArray> roleNames() const override {
-        QHash<int, QByteArray> base = QAbstractTableModel::roleNames();
-        rust!(Rust_QAbstractTableModel_roleNames[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject",
-                base: *mut c_void as "QHash<int, QByteArray>&"] {
-            for (key, val) in rust_object.borrow().role_names().iter() {
-                add_to_hash(base, *key, val.clone());
-            }
-        });
-        return base;
-    }
+        QHash<int, QByteArray> roleNames() const override {
+            QHash<int, QByteArray> base = QAbstractTableModel::roleNames();
+            rust!(Rust_QAbstractTableModel_roleNames[rust_object : QObjectPinned<dyn QAbstractTableModel> as "TraitObject",
+                    base: *mut c_void as "QHash<int, QByteArray>&"] {
+                for (key, val) in rust_object.borrow().role_names().iter() {
+                    add_to_hash(base, *key, val.clone());
+                }
+            });
+            return base;
+        }
 
-    //QModelIndex index(int row, int column, const QModelIndex &parent) const override;
+        //QModelIndex index(int row, int column, const QModelIndex &parent) const override;
 
-    //QModelIndex parent(const QModelIndex &child) const override;
-};
+        //QModelIndex parent(const QModelIndex &child) const override;
+    };
 }}

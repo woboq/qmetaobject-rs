@@ -58,19 +58,20 @@ impl<T> Drop for SGNode<T> {
 
 /// Tag to be used in SGNode. SGNode<ContainerNode> is a node that simply contains other node.
 /// Either all the node have the same type, but the number of nodes is not known at compile time,
-/// or the child node can have different type, but the amont of nodes is known at compile time
+/// or the child node can have different type, but the amount of nodes is known at compile time
 pub enum ContainerNode {}
 
 cpp! {{
-struct ContainerNode : QSGNode {
-    quint64 type_id = 0;
-    std::size_t size = 0; // -1 for static
-    quint64 mask = 0; // one bit for every child, if it is set, or not
-    ContainerNode(quint64 type_id, std::size_t size) : type_id(type_id), size(size) {}
-};
+    struct ContainerNode : QSGNode {
+        quint64 type_id = 0;
+        std::size_t size = 0; // -1 for static
+        quint64 mask = 0; // one bit for every child, if it is set, or not
+        ContainerNode(quint64 type_id, std::size_t size) : type_id(type_id), size(size) {}
+    };
 }}
 
-/// Represent a tuple of Fn(SGNode<...>)->SGNode<...>), for SGNode<ContainerNode>::update_static
+/// Represent a tuple of `Fn(`[`SGNode`]`<...>) -> SGNode<...>)`,
+/// for [`SGNode<ContainerNode>::update_static`].
 ///
 /// Do not reimplement
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::len_without_is_empty))]
@@ -81,19 +82,22 @@ pub trait UpdateNodeFnTuple<T> {
 
 // Implementation for tuple of different sizes
 macro_rules! declare_UpdateNodeFnTuple {
-    (@continue $T:ident : $A:ident : $N:tt $($tail:tt)+) => { declare_UpdateNodeFnTuple![$($tail)*]; };
+    (@continue $T:ident : $A:ident : $N:tt $( $tail:tt )+) => { declare_UpdateNodeFnTuple![$( $tail )*]; };
     (@continue $T:ident : $A:ident : $N:tt) => {};
-    ($($T:ident : $A:ident : $N:tt)+) => {
-        impl<$($A, $T : Fn(SGNode<$A>)->SGNode<$A>),*> UpdateNodeFnTuple<($($A,)*)> for ($($T,)*)
+    ($( $T:ident : $A:ident : $N:tt )+) => {
+        impl<$( $A, $T: Fn(SGNode<$A>) -> SGNode<$A> ),*> UpdateNodeFnTuple<($( $A, )*)> for ($( $T, )*)
         {
-            fn len(&self) -> u64 { ($($N,)* ).0 + 1 }
-            unsafe fn update_fn(&self, i : u64, n : *mut c_void) -> *mut c_void {
-                match i { $($N => (self.$N)( SGNode::<_>::from_raw(n) ).into_raw(), )*
+            fn len(&self) -> u64 { ($( $N, )* ).0 + 1 }
+            unsafe fn update_fn(&self, i: u64, n: *mut c_void) -> *mut c_void {
+                match i {
+                    $(
+                        $N => (self.$N)( SGNode::<_>::from_raw(n) ).into_raw(),
+                    )*
                     _ => panic!("Out of range") }
             }
         }
 
-        declare_UpdateNodeFnTuple![@continue $($T : $A : $N)*];
+        declare_UpdateNodeFnTuple![@continue $( $T : $A : $N )*];
     }
 }
 declare_UpdateNodeFnTuple![T9:A9:9 T8:A8:8 T7:A7:7 T6:A6:6 T5:A5:5 T4:A4:4 T3:A3:3 T2:A2:2 T1:A1:1 T0:A0:0];
@@ -415,8 +419,7 @@ impl SGNode<TransformNode> {
         }
         let raw = self.raw;
         let sub = unsafe {
-            SGNode::<ContainerNode>::from_raw(cpp!([raw as "QSGNode*"]
-                    -> *mut c_void as "QSGNode*" {
+            SGNode::<ContainerNode>::from_raw(cpp!([raw as "QSGNode*"] -> *mut c_void as "QSGNode*" {
                 auto n = raw->firstChild();
                 if (n)
                     n->setFlag(QSGNode::OwnedByParent, false); // now we own it;
@@ -442,7 +445,7 @@ struct SGGeometryNode {
     node : SGNode,
 }
 
-cpp!{{
+cpp! {{
 struct RustGeometryNode : QSGGeometryNode {
     QSGGeometry geo;
     RustGeometryNode(const QSGGeometry::AttributeSet &attribs, int vertexCount)

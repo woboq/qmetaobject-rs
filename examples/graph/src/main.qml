@@ -65,8 +65,9 @@ Item {
         }
 
         Component.onCompleted: {
-            for (var i=0; i<100; ++i)
+            for (let i = 0; i < 100; ++i) {
                 appendSample(newSample(i));
+            }
         }
 
         property int offset: 100

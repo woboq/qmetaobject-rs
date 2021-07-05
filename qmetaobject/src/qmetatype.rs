@@ -20,62 +20,72 @@ use cpp::cpp;
 use super::*;
 
 cpp! {{
-
-namespace QtPrivate {
-// Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor
-// is a friend
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-template<>
-struct ConverterFunctor<TraitObject, TraitObject, TraitObject> : public AbstractConverterFunction
-{
-    using AbstractConverterFunction::AbstractConverterFunction;
-    bool registerConverter(int from, int to) {
-        return QMetaType::registerConverterFunction(this, from, to);
-    }
-};
-#else
-template<>
-struct IsMetaTypePair<TraitObject, true>
-{
-    inline static bool registerConverter(QMetaType::ConverterFunction f, QMetaType from, QMetaType to) {
-        return QMetaType::registerConverterFunction(f, from, to);
-    }
-};
-#endif
-}
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    // Hack to access QMetaType::registerConverterFunction which is private, but ConverterFunctor
+    // is a friend
+    namespace QtPrivate {
+    template<>
+    struct ConverterFunctor<TraitObject, TraitObject, TraitObject> : public AbstractConverterFunction
+    {
+        using AbstractConverterFunction::AbstractConverterFunction;
+        bool registerConverter(int from, int to) {
+            return QMetaType::registerConverterFunction(this, from, to);
+        }
+    };
+    }
+
     using RustQMetaType = QMetaType;
     using RustMetaTypeConverterFn = QtPrivate::AbstractConverterFunction::Converter;
+
     static void rust_register_qmetatype_conversion(int from, int to, RustMetaTypeConverterFn converter_fn) {
         // NOTE: the ConverterFunctor are gonna be leaking (in Qt, they are supposed to be allocated in static storage
         auto c = new QtPrivate::ConverterFunctor<TraitObject, TraitObject, TraitObject>(converter_fn);
         if (!c->registerConverter(from, to))
             delete c;
     }
+
 #else
+
+    namespace QtPrivate {
+    template<>
+    struct IsMetaTypePair<TraitObject, true>
+    {
+        inline static bool registerConverter(QMetaType::ConverterFunction f, QMetaType from, QMetaType to) {
+            return QMetaType::registerConverterFunction(f, from, to);
+        }
+    };
+    }
+
     struct RustQMetaType : QtPrivate::QMetaTypeInterface {
-        // some typedef that are gone in Qt5
+        // some typedef that are gone in Qt6
         typedef void (*Deleter)(void *);
-        typedef void (*Creator)(const QtPrivate::QMetaTypeInterface*, void *, const void *); // copy
-        typedef void (*Destructor)(const QtPrivate::QMetaTypeInterface*, void *);
-        typedef void (*Constructor)(const QtPrivate::QMetaTypeInterface*, void *);
-
-
+        typedef void (*Creator)(const QtPrivate::QMetaTypeInterface *, void *, const void *); // copy
+        typedef void (*Destructor)(const QtPrivate::QMetaTypeInterface *, void *);
+        typedef void (*Constructor)(const QtPrivate::QMetaTypeInterface *, void *);
 
         const QMetaObject *metaObject;
         QByteArray name;
 
-        RustQMetaType(const QMetaObject *metaObject, QByteArray name,
-                ushort align, uint size, uint flags, Constructor constructor_fn, Creator creator_or_copy_fn, Destructor destructor_fn,
-                QtPrivate::QMetaTypeInterface::EqualsFn equals_fn = nullptr)
-            : QtPrivate::QMetaTypeInterface {
+        RustQMetaType(
+            const QMetaObject *metaObject,
+            QByteArray name,
+            ushort align,
+            uint size,
+            uint flags,
+            Constructor constructor_fn,
+            Creator creator_or_copy_fn,
+            Destructor destructor_fn,
+            QtPrivate::QMetaTypeInterface::EqualsFn equals_fn = nullptr
+        ) : QtPrivate::QMetaTypeInterface {
                 /*.revision=*/ 0,
                 /*.alignment=*/ align,
                 /*.size=*/ size,
                 /*.flags=*/ flags,
                 /*.typeId=*/ 0,
-                /*.metaObjectFn=*/ [](const QtPrivate::QMetaTypeInterface *iface) { return static_cast<const RustQMetaType *>(iface)->metaObject; },
+                /*.metaObjectFn=*/ [](const QtPrivate::QMetaTypeInterface *iface) {
+                    return static_cast<const RustQMetaType *>(iface)->metaObject;
+                },
                 /*.name=*/ name.constData(),
                 /*.defaultCtr=*/ constructor_fn,
                 /*.copyCtr=*/ creator_or_copy_fn,
@@ -87,13 +97,18 @@ struct IsMetaTypePair<TraitObject, true>
                 /*.dataStreamOut=*/ nullptr,
                 /*.dataStreamIn=*/ nullptr,
                 /*.legacyRegisterOp=*/ nullptr,
-            }
-            , metaObject(metaObject), name(std::move(name)) {}
+            },
+            metaObject(metaObject),
+            name(std::move(name))
+        {}
     };
+
     typedef bool (*RustMetaTypeConverterFn)(const void *src, void *dst);
+
     static void rust_register_qmetatype_conversion(int from, int to, RustMetaTypeConverterFn converter_fn) {
         QtPrivate::IsMetaTypePair<TraitObject, true>::registerConverter(converter_fn, QMetaType(from), QMetaType(to));
     }
+
 #endif
 }}
 
@@ -186,7 +201,9 @@ fn register_metatype_common<T: QMetaType>(
         ] -> i32 as "int" {
             QMetaType::TypeFlags extraFlag(gadget_metaobject ? QMetaType::IsGadget : 0);
             auto flags = QMetaType::NeedsConstruction | QMetaType::NeedsDestruction | QMetaType::MovableType | extraFlag;
+
         #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+
             Q_UNUSED(align);
             return QMetaType::registerType(
                 gadget_metaobject ? gadget_metaobject->className() : name,
@@ -198,7 +215,9 @@ fn register_metatype_common<T: QMetaType>(
                 flags,
                 gadget_metaobject
             );
+
         #else
+
             QByteArray name_ba(gadget_metaobject ? gadget_metaobject->className() : name);
             Q_UNUSED(deleter_fn)
             // FIXME: the rust code generate Qt5 compatible function and we wrap them in the Qt6 ones, it would be better
@@ -206,6 +225,7 @@ fn register_metatype_common<T: QMetaType>(
             // We should also consider building this structure at compile time!
             auto mt = new RustQMetaType(gadget_metaobject, name_ba, align, size, flags, constructor_fn, creator_or_copy_fn, destructor_fn);
             return QMetaType(mt).id();
+
         #endif
         });
 
@@ -559,81 +579,86 @@ where
     }
 }
 
-#[test]
-fn test_qmetatype() {
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyInt {
-        x: u32,
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_qmetatype() {
+        #[derive(Default, Clone, Debug, Eq, PartialEq)]
+        struct MyInt {
+            x: u32,
+        }
+        impl QMetaType for MyInt {}
+
+        assert_eq!(MyInt::register(Some(&CString::new("MyInt").unwrap())), MyInt::id());
+        let m42 = MyInt { x: 42 };
+        let m43 = MyInt { x: 43 };
+
+        assert_eq!(Some(m42.clone()), MyInt::from_qvariant(m42.clone().to_qvariant()));
+        assert_eq!(Some(m43.clone()), MyInt::from_qvariant(m43.clone().to_qvariant()));
+
+        assert_eq!(None, u32::from_qvariant(m43.to_qvariant()));
+        assert_eq!(None, MyInt::from_qvariant(45u32.to_qvariant()));
+        assert_eq!(Some(45), u32::from_qvariant(45u32.to_qvariant()));
     }
-    impl QMetaType for MyInt {}
 
-    assert_eq!(MyInt::register(Some(&CString::new("MyInt").unwrap())), MyInt::id());
-    let m42 = MyInt { x: 42 };
-    let m43 = MyInt { x: 43 };
-
-    assert_eq!(Some(m42.clone()), MyInt::from_qvariant(m42.clone().to_qvariant()));
-    assert_eq!(Some(m43.clone()), MyInt::from_qvariant(m43.clone().to_qvariant()));
-
-    assert_eq!(None, u32::from_qvariant(m43.to_qvariant()));
-    assert_eq!(None, MyInt::from_qvariant(45u32.to_qvariant()));
-    assert_eq!(Some(45), u32::from_qvariant(45u32.to_qvariant()));
-}
-
-#[test]
-#[should_panic(expected = "Attempt to register the same type with different name")]
-fn test_qmetatype_register_wrong_type1() {
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyType {}
-    impl QMetaType for MyType {}
-    // registering with the name of an existing type should panic
-    MyType::register(Some(&CString::new("QString").unwrap()));
-}
-
-#[test]
-#[should_panic(expected = "Attempt to register the same type with different name")]
-fn test_qmetatype_register_wrong_type2() {
-    #[derive(Default, Clone, Debug, Eq, PartialEq)]
-    struct MyType {}
-    impl QMetaType for MyType {}
-    String::register(Some(&CString::new("String").unwrap()));
-    // registering with the name of an existing type should panic
-    MyType::register(Some(&CString::new("String").unwrap()));
-}
-
-#[test]
-fn test_qvariant_datetime() {
-    let dt = QDateTime::from_date_time_local_timezone(
-        QDate::from_y_m_d(2019, 10, 23),
-        QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)),
-    );
-    let v = QVariant::from(dt);
-    let qstring = QString::from_qvariant(v.clone()).unwrap();
-    let mut s = qstring.to_string();
-    if s.ends_with(".100") {
-        // Old version of qt did not include the milliseconds, so remove it
-        s.truncate(s.len() - 4);
+    #[test]
+    #[should_panic(expected = "Attempt to register the same type with different name")]
+    fn test_qmetatype_register_wrong_type1() {
+        #[derive(Default, Clone, Debug, Eq, PartialEq)]
+        struct MyType {}
+        impl QMetaType for MyType {}
+        // registering with the name of an existing type should panic
+        MyType::register(Some(&CString::new("QString").unwrap()));
     }
-    assert_eq!(s, "2019-10-23T10:30:40");
-    let qdate = QDate::from_qvariant(v.clone()).unwrap();
-    assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
-    assert!(qdate != QDate::from_y_m_d(2019, 10, 24));
 
-    let qtime = QTime::from_qvariant(v.clone()).unwrap();
-    assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)));
-    assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), None));
-}
+    #[test]
+    #[should_panic(expected = "Attempt to register the same type with different name")]
+    fn test_qmetatype_register_wrong_type2() {
+        #[derive(Default, Clone, Debug, Eq, PartialEq)]
+        struct MyType {}
+        impl QMetaType for MyType {}
+        String::register(Some(&CString::new("String").unwrap()));
+        // registering with the name of an existing type should panic
+        MyType::register(Some(&CString::new("String").unwrap()));
+    }
 
-#[test]
-fn test_qvariant_qpoint_qrect() {
-    // test that conversion through a variant lead the the right data
-    assert_eq!(
-        QPoint::from_qvariant(QPointF { x: 23.1, y: 54.2 }.to_qvariant()),
-        Some(QPoint { x: 23, y: 54 })
-    );
-    let qrectf = QRectF { x: 4.1, y: 9.1, height: 7.3, width: 9.0 };
-    assert_eq!(QRectF::from_qvariant(qrectf.to_qvariant()), Some(qrectf));
-    assert_eq!(
-        QSize::from_qvariant(QSizeF { width: 123.1, height: 254.2 }.to_qvariant()),
-        Some(QSize { width: 123, height: 254 })
-    );
+    #[test]
+    fn test_qvariant_datetime() {
+        let dt = QDateTime::from_date_time_local_timezone(
+            QDate::from_y_m_d(2019, 10, 23),
+            QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)),
+        );
+        let v = QVariant::from(dt);
+        let qstring = QString::from_qvariant(v.clone()).unwrap();
+        let mut s = qstring.to_string();
+        if s.ends_with(".100") {
+            // Old version of qt did not include the milliseconds, so remove it
+            s.truncate(s.len() - 4);
+        }
+        assert_eq!(s, "2019-10-23T10:30:40");
+        let qdate = QDate::from_qvariant(v.clone()).unwrap();
+        assert!(qdate == QDate::from_y_m_d(2019, 10, 23));
+        assert!(qdate != QDate::from_y_m_d(2019, 10, 24));
+
+        let qtime = QTime::from_qvariant(v.clone()).unwrap();
+        assert!(qtime == QTime::from_h_m_s_ms(10, 30, Some(40), Some(100)));
+        assert!(qtime != QTime::from_h_m_s_ms(10, 30, Some(40), None));
+    }
+
+    #[test]
+    fn test_qvariant_qpoint_qrect() {
+        // test that conversion through a variant lead the the right data
+        assert_eq!(
+            QPoint::from_qvariant(QPointF { x: 23.1, y: 54.2 }.to_qvariant()),
+            Some(QPoint { x: 23, y: 54 })
+        );
+        let qrectf = QRectF { x: 4.1, y: 9.1, height: 7.3, width: 9.0 };
+        assert_eq!(QRectF::from_qvariant(qrectf.to_qvariant()), Some(qrectf));
+        assert_eq!(
+            QSize::from_qvariant(QSizeF { width: 123.1, height: 254.2 }.to_qvariant()),
+            Some(QSize { width: 123, height: 254 })
+        );
+    }
 }

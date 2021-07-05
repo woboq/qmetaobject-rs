@@ -595,7 +595,7 @@ fn connect_cpp_signal() {
     let obj_ptr = unsafe { QObjectPinned::new(&f).get_or_create_cpp_object() };
     let mut result = None;
     let con = unsafe {
-        connect(obj_ptr, QObject::object_name_changed_signal(), |name: &QString| {
+        connect(obj_ptr, <dyn QObject>::object_name_changed_signal(), |name: &QString| {
             result = Some(name.clone());
         })
     };
