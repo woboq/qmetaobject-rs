@@ -24,7 +24,7 @@ use std::process::Command;
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
     Ok(String::from_utf8(
-        Command::new(qmake).env("QT_SELECT", "qt5").args(&["-query", var]).output()?.stdout,
+        Command::new(qmake).args(&["-query", var]).output()?.stdout,
     )
     .expect("UTF-8 conversion failed"))
 }
