@@ -9,6 +9,10 @@ use qmetaobject::scenegraph::*;
 
 mod nodes;
 
+cpp! {{
+    #include <QtQuick/QQuickItem>
+}}
+
 #[derive(Default, QObject)]
 struct Graph {
     base: qt_base_class!(trait QQuickItem),
@@ -27,14 +31,44 @@ struct Graph {
     ),
 }
 
+// Example of adding an enum wrapper.
+
+/// Wrapper for [`QQuickItem::Flag`][enum] enum.
+///
+/// [enum]: https://doc.qt.io/qt-5/qquickitem.html#Flag-enum
+#[allow(unused)]
+#[repr(u32)]
+enum QQuickItemFlag {
+    ItemClipsChildrenToShape = 0x01,
+    ItemAcceptsInputMethod = 0x02,
+    ItemIsFocusScope = 0x04,
+    ItemHasContents = 0x08,
+    ItemAcceptsDrops = 0x10,
+}
+
 impl Graph {
+    // Example of adding a method wrapper with wrapper-specific notice.
+
+    /// Wrapper for [`QQuickItem::setFlag(QQuickItem::Flag flag, bool enabled = true)`][method] method.
+    ///
+    /// # Wrapper-specific behavior
+    ///
+    /// The `enabled` argument is always set to true.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qquickitem.html#setFlag
+    fn set_flag(&mut self, flag: QQuickItemFlag) {
+        let obj = self.get_cpp_object();
+        assert!(!obj.is_null());
+        cpp!(unsafe [obj as "QQuickItem *", flag as "QQuickItem::Flag"] {
+            obj->setFlag(flag);
+        });
+    }
+
     fn appendSample(&mut self, value: f64) {
         self.m_samples.push(value);
         self.m_samplesChanged = true;
         // FIXME! find a better way maybe
-        let obj = self.get_cpp_object();
-        assert!(!obj.is_null());
-        cpp!(unsafe [obj as "QQuickItem *"] { obj->setFlag(QQuickItem::ItemHasContents); });
+        self.set_flag(QQuickItemFlag::ItemHasContents);
         (self as &dyn QQuickItem).update();
     }
 }

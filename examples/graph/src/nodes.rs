@@ -21,10 +21,11 @@ qrc! {
 // However, there is quite some API to expose.
 
 cpp! {{
+    #include <QtQuick/QQuickItem>
+
+    #include "src/gridnode.cpp"
     #include "src/linenode.cpp"
     #include "src/noisynode.cpp"
-    #include "src/gridnode.cpp"
-    #include <QtQuick/QQuickItem>
 }}
 
 pub enum NoisyNode {}
