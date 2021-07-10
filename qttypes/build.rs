@@ -94,9 +94,6 @@ fn main() {
             let qt_version = detect_version_from_header(&qt_include_path, &qt_library_path);
             (qt_version, qt_include_path, qt_library_path)
         }
-        (Some(_), None) | (None, Some(_)) => {
-            panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set ")
-        }
         (None, None) => {
             let qt_version = match qmake_query("QT_VERSION") {
                 Ok(v) => v,
@@ -119,6 +116,9 @@ fn main() {
             let qt_library_path = qmake_query("QT_INSTALL_LIBS").unwrap();
             println!("cargo:rerun-if-env-changed=QMAKE");
             (qt_version, qt_include_path, qt_library_path)
+        }
+        (Some(_), None) | (None, Some(_)) => {
+            panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set.")
         }
     };
 
