@@ -21,6 +21,8 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use semver::Version;
+
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
     let stdout: Vec<u8> = Command::new(qmake).args(&["-query", var]).output()?.stdout;
@@ -121,6 +123,9 @@ fn main() {
             panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set.")
         }
     };
+    let qt_version = qt_version
+        .parse::<Version>()
+        .expect("Parsing Qt version failed");
 
     let mut config = cpp_build::Config::new();
 
@@ -131,7 +136,7 @@ fn main() {
 
     detect_qreal_size(&qt_include_path, &qt_library_path);
 
-    if qt_version.starts_with("6.") {
+    if qt_version >= Version::new(6, 0, 0) {
         config.flag_if_supported("-std=c++17");
         config.flag_if_supported("/std:c++17");
     }
@@ -146,7 +151,7 @@ fn main() {
     let vers_suffix = if cargo_target_os == "macos" {
         "".to_string()
     } else {
-        qt_version.split(".").next().unwrap_or("").to_string()
+        qt_version.major.to_string()
     };
 
     // Windows debug suffix exclusively from MSVC land
