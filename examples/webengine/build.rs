@@ -20,12 +20,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use semver::Version;
 
 fn main() {
+    let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let cargo_target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap();
+
+    if (cargo_target_os == "windows") && (cargo_target_env != "msvc") {
+        println!("cargo:warning=On Windows, WebEngine module is only available under MSVC 2017 or MSVC2019.");
+        println!("cargo:rustc-cfg=no_qt");
+    }
+
     let qt_version = std::env::var("DEP_QT_VERSION")
         .unwrap()
         .parse::<Version>()
         .expect("Parsing Qt version failed");
 
     if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
+        println!("cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.", qt_version);
         println!("cargo:rustc-cfg=no_qt");
     }
 }
