@@ -27,13 +27,13 @@ use super::*;
 /// This trait allow to override a Qt QAbstractListModel
 pub trait QAbstractListModel: QObject {
     /// Required for the implementation detail of the QObject custom derive
-    fn get_object_description() -> &'static QObjectDescription
+    fn get_object_description() -> &'static QObjectDescriptor
     where
         Self: Sized,
     {
         unsafe {
-            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-                return rustObjectDescription<Rust_QAbstractListModel>();
+            &*cpp!([]-> *const QObjectDescriptor as "RustQObjectDescriptor const*" {
+                return RustQObjectDescriptor::instance<Rust_QAbstractListModel>();
             })
         }
     }

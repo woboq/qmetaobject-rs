@@ -5,13 +5,13 @@ use cpp::cpp;
 use super::*;
 
 pub trait QAbstractTableModel: QObject {
-    fn get_object_description() -> &'static QObjectDescription
+    fn get_object_description() -> &'static QObjectDescriptor
     where
         Self: Sized,
     {
         unsafe {
-            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-                return rustObjectDescription<Rust_QAbstractTableModel>();
+            &*cpp!([]-> *const QObjectDescriptor as "RustQObjectDescriptor const*" {
+                return RustQObjectDescriptor::instance<Rust_QAbstractTableModel>();
             })
         }
     }

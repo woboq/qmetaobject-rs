@@ -257,9 +257,13 @@ impl QObjectCppWrapper {
     }
 }
 
+// TODO: Remove before 1.0
+#[doc(hidden)]
+#[deprecated] pub type QObjectDescription = QObjectDescriptor;
+
 #[doc(hidden)]
 #[repr(C)]
-pub struct QObjectDescription {
+pub struct QObjectDescriptor {
     pub size: usize,
     pub meta_object: *const QMetaObject,
     pub create: unsafe extern "C" fn(
@@ -324,14 +328,14 @@ pub trait QObject {
     // Part of the trait structure that sub trait must have.
     // Copy/paste this code replacing QObject with the type.
 
-    /// Returns a QObjectDescription for this type
-    fn get_object_description() -> &'static QObjectDescription
+    /// Returns a QObjectDescriptor for this type
+    fn get_object_description() -> &'static QObjectDescriptor
     where
         Self: Sized,
     {
         unsafe {
-            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const *" {
-                return rustObjectDescription<RustObject<QObject>>();
+            &*cpp!([]-> *const QObjectDescriptor as "RustQObjectDescriptor const*" {
+                return RustQObjectDescriptor::instance<RustObject<QObject>>();
             })
         }
     }

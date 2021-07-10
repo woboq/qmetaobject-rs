@@ -700,13 +700,13 @@ pub fn qml_register_enum<T: QEnum>(
 ///
 /// Work in progress
 pub trait QQuickItem: QObject {
-    fn get_object_description() -> &'static QObjectDescription
+    fn get_object_description() -> &'static QObjectDescriptor
     where
         Self: Sized,
     {
         unsafe {
-            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-                return rustObjectDescription<Rust_QQuickItem>();
+            &*cpp!([]-> *const QObjectDescriptor as "RustQObjectDescriptor const*" {
+                return RustQObjectDescriptor::instance<Rust_QQuickItem>();
             })
         }
     }
@@ -1025,13 +1025,13 @@ mod qjsvalue_tests {
 /// ```
 pub trait QQmlExtensionPlugin: QObject {
     #[doc(hidden)] // implementation detail for the QObject custom derive
-    fn get_object_description() -> &'static QObjectDescription
+    fn get_object_description() -> &'static QObjectDescriptor
     where
         Self: Sized,
     {
         unsafe {
-            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const *" {
-                return rustObjectDescription<Rust_QQmlExtensionPlugin>();
+            &*cpp!([]-> *const QObjectDescriptor as "RustQObjectDescriptor const *" {
+                return RustQObjectDescriptor::instance<Rust_QQmlExtensionPlugin>();
             })
         }
     }
