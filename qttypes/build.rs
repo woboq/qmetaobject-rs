@@ -23,10 +23,9 @@ use std::process::Command;
 
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
-    Ok(String::from_utf8(
-        Command::new(qmake).args(&["-query", var]).output()?.stdout,
-    )
-    .expect("UTF-8 conversion failed"))
+    let stdout: Vec<u8> = Command::new(qmake).args(&["-query", var]).output()?.stdout;
+    let stdout = String::from_utf8(stdout).expect("UTF-8 conversion failed");
+    Ok(stdout.trim().to_string())
 }
 
 fn open_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> std::fs::File {
@@ -126,20 +125,20 @@ fn main() {
 
     if cargo_target_os == "macos" {
         config.flag("-F");
-        config.flag(qt_library_path.trim());
+        config.flag(&qt_library_path);
     }
 
-    detect_qreal_size(&qt_include_path.trim(), qt_library_path.trim());
+    detect_qreal_size(&qt_include_path, &qt_library_path);
 
-    if qt_version.trim().starts_with("6.") {
+    if qt_version.starts_with("6.") {
         config.flag_if_supported("-std=c++17");
         config.flag_if_supported("/std:c++17");
     }
-    config.include(qt_include_path.trim()).build("src/lib.rs");
+    config.include(&qt_include_path).build("src/lib.rs");
 
-    println!("cargo:VERSION={}", qt_version.trim());
-    println!("cargo:LIBRARY_PATH={}", qt_library_path.trim());
-    println!("cargo:INCLUDE_PATH={}", qt_include_path.trim());
+    println!("cargo:VERSION={}", &qt_version);
+    println!("cargo:LIBRARY_PATH={}", &qt_library_path);
+    println!("cargo:INCLUDE_PATH={}", &qt_include_path);
     println!("cargo:FOUND=1");
 
     let macos_lib_search = if cargo_target_os == "macos" { "=framework" } else { "" };
@@ -159,10 +158,10 @@ fn main() {
     };
 
     if std::env::var("CARGO_CFG_TARGET_FAMILY").as_ref().map(|s| s.as_ref()) == Ok("unix") {
-        println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", qt_library_path.trim());
+        println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", &qt_library_path);
     }
 
-    println!("cargo:rustc-link-search{}={}", macos_lib_search, qt_library_path.trim());
+    println!("cargo:rustc-link-search{}={}", macos_lib_search, &qt_library_path);
 
     let link_lib = |lib: &str| {
         println!(
