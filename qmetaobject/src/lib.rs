@@ -206,7 +206,7 @@ pub mod qtdeclarative;
 pub mod qtquickcontrols2;
 pub mod scenegraph;
 pub mod tablemodel;
-#[cfg(feature = "webengine")]
+#[cfg(all(feature = "webengine", not(any(qt_6_0, qt_6_1))))]
 pub mod webengine;
 
 /// Module intended for glob import.

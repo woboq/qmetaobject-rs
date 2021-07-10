@@ -186,7 +186,11 @@ fn main() {
     #[cfg(feature = "qtquick")]
     link_lib("Qml");
     #[cfg(feature = "qtwebengine")]
-    link_lib("WebEngine");
+    if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
+        println!("cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.", qt_version);
+    } else {
+        link_lib("WebEngine");
+    }
     #[cfg(feature = "qtquickcontrols2")]
     link_lib("QuickControls2");
     #[cfg(feature = "qtmultimedia")]
