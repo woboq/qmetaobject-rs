@@ -16,9 +16,22 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+use semver::Version;
+
 fn main() {
     let qt_include_path = std::env::var("DEP_QT_INCLUDE_PATH").unwrap();
     let qt_library_path = std::env::var("DEP_QT_LIBRARY_PATH").unwrap();
+    let qt_version = std::env::var("DEP_QT_VERSION")
+        .unwrap()
+        .parse::<Version>()
+        .expect("Parsing Qt version failed");
+
+    if qt_version >= Version::new(6, 0, 0) {
+        // This example is not supported on Qt 6 and above because graphics
+        // API used used for it were removed.
+        println!("cargo:rustc-cfg=no_qt");
+        return;
+    }
 
     #[allow(unused_mut)]
     let mut config = cpp_build::Config::new();

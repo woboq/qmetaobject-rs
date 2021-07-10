@@ -6,10 +6,11 @@ authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
 
 [dependencies]
-qmetaobject = { path = "../../qmetaobject"}
-qttypes = { path = "../../qttypes"} # required to get the DEP_QT_* env variables
+qmetaobject = { path = "../../qmetaobject" }
+qttypes = { path = "../../qttypes" } # required to get the DEP_QT_* env variables
 cstr = "0.2"
 cpp = "0.5.6"
 
 [build-dependencies]
 cpp_build = "0.5.6"
+semver = "1"
