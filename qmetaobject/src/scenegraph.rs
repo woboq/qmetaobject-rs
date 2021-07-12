@@ -127,13 +127,17 @@ impl SGNode<ContainerNode> {
     /// use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
     /// use qttypes::QRectF;
     ///
-    /// # struct Dummy<T> { items : Vec<QRectF>, _phantom :T }
+    /// # struct Dummy<T> { items: Vec<QRectF>, _phantom: T }
     /// # impl<T> QQuickItem for Dummy<T> where Dummy<T> : QObject  {
     /// // in the reimplementation of  QQuickItem::update_paint_node
     /// fn update_paint_node(&mut self, mut node: SGNode<ContainerNode>) -> SGNode<ContainerNode> {
-    ///    let items : &Vec<QRectF> = &self.items;
+    ///    let items: &Vec<QRectF> = &self.items;
     ///    node.update_dynamic(items.iter(),
-    ///        |i, mut n| -> SGNode<RectangleNode> { n.create(self); n.set_rect(*i); n });
+    ///        |i, mut n| -> SGNode<RectangleNode> {
+    ///            n.create(self);
+    ///            n.set_rect(*i);
+    ///            n
+    ///        });
     ///    node
     ///  }
     /// # }
@@ -189,7 +193,7 @@ impl SGNode<ContainerNode> {
     /// use qmetaobject::scenegraph::{SGNode, ContainerNode, RectangleNode};
     /// use qttypes::QRectF;
     ///
-    /// # struct Dummy<T> { items : Vec<QRectF>, _phantom :T }
+    /// # struct Dummy<T> { items: Vec<QRectF>, _phantom: T }
     /// # impl<T> QQuickItem for Dummy<T> where Dummy<T> : QObject  {
     /// // in the reimplementation of  QQuickItem::update_paint_node
     /// fn update_paint_node(&mut self, mut node : SGNode<ContainerNode> ) -> SGNode<ContainerNode> {
@@ -291,22 +295,22 @@ pub trait NodeType {
     fn into_node(self) -> SGNode;
 }
 
-pub struct UpdateNode<T : NodeType, Fn1 : Fn()->T, Fn2: Fn(&mut T)> {
-    pub create : Fn1,
-    pub update : Fn2,
+pub struct UpdateNode<T: NodeType, Fn1: Fn() -> T, Fn2: Fn(&mut T)> {
+    pub create: Fn1,
+    pub update: Fn2,
 }
 
-impl<T : NodeType, Fn1 : Fn()->T, Fn2: Fn(&mut T)> UpdateNodeInfo for UpdateNode<T, Fn1, Fn2> {
+impl<T: NodeType, Fn1: Fn() -> T, Fn2: Fn(&mut T)> UpdateNodeInfo for UpdateNode<T, Fn1, Fn2> {
     fn create(&self) -> SGNode {
         (self.create)().into_node()
     }
-    fn update(&self, n : &mut SGNode) {
+    fn update(&self, n: &mut SGNode) {
         (self.update)(T::from_node(n));
     }
 }
 
 impl SGNode {
-    pub fn update_nodes<'a>(&mut self, info : &[&'a UpdateNodeInfo])
+    pub fn update_nodes<'a>(&mut self, info: &[&'a UpdateNodeInfo])
     {
         if self.raw.is_null() {
             self.raw = cpp!(unsafe [] -> *mut c_void as "QSGNode*" {

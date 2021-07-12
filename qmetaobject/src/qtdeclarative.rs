@@ -814,7 +814,7 @@ cpp! {{
         QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *) override {
             return rust!(Rust_QQuickItem_updatePaintNode[
                 rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject",
-                node : *mut c_void as "QSGNode *"
+                node: *mut c_void as "QSGNode *"
             ] -> SGNode<ContainerNode> as "QSGNode *" {
                 rust_object.borrow_mut().update_paint_node(unsafe {
                     SGNode::<ContainerNode>::from_raw(node)
