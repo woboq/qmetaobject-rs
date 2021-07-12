@@ -103,8 +103,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!   if Qt is not found. Otherwise, when not enabled, the build will continue, but any use of the classes will
 //!   panic at runtime
 //! - **`chrono`**: enable the conversion between [`QDateTime`] related types and the types from the `chrono` crate.
-//! - **`qtquick`**, **`qtwebengine`**, **`qtquickcontrols2`**, **`qtmultimedia`**, **`qtmultimediawidgets`**, **`qtsql`**, **`qttest`**: link against these Qt modules
-//! -
+//!
+//! Link against these Qt modules using cargo features:
+//!
+//! | Cargo feature             | Qt module             |
+//! | ------------------------- | --------------------- |
+//! | **`qtmultimedia`**        | Qt Multimedia         |
+//! | **`qtmultimediawidgets`** | Qt Multimedia Widgets |
+//! | **`qtquick`**             | Qt Quick              |
+//! | **`qtquickcontrols2`**    | Qt Quick Controls     |
+//! | **`qtsql`**               | Qt SQL                |
+//! | **`qttest`**              | Qt Test               |
+//! | **`qtwebengine`**         | Qt WebEngine          |
 //!
 
 #![cfg_attr(no_qt, allow(unused))]

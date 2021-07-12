@@ -127,14 +127,18 @@ through a Graph example provided with this repository.
 
 First things first, set up your _Cargo.toml_ and _build.rs_:
 
-1. Add `qttypes` to dependencies. If you need latest unreleased changes, use
-    * `path = "../qttypes"` or
-    * `git = "https://github.com/woboq/qmetaobject-rs"`
-   otherwise, stick to recent versions published on [crates.io](versions).
+1. Add `qttypes` to dependencies.
+   Likely, you would just stick to recent versions published on [crates.io](versions).
    ```toml
    [dependencies]
-   qttypes = { version = "0.2", features = ["qtquick", "..."] }
+   qttypes = { version = "0.2", features = [ "qtquick" ] }
    ```
+   Add more Qt modules you need to the features array.
+   Refer to [qttypes crate documentation](docs.qttypes) for a full list of supported modules.
+   <br/>
+   If you _absolutely need_ latest unreleased changes, use this instead of `version = "..."`:
+    * `path = "../path/to/qmetaobject-rs/qttypes"` or
+    * `git = "https://github.com/woboq/qmetaobject-rs"`
 
 2. Add `cpp` to dependencies and `cpp_build` to build-dependencies.
    You can find up-to-date instructions on [`cpp` documentation](https://docs.rs/cpp) page.
@@ -241,9 +245,9 @@ impl Graph {
     }
 
     fn appendSample(&mut self, value: f64) {
-        ...
+        // ...
         self.set_flag(QQuickItemFlag::ItemHasContents);
-        ...
+        // ...
     }
 }
 ```
@@ -278,3 +282,4 @@ method. Now send us a Pull Request. 🙂
 [`QObject::cpp_construct()`]: https://docs.rs/qmetaobject/latest/qmetaobject/trait.QObject.html#tymethod.cpp_construct
 [`QObjectPinned`]: https://docs.rs/qmetaobject/latest/qmetaobject/struct.QObjectPinned.html
 [`QVariant`]: https://docs.rs/qmetaobject/latest/qmetaobject/struct.QVariant.html
+[docs.qttypes]: https://docs.rs/qttypes/latest/qttypes/#cargo-features
