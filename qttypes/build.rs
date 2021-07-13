@@ -28,7 +28,7 @@ fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     Ok(stdout.trim().to_string())
 }
 
-fn open_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> std::fs::File {
+fn open_core_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> BufReader<std::fs::File> {
     let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
 
     let mut path = PathBuf::from(qt_include_path);
@@ -40,18 +40,19 @@ fn open_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> std:
             path.push(file);
         }
     }
-    std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path))
+    let f = std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path));
+    BufReader::new(f)
 }
 
 // qreal is a double, unless QT_COORD_TYPE says otherwise:
 // https://doc.qt.io/qt-5/qtglobal.html#qreal-typedef
 fn detect_qreal_size(qt_include_path: &str, qt_library_path: &str) {
-    let f = open_header("qconfig.h", qt_include_path, qt_library_path);
-    let b = BufReader::new(f);
+    const CONFIG_HEADER: &'static str = "qconfig.h";
+    let b = open_core_header(CONFIG_HEADER, qt_include_path, qt_library_path);
 
     // Find declaration of QT_COORD_TYPE
     for line in b.lines() {
-        let line = line.expect("qconfig.h is valid UTF-8");
+        let line = line.expect("UTF-8 conversion failed for qconfig.h");
         if line.contains("QT_COORD_TYPE") {
             if line.contains("float") {
                 println!("cargo:rustc-cfg=qreal_is_float");
@@ -64,12 +65,12 @@ fn detect_qreal_size(qt_include_path: &str, qt_library_path: &str) {
 }
 
 fn detect_version_from_header(qt_include_path: &str, qt_library_path: &str) -> String {
-    let f = open_header("qtcoreversion.h", qt_include_path, qt_library_path);
-    let b = BufReader::new(f);
+    const VERSION_HEADER: &'static str = "qtcoreversion.h";
+    let b = open_core_header(VERSION_HEADER, qt_include_path, qt_library_path);
 
     // Find declaration of QTCORE_VERSION_STR
     for line in b.lines() {
-        let line = line.expect("qtcoreversion.h is valid UTF-8");
+        let line = line.expect("UTF-8 conversion failed for qtcoreversion.h");
         if line.contains("QTCORE_VERSION_STR") {
             return line.split('\"').nth(1).expect("Parsing QTCORE_VERSION_STR").into();
         }
