@@ -178,33 +178,46 @@ struct RustObject : Base {
     }
 };
 
-struct RustObjectDescription {
+struct RustQObjectDescriptor {
     size_t size;
     const QMetaObject *baseMetaObject;
     QObject *(*create)(const TraitObject *, const TraitObject *);
     void (*qmlConstruct)(void *, const TraitObject *, const TraitObject *, void (*extra_destruct)(QObject *));
     TraitObject (*get_rust_refcell)(QObject *); // Possible optimisation: make this an offset
+
+    /// Get singleton-per-type descriptor.
+    template<typename T>
+    static const RustQObjectDescriptor *instance();
 };
 
 template<typename T>
-const RustObjectDescription *rustObjectDescription() {
-    static RustObjectDescription desc {
-        sizeof(T),
-        &T::staticMetaObject,
-        [](const TraitObject *self_pinned, const TraitObject *self_ptr) -> QObject* {
+const RustQObjectDescriptor *RustQObjectDescriptor::instance() {
+    static RustQObjectDescriptor desc {
+        /*size*/ sizeof(T),
+        /*baseMetaObject*/ &T::staticMetaObject,
+        /*create*/ [](
+                const TraitObject *self_pinned,
+                const TraitObject *self_ptr
+        ) -> QObject * {
             auto q = new T();
             q->ptr_qobject = *self_ptr;
             q->rust_object = *self_pinned;
             return q;
         },
-        [](void *data, const TraitObject *self_pinned, const TraitObject *self_ptr,
-                void (*extra_destruct)(QObject *)) {
+        /*qmlConstruct*/ [](
+                void *data,
+                const TraitObject *self_pinned,
+                const TraitObject *self_ptr,
+                void (*extra_destruct)(QObject *)
+        ) {
             auto *q = new (data) T();
             q->rust_object = *self_pinned;
             q->ptr_qobject = *self_ptr;
             q->extra_destruct = extra_destruct;
         },
-        [](QObject *q) { return static_cast<T *>(q)->ptr_qobject; }
+        /*get_rust_refcell*/ [](QObject *q) {
+            return static_cast<T *>(q)->ptr_qobject;
+        }
     };
     return &desc;
 }

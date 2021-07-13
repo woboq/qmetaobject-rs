@@ -24,13 +24,13 @@ use crate::*;
 /// This trait allow to override a Qt QAbstractItemModel
 pub trait QAbstractItemModel: QObject {
     /// Required for the implementation detail of the QObject custom derive
-    fn get_object_description() -> &'static QObjectDescription
+    fn get_object_description() -> &'static QObjectDescriptor
     where
         Self: Sized,
     {
         unsafe {
-            &*cpp!([]-> *const QObjectDescription as "RustObjectDescription const*" {
-                return rustObjectDescription<Rust_QAbstractItemModel>();
+            &*cpp!([]-> *const QObjectDescriptor as "RustQObjectDescriptor const*" {
+                return RustQObjectDescriptor::instance<Rust_QAbstractItemModel>();
             })
         }
     }
