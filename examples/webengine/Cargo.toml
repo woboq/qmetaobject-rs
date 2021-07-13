@@ -2,6 +2,11 @@
 name = "webengine"
 version = "0.1.0"
 edition = "2018"
+build = "build.rs"
 
 [dependencies]
 qmetaobject = { path = "../../qmetaobject", features = ["webengine"] }
+qttypes = { path = "../../qttypes" } # required to get the DEP_QT_* env variables
+
+[build-dependencies]
+semver = "1"

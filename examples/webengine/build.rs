@@ -1,4 +1,5 @@
 /* Copyright (C) 2018 Olivier Goffart <ogoffart@woboq.com>
+   Copyright (C) 2021 ivan tkachenko a.k.a. ratijas <me@ratijas.tk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,38 +20,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use semver::Version;
 
 fn main() {
-    let qt_include_path = std::env::var("DEP_QT_INCLUDE_PATH").unwrap();
-    let qt_library_path = std::env::var("DEP_QT_LIBRARY_PATH").unwrap();
+    let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let cargo_target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap();
+
+    if (cargo_target_os == "windows") && (cargo_target_env != "msvc") {
+        println!("cargo:warning=On Windows, WebEngine module is only available under MSVC 2017 or MSVC2019.");
+        println!("cargo:rustc-cfg=no_qt");
+    }
+
     let qt_version = std::env::var("DEP_QT_VERSION")
         .unwrap()
         .parse::<Version>()
         .expect("Parsing Qt version failed");
 
-    if qt_version >= Version::new(6, 0, 0) {
-        // This example is not supported on Qt 6 and above because graphics
-        // API used used for it were removed.
+    if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
+        println!("cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.", qt_version);
         println!("cargo:rustc-cfg=no_qt");
-        return;
     }
-
-    #[allow(unused_mut)]
-    let mut config = cpp_build::Config::new();
-
-    if cfg!(target_os = "macos") {
-        config.flag("-F");
-        config.flag(&qt_library_path);
-    }
-
-    config
-        .include(&qt_include_path)
-        .include(format!("{}/QtQuick", qt_include_path))
-        .include(format!("{}/QtCore", qt_include_path))
-        // See https://github.com/woboq/qmetaobject-rs/pull/168
-        //
-        // QSGSimpleMaterial{,Shader} classes ain't going to be removed from Qt5
-        // which is on a life support at this point; and we know for sure they are
-        // already gone in Qt6. So, there's just no point seeing these warning
-        // over and over again.
-        .flag_if_supported("-Wno-deprecated-declarations")
-        .build("src/main.rs");
 }
