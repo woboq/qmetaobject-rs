@@ -21,15 +21,16 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use semver::Version;
+
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
-    Ok(String::from_utf8(
-        Command::new(qmake).args(&["-query", var]).output()?.stdout,
-    )
-    .expect("UTF-8 conversion failed"))
+    let stdout: Vec<u8> = Command::new(qmake).args(&["-query", var]).output()?.stdout;
+    let stdout = String::from_utf8(stdout).expect("UTF-8 conversion failed");
+    Ok(stdout.trim().to_string())
 }
 
-fn open_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> std::fs::File {
+fn open_core_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> BufReader<std::fs::File> {
     let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
 
     let mut path = PathBuf::from(qt_include_path);
@@ -41,18 +42,19 @@ fn open_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> std:
             path.push(file);
         }
     }
-    std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path))
+    let f = std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path));
+    BufReader::new(f)
 }
 
 // qreal is a double, unless QT_COORD_TYPE says otherwise:
 // https://doc.qt.io/qt-5/qtglobal.html#qreal-typedef
 fn detect_qreal_size(qt_include_path: &str, qt_library_path: &str) {
-    let f = open_header("qconfig.h", qt_include_path, qt_library_path);
-    let b = BufReader::new(f);
+    const CONFIG_HEADER: &'static str = "qconfig.h";
+    let b = open_core_header(CONFIG_HEADER, qt_include_path, qt_library_path);
 
     // Find declaration of QT_COORD_TYPE
     for line in b.lines() {
-        let line = line.expect("qconfig.h is valid UTF-8");
+        let line = line.expect("UTF-8 conversion failed for qconfig.h");
         if line.contains("QT_COORD_TYPE") {
             if line.contains("float") {
                 println!("cargo:rustc-cfg=qreal_is_float");
@@ -65,12 +67,12 @@ fn detect_qreal_size(qt_include_path: &str, qt_library_path: &str) {
 }
 
 fn detect_version_from_header(qt_include_path: &str, qt_library_path: &str) -> String {
-    let f = open_header("qtcoreversion.h", qt_include_path, qt_library_path);
-    let b = BufReader::new(f);
+    const VERSION_HEADER: &'static str = "qtcoreversion.h";
+    let b = open_core_header(VERSION_HEADER, qt_include_path, qt_library_path);
 
     // Find declaration of QTCORE_VERSION_STR
     for line in b.lines() {
-        let line = line.expect("qtcoreversion.h is valid UTF-8");
+        let line = line.expect("UTF-8 conversion failed for qtcoreversion.h");
         if line.contains("QTCORE_VERSION_STR") {
             return line.split('\"').nth(1).expect("Parsing QTCORE_VERSION_STR").into();
         }
@@ -93,9 +95,6 @@ fn main() {
         (Some(qt_include_path), Some(qt_library_path)) => {
             let qt_version = detect_version_from_header(&qt_include_path, &qt_library_path);
             (qt_version, qt_include_path, qt_library_path)
-        }
-        (Some(_), None) | (None, Some(_)) => {
-            panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set ")
         }
         (None, None) => {
             let qt_version = match qmake_query("QT_VERSION") {
@@ -120,33 +119,39 @@ fn main() {
             println!("cargo:rerun-if-env-changed=QMAKE");
             (qt_version, qt_include_path, qt_library_path)
         }
+        (Some(_), None) | (None, Some(_)) => {
+            panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set.")
+        }
     };
+    let qt_version = qt_version
+        .parse::<Version>()
+        .expect("Parsing Qt version failed");
 
     let mut config = cpp_build::Config::new();
 
     if cargo_target_os == "macos" {
         config.flag("-F");
-        config.flag(qt_library_path.trim());
+        config.flag(&qt_library_path);
     }
 
-    detect_qreal_size(&qt_include_path.trim(), qt_library_path.trim());
+    detect_qreal_size(&qt_include_path, &qt_library_path);
 
-    if qt_version.trim().starts_with("6.") {
+    if qt_version >= Version::new(6, 0, 0) {
         config.flag_if_supported("-std=c++17");
         config.flag_if_supported("/std:c++17");
     }
-    config.include(qt_include_path.trim()).build("src/lib.rs");
+    config.include(&qt_include_path).build("src/lib.rs");
 
-    println!("cargo:VERSION={}", qt_version.trim());
-    println!("cargo:LIBRARY_PATH={}", qt_library_path.trim());
-    println!("cargo:INCLUDE_PATH={}", qt_include_path.trim());
+    println!("cargo:VERSION={}", &qt_version);
+    println!("cargo:LIBRARY_PATH={}", &qt_library_path);
+    println!("cargo:INCLUDE_PATH={}", &qt_include_path);
     println!("cargo:FOUND=1");
 
     let macos_lib_search = if cargo_target_os == "macos" { "=framework" } else { "" };
     let vers_suffix = if cargo_target_os == "macos" {
         "".to_string()
     } else {
-        qt_version.split(".").next().unwrap_or("").to_string()
+        qt_version.major.to_string()
     };
 
     // Windows debug suffix exclusively from MSVC land
@@ -159,10 +164,10 @@ fn main() {
     };
 
     if std::env::var("CARGO_CFG_TARGET_FAMILY").as_ref().map(|s| s.as_ref()) == Ok("unix") {
-        println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", qt_library_path.trim());
+        println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", &qt_library_path);
     }
 
-    println!("cargo:rustc-link-search{}={}", macos_lib_search, qt_library_path.trim());
+    println!("cargo:rustc-link-search{}={}", macos_lib_search, &qt_library_path);
 
     let link_lib = |lib: &str| {
         println!(

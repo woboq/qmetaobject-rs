@@ -31,13 +31,13 @@ fn main() {
     let mut config = cpp_build::Config::new();
     if cfg!(target_os = "macos") {
         config.flag("-F");
-        config.flag(qt_library_path.trim());
+        config.flag(&qt_library_path);
     }
     if qt_version >= Version::new(6, 0, 0) {
         config.flag_if_supported("-std=c++17");
         config.flag_if_supported("/std:c++17");
     }
-    config.include(qt_include_path.trim()).build("src/lib.rs");
+    config.include(&qt_include_path).build("src/lib.rs");
 
     for minor in 7..=15 {
         if qt_version >= Version::new(5, minor, 0) {

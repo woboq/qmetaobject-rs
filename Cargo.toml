@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    'qttypes',
-    'qmetaobject_impl',
     'qmetaobject',
-    'examples/todos',
+    'qmetaobject_impl',
+    'qttypes',
+
     'examples/graph',
     'examples/qmlextensionplugins',
+    'examples/todos',
     'examples/webengine',
 ]
-
