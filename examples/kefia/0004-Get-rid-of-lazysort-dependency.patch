@@ -1,0 +1,96 @@
+From 2fbab0b42edb7c2321b64b2a9c4ed1b54cc434ba Mon Sep 17 00:00:00 2001
+From: ivan tkachenko <me@ratijas.tk>
+Date: Thu, 15 Jul 2021 14:14:15 +0300
+Subject: [PATCH 4/8] Get rid of lazysort dependency
+
+It was't even used to its full potential, and in current state only made
+code bulky.
+---
+ Cargo.lock  | 7 -------
+ Cargo.toml  | 1 -
+ src/main.rs | 4 +---
+ src/view.rs | 4 ++--
+ 4 files changed, 3 insertions(+), 13 deletions(-)
+
+diff --git a/Cargo.lock b/Cargo.lock
+index 3bd71bb..6e447d7 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -88,7 +88,6 @@ checksum = "46dbcb333e86939721589d25a3557e180b52778cb33c7fdfe9e0158ff790d5ec"
+ name = "kefia"
+ version = "0.1.0"
+ dependencies = [
+- "lazysort",
+  "qmetaobject",
+  "regex",
+ ]
+@@ -99,12 +98,6 @@ version = "1.4.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+ 
+-[[package]]
+-name = "lazysort"
+-version = "0.2.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "d0e22ff43b231e0e2f87d74984e53ebc73b90ae13397e041214fb07efc64168f"
+-
+ [[package]]
+ name = "log"
+ version = "0.4.14"
+diff --git a/Cargo.toml b/Cargo.toml
+index dce8802..cb25762 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -15,5 +15,4 @@ license = "MIT"
+ 
+ [dependencies]
+ regex = "1.5"
+-lazysort = "0.2"
+ qmetaobject = { path = "../qmetaobject-rs/qmetaobject/"}
+diff --git a/src/main.rs b/src/main.rs
+index b2f7f76..c298f5c 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,5 +1,3 @@
+-use lazysort::*;
+-
+ use std::process::Command;
+ 
+ use regex::*;
+@@ -28,7 +26,7 @@ fn main() {
+             selected: false
+         });
+     }
+-    let pkgs: Vec<Package> = pkgs.into_iter().sorted_by(|a, b| a.group.cmp(&b.group)).collect();
++    pkgs.sort_by_key(|k| k.group.clone());
+ 
+     show(pkgs);
+ }
+diff --git a/src/view.rs b/src/view.rs
+index 4a69519..ce4fba3 100644
+--- a/src/view.rs
++++ b/src/view.rs
+@@ -1,5 +1,4 @@
+ use qmetaobject::*;
+-use lazysort::*;
+ 
+ use super::Package;
+ 
+@@ -8,12 +7,13 @@ pub fn show(gathered: Vec<Package>) {
+     let list = std::cell::RefCell::new(form_list(&gathered));
+ 
+     let mut repos = gathered.iter().map(|p| p.group.clone().into()).collect::<Vec<String>>();
++    repos.sort();
+     repos.dedup();
+     let mut groups = gathered.iter()
+         .flat_map(|p| p.meta.iter())
+-        .sorted()
+         .cloned()
+         .collect::<Vec<_>>();
++    groups.sort();
+     groups.dedup();
+     let qrepos = repos.iter().map(|s| QString::from(&**s)).collect::<QVariantList>();
+     let qgroups = groups.iter()
+-- 
+2.32.0
+

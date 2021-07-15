@@ -1,7 +1,7 @@
-From 5c2c980b83a571523206e494313b8c6d6b306aaf Mon Sep 17 00:00:00 2001
+From 1bb942f9ef45e278fb05680cd24a6422c501d6bd Mon Sep 17 00:00:00 2001
 From: Olivier Goffart <ogoffart@woboq.com>
 Date: Mon, 4 Jun 2018 18:00:30 +0200
-Subject: [PATCH 2/2] Port to qmetaobject-rs
+Subject: [PATCH 2/8] Port to qmetaobject-rs
 
 ---
  Cargo.toml   |   2 +-
@@ -294,5 +294,5 @@ index 162d6ab..c0ad025 100644
      }
  }
 -- 
-2.21.0
+2.32.0
 

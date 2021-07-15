@@ -1,0 +1,118 @@
+From 04d625720f37a39f7f316e28636e5a0d472dc8b0 Mon Sep 17 00:00:00 2001
+From: ivan tkachenko <me@ratijas.tk>
+Date: Thu, 15 Jul 2021 14:23:11 +0300
+Subject: [PATCH 7/8] Rename group to repo, and meta to groups
+
+Because that's what it was meant to be.
+---
+ src/main.rs | 12 ++++++------
+ src/view.rs | 22 +++++++++++-----------
+ 2 files changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/src/main.rs b/src/main.rs
+index 095e33e..9906406 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -17,26 +17,26 @@ fn main() {
+     let re = Regex::new(r"(?m)^(\S+)/(\S+) (\S+)(?: \((.*)\))?$").unwrap();
+     let mut pkgs = Vec::new();
+     for cap in re.captures_iter(stdout) {
+-        let from = cap.get(4).map_or("", |m| m.as_str());
++        let groups = cap.get(4).map_or("", |m| m.as_str());
+ 
+         pkgs.push(Package {
++            repo: cap.get(1).map_or("", |m| m.as_str()).into(),
+             name: cap.get(2).map_or("", |m| m.as_str()).into(),
+-            group: cap.get(1).map_or("", |m| m.as_str()).into(),
+             version: cap.get(3).map_or("", |m| m.as_str()).into(),
+-            meta: from.split_whitespace().map(|s| s.into()).collect(),
++            groups: groups.split_whitespace().map(|s| s.into()).collect(),
+             selected: false
+         });
+     }
+-    pkgs.sort_by_key(|k| k.group.clone());
++    pkgs.sort_by_key(|k| k.repo.clone());
+ 
+     show(pkgs);
+ }
+ 
+ #[derive(Debug, Clone, PartialEq)]
+ pub struct Package {
++    pub repo: String,
+     pub name: String,
+-    pub group: String,
+     pub version: String,
+-    pub meta: Vec<String>,
++    pub groups: Vec<String>,
+     pub selected: bool,
+ }
+diff --git a/src/view.rs b/src/view.rs
+index f0a8807..c7b9eef 100644
+--- a/src/view.rs
++++ b/src/view.rs
+@@ -6,11 +6,11 @@ pub fn show(gathered: Vec<Package>) {
+     let mut engine = QmlEngine::new();
+     let list = std::cell::RefCell::new(form_list(&gathered));
+ 
+-    let mut repos = gathered.iter().map(|p| p.group.clone().into()).collect::<Vec<String>>();
++    let mut repos = gathered.iter().map(|p| p.repo.clone().into()).collect::<Vec<String>>();
+     repos.sort();
+     repos.dedup();
+     let mut groups = gathered.iter()
+-        .flat_map(|p| p.meta.iter())
++        .flat_map(|p| p.groups.iter())
+         .cloned()
+         .collect::<Vec<_>>();
+     groups.sort();
+@@ -47,9 +47,9 @@ pub fn show(gathered: Vec<Package>) {
+ 
+ #[derive(Default, Clone, SimpleListItem)]
+ pub struct QPackage {
++    pub repo: QString,
+     pub name: QString,
+     pub version: QString,
+-    pub repo: QString,
+     pub group: QString,
+     pub selected: bool
+ }
+@@ -71,7 +71,7 @@ fn filter_for_qml(vec: &[Package],
+     vec.into_iter()
+         .filter(filter)
+         .map(|pkg| {
+-            let meta = match pkg.meta.first() {
++            let groups = match pkg.groups.first() {
+                 Some(k) => k.clone(),
+                 None => "".into(),
+             };
+@@ -83,8 +83,8 @@ fn filter_for_qml(vec: &[Package],
+             QPackage {
+                 name: (&*pkg.name).into(),
+                 version: (&*pkg.version).into(),
+-                repo: (&*pkg.group).into(), // !!sic
+-                group: (&*meta).into(), // !! sic
++                repo: (&*pkg.repo).into(), // !!sic
++                group: (&*groups).into(), // !! sic
+                 selected: selected
+             }
+         })
+@@ -140,12 +140,12 @@ impl Packages {
+             let s = &self;
+             let closure: Box<dyn Fn(&&Package) -> bool> = match (self.chosen_repo, self.chosen_group) {
+                 (-1, -1) => Box::new( |_| true ),
+-                (-1, group) => Box::new( move |pkg| pkg.meta.contains(&s.groups[group as usize])),
+-                (repo, -1) => Box::new( move |pkg| pkg.group == s.repos[repo as usize]),
++                (-1, group) => Box::new(move |pkg| pkg.groups.contains(&s.groups[group as usize])),
++                (repo, -1) => Box::new(move |pkg| pkg.repo == s.repos[repo as usize]),
+                 (repo, group) => {
+-                    Box::new( move |pkg| {
+-                        pkg.group == s.repos[repo as usize] &&
+-                        pkg.meta.contains(&s.groups[group as usize])
++                    Box::new(move |pkg| {
++                        pkg.repo == s.repos[repo as usize] &&
++                        pkg.groups.contains(&s.groups[group as usize])
+                     })
+                 }
+             };
+-- 
+2.32.0
+

@@ -1,0 +1,35 @@
+From 37b9b4f3ad62f15ec77ccd3889e43ddc9656bc8f Mon Sep 17 00:00:00 2001
+From: ivan tkachenko <me@ratijas.tk>
+Date: Thu, 15 Jul 2021 14:09:31 +0300
+Subject: [PATCH 5/8] Update patch away from obsolete QObjectBox
+
+---
+ src/view.rs | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/view.rs b/src/view.rs
+index ce4fba3..f0a8807 100644
+--- a/src/view.rs
++++ b/src/view.rs
+@@ -26,7 +26,7 @@ pub fn show(gathered: Vec<Package>) {
+         })
+         .collect::<QVariantList>();
+ 
+-    let qpckgs = QObjectBox::new(Packages {
++    let packages = std::cell::RefCell::new(Packages {
+         vec: gathered,
+         list: list,
+         repos: repos,
+@@ -36,7 +36,8 @@ pub fn show(gathered: Vec<Package>) {
+         selected: SelectedPackages::new(),
+         ..Default::default()
+     });
+-    engine.set_object_property("qpkgs".into(), qpckgs.pinned());
++    let packages_pinned = unsafe { QObjectPinned::new(&packages) };
++    engine.set_object_property("qpkgs".into(), packages_pinned);
+     engine.set_property("repos".into(), qrepos.into());
+     engine.set_property("groups".into(), qgroups.into());
+     engine.load_data(include_str!("view.qml").into());
+-- 
+2.32.0
+

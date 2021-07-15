@@ -1,0 +1,39 @@
+From 6b69adc1abd4f9a481ccf23a06217bb41e6c8681 Mon Sep 17 00:00:00 2001
+From: ivan tkachenko <me@ratijas.tk>
+Date: Thu, 15 Jul 2021 14:20:08 +0300
+Subject: [PATCH 6/8] Replace yaourt with expac
+
+Not an exact replacement, since it lists all packages in all repos
+instead of only locally installed, but the is no easy workaround.
+---
+ src/main.rs | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/src/main.rs b/src/main.rs
+index c298f5c..095e33e 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -7,15 +7,16 @@ use self::view::*;
+ mod view;
+ 
+ fn main() {
+-    let output = Command::new("yaourt")
+-        .arg("-Qe")
++    // Emulate behavior of `yaourt -Qe`, to avoid changing code even more.
++    let output = Command::new("expac")
++        .args(&["-Q", "--sync", "--", "%r/%n %v (%G)"])
+         .output()
+         .unwrap_or_else(|e| panic!("failed to execute process: {}", e));
+-    let hello = ::std::str::from_utf8(&output.stdout).unwrap();
++    let stdout = std::str::from_utf8(&output.stdout).unwrap();
+ 
+     let re = Regex::new(r"(?m)^(\S+)/(\S+) (\S+)(?: \((.*)\))?$").unwrap();
+     let mut pkgs = Vec::new();
+-    for cap in re.captures_iter(hello) {
++    for cap in re.captures_iter(stdout) {
+         let from = cap.get(4).map_or("", |m| m.as_str());
+ 
+         pkgs.push(Package {
+-- 
+2.32.0
+
