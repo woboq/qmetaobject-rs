@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!
 //! - You can set the environment variable `QT_INCLUDE_PATH` and `QT_LIBRARY_PATH` to be a single
 //!   directory where the Qt headers and Qt libraries are installed.
-//! - Otherwise youo can specify a `QMAKE` environment variable with the absolute path of the
+//! - Otherwise you can specify a `QMAKE` environment variable with the absolute path of the
 //!   `qmake` executable which will be used to querty these paths
 //! - If none of these environment variable is set, the `qmake` executable found in `$PATH`
 //!
