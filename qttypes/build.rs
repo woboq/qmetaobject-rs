@@ -25,9 +25,18 @@ use semver::Version;
 
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
-    let stdout: Vec<u8> = Command::new(qmake).args(&["-query", var]).output()?.stdout;
-    let stdout = String::from_utf8(stdout).expect("UTF-8 conversion failed");
-    Ok(stdout.trim().to_string())
+    let output = Command::new(qmake).args(&["-query", var]).output()?;
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "qmake returned with error:\n{}\n{}",
+                std::str::from_utf8(&output.stderr).unwrap_or_default(),
+                std::str::from_utf8(&output.stdout).unwrap_or_default()
+            ),
+        ));
+    }
+    Ok(std::str::from_utf8(&output.stdout).expect("UTF-8 conversion failed").trim().to_string())
 }
 
 fn open_core_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> BufReader<std::fs::File> {
