@@ -1,5 +1,23 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## [Unreleased]
+
+### Added
+- Tutorial on adding Rust wrappers #171.
+
+### Deprecated
+- Rename QObjectDescription in favor of its new name RustQObjectDescriptor #172.
+
+### Removed
+- No longer set QT_SELECT environment variable when running qmake #173.
+
+### Fixed
+- Build scripts improvements #174, d7c6587.
+
 ## 0.2.2 - 2021-06-28
 
  - Added QVariant conversion from QObjectPinned
