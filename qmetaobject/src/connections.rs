@@ -122,7 +122,7 @@ cpp! {{
     // type of slots: Rust closure.  Unlike previous two,  this one is not a
     // template,  because all generics stuff is  already handled on the Rust
     // side,  while C++ only has access to a trait object  which basically a
-    // closure FnMut. This class largely mirrors QFunctorSlotObject.
+    // closure FnMut.  This class largely mirrors QFunctorSlotObject.
     class QRustClosureSlotObject : public QtPrivate::QSlotObjectBase
     {
     public:
@@ -130,17 +130,26 @@ cpp! {{
         /// which is a closure responsible for calling `Slot::apply`,
         /// which in turn calls the actual handler with unpacked arguments.
         using Func = TraitObject;
+
     private:
         Func function;
 
         static void impl(int which, QSlotObjectBase *this_, QObject *r, void **a, bool *ret) {
+            // Only used when comparing slots, which is unsupported here.
+            Q_UNUSED(ret);
+            // QObject pointer to receiver `r` will always match sender, which
+            // isn't too useful for slots. See connect() & rust_connectImpl().
+            Q_UNUSED(r);
+
             switch (which) {
+
             case Destroy:
                 delete static_cast<QRustClosureSlotObject *>(this_);
                 break;
+
             case Call: {
                 auto slot = static_cast<QRustClosureSlotObject *>(this_)->function;
-                rust!(RustSlotObject_call [
+                rust!(QRustClosureSlotObject_call [
                     slot: *mut RustFuncType as "Func",
                     a: *const *const c_void as "void **"
                 ] {
@@ -151,10 +160,16 @@ cpp! {{
                 });
                 break;
             }
-            case Compare: // not implemented
+
+            // Equality traits are not implemented for Rust closures. This is
+            // where `ret` flag is supposed to be used, but it is already
+            // initialized to `false` by Qt.
+            case Compare:
+                break;
+
+            // Dummy enum variant representing the total number of enum members
             case NumOperations:
-                Q_UNUSED(ret);
-                Q_UNUSED(r);
+                break;
             }
         }
 
@@ -163,7 +178,7 @@ cpp! {{
         explicit QRustClosureSlotObject(Func f) : QSlotObjectBase(&impl), function(f) {}
 
         ~QRustClosureSlotObject() {
-            rust!(RustSlotOject_destruct [
+            rust!(QRustClosureSlotObject_destruct [
                 function: *mut RustFuncType as "Func"
             ] {
                 let _ = unsafe { Box::from_raw(function) };
