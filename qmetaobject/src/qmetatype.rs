@@ -138,7 +138,7 @@ fn register_metatype_common<T: QMetaType>(
         let deleter_fn: extern "C" fn(v: *mut T) = deleter_fn;
 
         #[cfg(qt_6_0)]
-        let deleter_fn: *const c_void = core::ptr::null();
+        let deleter_fn: *const c_void = ::core::ptr::null();
 
         #[cfg(not(qt_6_0))]
         extern "C" fn creator_fn<T: Default + Clone>(c: *const T) -> *const T {
@@ -240,7 +240,7 @@ fn register_metatype_common<T: QMetaType>(
                 alignment: u16,
                 size: u32,
                 flags: u32,
-                typeId: core::sync::atomic::AtomicI32,
+                typeId: ::core::sync::atomic::AtomicI32,
                 metaObjectFn: extern "C" fn(*const QMetaTypeInterface)-> *const QMetaObject,
                 name: *const c_char,
                 defaultCtr:  extern "C" fn(*const QMetaTypeInterface, *mut c_void),

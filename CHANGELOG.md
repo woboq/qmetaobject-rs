@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Tutorial on adding Rust wrappers #171.
+- QCoreApplication: wrappers around public static getters & setters #185.
 
 ### Deprecated
 - Rename QObjectDescription in favor of its new name RustQObjectDescriptor #172.
