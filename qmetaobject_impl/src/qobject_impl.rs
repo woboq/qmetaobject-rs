@@ -476,10 +476,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                             for it in parsed.1 {
                                 match it {
                                     Flag::Notify(signal) => {
-                                        assert!(
-                                            notify_signal.is_none(),
-                                            "Two NOTIFY for a property"
-                                        );
+                                        assert!(notify_signal.is_none(), "Duplicate NOTIFY for a property");
                                         notify_signal = Some(signal);
                                         flags |= 0x00400000;
                                     }
@@ -488,15 +485,15 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                                         flags &= !2; // Writable
                                     }
                                     Flag::Read(i) => {
-                                        assert!(getter.is_none(), "Two READ for a property");
+                                        assert!(getter.is_none(), "Duplicate READ for a property");
                                         getter = Some(i);
                                     }
                                     Flag::Write(i) => {
-                                        assert!(setter.is_none(), "Two READ for a property");
+                                        assert!(setter.is_none(), "Duplicate READ for a property");
                                         setter = Some(i);
                                     }
                                     Flag::Alias(i) => {
-                                        assert!(alias.is_none(), "Two READ for a property");
+                                        assert!(alias.is_none(), "Duplicate READ for a property");
                                         alias = Some(i);
                                     }
                                 }
