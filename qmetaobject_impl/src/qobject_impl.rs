@@ -1105,6 +1105,8 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
         body = quote! {
             #body
 
+            #[cfg_attr(target_os = "macos", link_section = "__TEXT,qtmetadata")]
+            #[cfg_attr(not(target_os = "macos"), link_section = ".qtmetadata")]
             #[no_mangle]
             #[allow(non_upper_case_globals)]
             pub static qt_pluginMetaData: [u8 ; 20 + #plugin_data_size] = [
