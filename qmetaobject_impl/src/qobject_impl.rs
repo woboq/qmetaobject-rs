@@ -475,9 +475,9 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                             let mut flags = 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000;
                             for it in parsed.1 {
                                 match it {
-                                    Flag::Notify(signal) => {
+                                    Flag::Notify(i) => {
                                         assert!(notify_signal.is_none(), "Duplicate NOTIFY for a property");
-                                        notify_signal = Some(signal);
+                                        notify_signal = Some(i);
                                         flags |= 0x00400000;
                                     }
                                     Flag::Const => {
