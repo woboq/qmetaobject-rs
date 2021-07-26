@@ -95,13 +95,8 @@ impl IsVoid for syn::Type {
     }
 }
 
-fn write_u32(val: i32) -> [u8; 4] {
-    [
-        (val & 0xff) as u8,
-        ((val >> 8) & 0xff) as u8,
-        ((val >> 16) & 0xff) as u8,
-        ((val >> 24) & 0xff) as u8,
-    ]
+fn write_i32(vec: &mut Vec<u8>, val: i32) {
+    vec.extend_from_slice(&val.to_le_bytes())
 }
 
 #[derive(Clone)]
@@ -146,6 +141,8 @@ struct MetaObject {
     qt_version: QtVersion,
     int_data: Vec<proc_macro2::TokenStream>,
     meta_types: Vec<proc_macro2::TokenStream>,
+    // Length of string_data vector is guaranteed to be <= i32::MAX.
+    // Each string is guaranteed to be <= i32::MAX too.
     string_data: Vec<String>,
 }
 impl MetaObject {
@@ -160,37 +157,51 @@ impl MetaObject {
 
     fn build_string_data(&self, target_pointer_width: u32) -> Vec<u8> {
         let mut result: Vec<u8> = Vec::new();
+        let r = &mut result;
 
+        // strings are null-terminated, so we push '\0' byte after them and
+        // increment offset couter by an extra 1.
         if self.qt_version == 5 {
-            let sizeof_qbytearraydata = if target_pointer_width == 64 { 24 } else { 16 };
-            let mut ofs = sizeof_qbytearraydata * self.string_data.len() as i32;
+            let sizeof_qbytearraydata: i32 = if target_pointer_width == 64 { 24 } else { 16 };
+            // CAST SAFETY: guaranteed by MetaObject::string_data contract.
+            let mut ofs = sizeof_qbytearraydata.checked_mul(self.string_data.len() as i32).unwrap();
+
             for s in self.string_data.iter() {
-                result.extend_from_slice(&write_u32(-1)); // ref (-1)
-                result.extend_from_slice(&write_u32(s.len() as i32)); // size
-                result.extend_from_slice(&write_u32(0)); // alloc / capacityReserved
+                // CAST SAFETY: guaranteed by MetaObject::string_data contract.
+                let len = s.len() as i32;
+
+                write_i32(r, -1); // ref (-1)
+                write_i32(r, len); // size
+                write_i32(r, 0); // alloc / capacityReserved
                 if target_pointer_width == 64 {
-                    result.extend_from_slice(&write_u32(0)); // padding
+                    write_i32(r, 0); // padding
                 }
-                result.extend_from_slice(&write_u32(ofs)); // offset (LSB)
+                write_i32(r, ofs); // offset (LSB)
                 if target_pointer_width == 64 {
-                    result.extend_from_slice(&write_u32(0)); // offset (MSB)
+                    write_i32(r, 0); // offset (MSB)
                 }
 
-                ofs += s.len() as i32 + 1; // +1 for the '\0'
-                ofs -= sizeof_qbytearraydata;
+                // +1 for the trailing null ('\0')
+                ofs = ofs.checked_add(len).unwrap().checked_add(1).unwrap();
+                ofs = ofs.checked_sub(sizeof_qbytearraydata).unwrap();
             }
         } else {
-            let mut ofs = 2 * 4 * self.string_data.len() as i32;
+            // CAST SAFETY: guaranteed by MetaObject::string_data contract.
+            let mut ofs = (self.string_data.len() as i32).checked_mul(2 * 4).unwrap();
             for s in self.string_data.iter() {
-                result.extend_from_slice(&write_u32(ofs));
-                result.extend_from_slice(&write_u32(s.len() as i32));
-                ofs += s.len() as i32 + 1; // +1 for the '\0'
+                // CAST SAFETY: guaranteed by MetaObject::string_data contract.
+                let len = s.len() as i32;
+
+                write_i32(r, ofs);
+                write_i32(r, len);
+                // +1 for the trailing null ('\0')
+                ofs = ofs.checked_add(len).unwrap().checked_add(1).unwrap();
             }
         }
 
         for s in self.string_data.iter() {
-            result.extend_from_slice(s.as_bytes());
-            result.push(0); // null terminated
+            r.extend_from_slice(s.as_bytes());
+            r.push(0); // null terminator
         }
         result
     }
@@ -354,10 +365,12 @@ impl MetaObject {
     }
 
     fn add_string(&mut self, string: String) -> u32 {
-        if let Some((pos, _)) = self.string_data.iter().enumerate().find(|(_, val)| *val == &string)
-        {
+        if let Some((pos, _)) = self.string_data.iter().enumerate().find(|(_, val)| *val == &string) {
             return pos as u32;
         }
+        assert!(self.string_data.len() < i32::MAX as usize, "String Data: Too many strings registered");
+        assert!(string.len() <= i32::MAX as usize, "String Data: String is too large");
+
         self.string_data.push(string);
         self.string_data.len() as u32 - 1
     }
@@ -475,12 +488,9 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                             let mut flags = 1 | 2 | 0x00004000 | 0x00001000 | 0x00010000;
                             for it in parsed.1 {
                                 match it {
-                                    Flag::Notify(signal) => {
-                                        assert!(
-                                            notify_signal.is_none(),
-                                            "Two NOTIFY for a property"
-                                        );
-                                        notify_signal = Some(signal);
+                                    Flag::Notify(i) => {
+                                        assert!(notify_signal.is_none(), "Duplicate NOTIFY for a property");
+                                        notify_signal = Some(i);
                                         flags |= 0x00400000;
                                     }
                                     Flag::Const => {
@@ -488,15 +498,15 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                                         flags &= !2; // Writable
                                     }
                                     Flag::Read(i) => {
-                                        assert!(getter.is_none(), "Two READ for a property");
+                                        assert!(getter.is_none(), "Duplicate READ for a property");
                                         getter = Some(i);
                                     }
                                     Flag::Write(i) => {
-                                        assert!(setter.is_none(), "Two READ for a property");
+                                        assert!(setter.is_none(), "Duplicate READ for a property");
                                         setter = Some(i);
                                     }
                                     Flag::Alias(i) => {
-                                        assert!(alias.is_none(), "Two READ for a property");
+                                        assert!(alias.is_none(), "Duplicate READ for a property");
                                         alias = Some(i);
                                     }
                                 }
