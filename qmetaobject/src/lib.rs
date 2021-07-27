@@ -195,6 +195,7 @@ pub use qttypes::*;
 pub use tablemodel::*;
 
 pub mod connections;
+pub mod qtcore;
 pub mod future;
 pub mod itemmodel;
 pub mod listmodel;
