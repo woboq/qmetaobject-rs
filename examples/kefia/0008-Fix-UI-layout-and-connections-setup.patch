@@ -1,0 +1,197 @@
+From 79103088af5181e0321b2e94b9bda8d62c556cc6 Mon Sep 17 00:00:00 2001
+From: ivan tkachenko <me@ratijas.tk>
+Date: Thu, 15 Jul 2021 14:31:06 +0300
+Subject: [PATCH 8/8] Fix UI layout and connections setup
+
+---
+ src/view.qml | 95 ++++++++++++++++++++++++++++------------------------
+ 1 file changed, 51 insertions(+), 44 deletions(-)
+
+diff --git a/src/view.qml b/src/view.qml
+index 74be2e6..b55cffc 100644
+--- a/src/view.qml
++++ b/src/view.qml
+@@ -6,42 +6,46 @@ ApplicationWindow {
+   id: app
+   visible: true
+   title: "Kefia"
++
+   property real margin: 10
+-  minimumWidth: total.width
+-  maximumWidth: total.width
+-  width: total.width
++
++  minimumWidth: root.implicitWidth
++  maximumWidth: root.implicitWidth
++  width:        root.implicitWidth
+   minimumHeight: 600
+-  height: 600
+-  x: 400
+-  y: 100
++  height: minimumHeight
++
+   Item {
+-    anchors.fill: parent
++    id: root
++
++    implicitWidth: total.implicitWidth
++    height: parent.height
+     anchors.margins: app.margin
+-    GridLayout{
++
++    ColumnLayout {
+       id: total
+-      columns: 2
+-      rows: 2
+-      columnSpacing: 10
+-      rowSpacing: 10
++
++      spacing: 10
+       height: parent.height
+-      RowLayout{
++
++      RowLayout {
+         id: allGroupsLayout
+-        Layout.minimumHeight: repoGroup.height
+-        Layout.maximumHeight: repoGroup.height
+-        Layout.column: 1
+-        Layout.row: 1
++        Layout.fillWidth: true
++
+         GroupBox {
+           title: "Repository"
+           id: repoGroup
+ 
+           GridLayout {
+             columns: 2
+-            rows: 2
++
+             RadioButton {
+               id: allRepos
+-              text: " All"
+-              checked: true
++
+               Layout.columnSpan: 2
++
++              text: "All"
++              checked: true
+               onClicked: {
+                 repoCB.enabled = false
+                 someRepos.checked = false
+@@ -59,11 +63,12 @@ ApplicationWindow {
+             }
+             ComboBox {
+               id: repoCB
++
+               Layout.minimumWidth: 200
+               Layout.maximumWidth: 200
+               Layout.preferredWidth: 200
+-              anchors.left: someRepos.right
+-              anchors.verticalCenter: someRepos.verticalCenter
++              Layout.alignment: Qt.AlignBaseline
++
+               enabled: false
+               model: repos
+               Component.onCompleted: activated.connect(qpkgs.request_update_repo)
+@@ -75,13 +80,14 @@ ApplicationWindow {
+ 
+           GridLayout {
+             columns: 2
+-            rows: 2
+ 
+             RadioButton {
+               id: allGroups
+-              text: " All"
+-              checked: true
++
+               Layout.columnSpan: 2
++
++              text: "All"
++              checked: true
+               onClicked: {
+                 groupCB.enabled = false
+                 someGroups.checked = false
+@@ -99,14 +105,15 @@ ApplicationWindow {
+             }
+             ComboBox {
+               id: groupCB
++
+               Layout.minimumWidth: 200
+               Layout.maximumWidth: 200
+               Layout.preferredWidth: 200
+-              anchors.left: someGroups.right
+-              anchors.verticalCenter: someGroups.verticalCenter
++              Layout.alignment: Qt.AlignBaseline
++
+               enabled: false
+               model: groups
+-              Component.onCompleted: activated.connect(qpkgs.request_update_group)
++              onActivated: qpkgs.request_update_group(index)
+             }
+           }
+         }
+@@ -114,14 +121,18 @@ ApplicationWindow {
+ 
+       ScrollView {
+         id: mainScrollView
++
+         Layout.alignment: Qt.AlignBottom
+         Layout.fillHeight: true
+         Layout.fillWidth: true
+-        Layout.column: 1
+-        Layout.row: 2
++
+         ListView {
+           id: mainList
+-          model: qpkgs.list
++          // While the app shuts down, QQmlApplicationEngine unloads context
++          // properties before the root component, so using this simple check
++          // we avoid `TypeError: Cannot read property 'list' of null`.
++          model: qpkgs ? qpkgs.list : null
++
+           delegate:
+             Rectangle {
+               width: mainList.width
+@@ -131,12 +142,11 @@ ApplicationWindow {
+                 x: mainList.x + 5
+                 width: mainList.width - 10
+                 Text {
+-                  id: text
+                   text: name
+                 }
+                 Text {
+-                  anchors.right: parent.right
+-                  text: " (" + version + ")"
++                  Layout.alignment: Qt.AlignRight
++                  text: "(" + version + ")"
+                   color: "gray"
+                 }
+               }
+@@ -176,17 +186,14 @@ ApplicationWindow {
+ 
+       TextArea {
+         id: packagesJoinedTextField
+-        Layout.minimumWidth: allGroupsLayout.width
++
+         Layout.fillWidth: true
+-        Layout.column: 2
+-        Layout.row: 2
+-        Layout.rowSpan: 2
+-        Layout.alignment: Qt.AlignBottom
+-        Component.onCompleted: {
+-          function setText(text) {
+-            packagesJoinedTextField.text = text
+-          }
+-          qpkgs.notify_packages_changed.connect(setText)
++
++        Connections {
++            target: qpkgs
++            function onNotify_packages_changed(text) {
++              packagesJoinedTextField.text = text;
++            }
+         }
+       }
+     }
+-- 
+2.32.0
+
