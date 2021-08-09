@@ -8,4 +8,5 @@ members = [
     'examples/qmlextensionplugins',
     'examples/todos',
     'examples/webengine',
+    'examples/qenum',
 ]

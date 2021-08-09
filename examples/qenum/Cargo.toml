@@ -1,0 +1,8 @@
+[package]
+name = "qenum"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+qmetaobject = { path = "../../qmetaobject" }
+cstr = "0.2"
