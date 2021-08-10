@@ -216,9 +216,9 @@ pub mod webengine;
 pub mod prelude {
     pub use crate::{
         qml_register_type, qrc, qt_base_class, qt_method, qt_plugin, qt_property, qt_signal,
-        QAbstractListModel, QByteArray, QColor, QDate, QDateTime, QModelIndex, QObject, QObjectBox,
-        QPointer, QQmlExtensionPlugin, QQuickItem, QQuickView, QRectF, QString, QTime, QVariant,
-        QmlEngine,
+        qtdeclarative::qml_register_enum, QAbstractListModel, QByteArray, QColor, QDate, QDateTime,
+        QEnum, QModelIndex, QObject, QObjectBox, QPointer, QQmlExtensionPlugin, QQuickItem,
+        QQuickView, QRectF, QString, QTime, QVariant, QmlEngine,
     };
 }
 
