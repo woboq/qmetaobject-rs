@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 0.2.3 2021-08-11
+
 ### Added
 - Tutorial on adding Rust wrappers #171.
 - QCoreApplication: wrappers around public static getters & setters #185.
@@ -18,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - Build scripts improvements #174, d7c6587.
+- Symbol required for the QEnum macro are in the prelude
 
 ## 0.2.2 - 2021-06-28
 
