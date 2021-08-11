@@ -1,6 +1,6 @@
 [package]
 name = "qttypes"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2018"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
