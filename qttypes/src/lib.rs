@@ -16,7 +16,7 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 //! This crate contains manually generated bindings to Qt basic value types.
-//! It is meant to be used by other crates, such as the `qmetaobject` crate which re-expose them
+//! It is meant to be used by other crates, such as the `qmetaobject` crate which re-expose them.
 //!
 //! The Qt types are basically exposed using the [`mod@cpp`] crate. They have manually writen rust idiomatic
 //! API which expose the C++ API.
@@ -26,10 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! want to use Qt's C++ API.
 //! Build scripts of crates that depends directly from this crate will have the following
 //! environment variables set when the build script is run:
-//! - `DEP_QT_VERSION`: The Qt version as given by qmake
-//! - `DEP_QT_INCLUDE_PATH`: The include directory to give to the `cpp_build` crate to locate the Qt headers
+//! - `DEP_QT_VERSION`: The Qt version as given by qmake.
+//! - `DEP_QT_INCLUDE_PATH`: The include directory to give to the `cpp_build` crate to locate the Qt headers.
 //! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
-//! - `DEP_QT_FOUND`: set to 1 when qt was found, or 0 if qt was not found and the `mandatory` feature is not set
+//! - `DEP_QT_FOUND`: Set to 1 when qt was found, or 0 if qt was not found and the `mandatory` feature is not set.
 //!
 //! ## Finding Qt
 //!
@@ -38,8 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! - You can set the environment variable `QT_INCLUDE_PATH` and `QT_LIBRARY_PATH` to be a single
 //!   directory where the Qt headers and Qt libraries are installed.
 //! - Otherwise you can specify a `QMAKE` environment variable with the absolute path of the
-//!   `qmake` executable which will be used to querty these paths
-//! - If none of these environment variable is set, the `qmake` executable found in `$PATH`
+//!   `qmake` executable which will be used to query these paths.
+//! - If none of these environment variable is set, the `qmake` executable found in `$PATH`.
 //!
 //! ## Philosophy
 //!
@@ -56,7 +56,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!
 //! ## Usage with the `cpp` crate
 //!
-//! Here is an example that make use of the types exposed by this crate in combinaition
+//! Here is an example that make use of the types exposed by this crate in combination
 //! with the [`mod@cpp`] crate to call native API:
 //!
 //! In `Cargo.toml`
@@ -71,7 +71,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! ```
 //!
 //! Note: It is importent to depend directly on `qttype`, it is not enough to rely on the
-//! dependency coming transitively from another dependencies, otherwie the `DEP_QT_*`
+//! dependency coming transitively from another dependencies, otherwise the `DEP_QT_*`
 //! environment variables won't be defined.
 //!
 //! Then in the `build.rs` file:
@@ -87,7 +87,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! }
 //! ```
 //!
-//! With that, you can now use the types inside your .rs files
+//! With that, you can now use the types inside your .rs files:
 //!
 //! ```ignore
 //! let byte_array = qttypes::QByteArray::from("Hello World!");
@@ -95,13 +95,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! ```
 //!
 //! You will find a small but working example in the
-//! [qmetaobject-rs reporisoty](https://github.com/woboq/qmetaobject-rs/tree/master/examples/graph)
+//! [qmetaobject-rs repository](https://github.com/woboq/qmetaobject-rs/tree/master/examples/graph).
 //!
 //! ## Cargo Features
 //!
 //! - **`required`**: When this feature is enabled (the default), the build script will panic with an error
 //!   if Qt is not found. Otherwise, when not enabled, the build will continue, but any use of the classes will
-//!   panic at runtime
+//!   panic at runtime.
 //! - **`chrono`**: enable the conversion between [`QDateTime`] related types and the types from the `chrono` crate.
 //!
 //! Link against these Qt modules using cargo features:
