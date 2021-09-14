@@ -214,11 +214,13 @@ pub mod webengine;
 
 /// Module intended for glob import.
 pub mod prelude {
+    #[cfg(qt_5_8)]
+    pub use crate::qtdeclarative::qml_register_enum;
     pub use crate::{
         qml_register_type, qrc, qt_base_class, qt_method, qt_plugin, qt_property, qt_signal,
-        qtdeclarative::qml_register_enum, QAbstractListModel, QByteArray, QColor, QDate, QDateTime,
-        QEnum, QModelIndex, QObject, QObjectBox, QPointer, QQmlExtensionPlugin, QQuickItem,
-        QQuickView, QRectF, QString, QTime, QVariant, QmlEngine,
+        QAbstractListModel, QByteArray, QColor, QDate, QDateTime, QEnum, QModelIndex, QObject,
+        QObjectBox, QPointer, QQmlExtensionPlugin, QQuickItem, QQuickView, QRectF, QString, QTime,
+        QVariant, QmlEngine,
     };
 }
 
