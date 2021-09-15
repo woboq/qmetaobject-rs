@@ -36,6 +36,7 @@ fn main() {
     if qt_version >= Version::new(6, 0, 0) {
         config.flag_if_supported("-std=c++17");
         config.flag_if_supported("/std:c++17");
+        config.flag_if_supported("/Zc:__cplusplus");
     }
     config.include(&qt_include_path).build("src/lib.rs");
 
