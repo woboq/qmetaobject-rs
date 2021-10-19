@@ -984,23 +984,48 @@ fn test_qvariant_qimage_qpixmap() {
 fn test_application_name() {
     use qmetaobject::qtcore::core_application::*;
 
-    let app_name    = QString::from("qmetaobject-rs testing app");
+    let app_name = QString::from("qmetaobject-rs testing app");
     let app_version = QString::from("0.1");
-    let org_domain  = QString::from("woboq.com");
-    let org_name    = QString::from("Woboq");
+    let org_domain = QString::from("woboq.com");
+    let org_name = QString::from("Woboq");
 
     QCoreApplication::set_application_name(app_name.clone());
     QCoreApplication::set_application_version(app_version.clone());
     QCoreApplication::set_organization_domain(org_domain.clone());
     QCoreApplication::set_organization_name(org_name.clone());
 
-    let app_name_    = QCoreApplication::application_name();
+    let app_name_ = QCoreApplication::application_name();
     let app_version_ = QCoreApplication::application_version();
-    let org_domain_  = QCoreApplication::organization_domain();
-    let org_name_    = QCoreApplication::organization_name();
+    let org_domain_ = QCoreApplication::organization_domain();
+    let org_name_ = QCoreApplication::organization_name();
 
-    assert_eq!(app_name,    app_name_);
+    assert_eq!(app_name, app_name_);
     assert_eq!(app_version, app_version_);
-    assert_eq!(org_domain,  org_domain_);
-    assert_eq!(org_name,    org_name_);
+    assert_eq!(org_domain, org_domain_);
+    assert_eq!(org_name, org_name_);
+}
+
+#[test]
+fn test_setting_context_object() {
+    #[derive(QObject, Default)]
+    struct Basic {
+        base: qt_base_class!(trait QObject),
+        bvalue: qt_property!(i32),
+    }
+    let qml_txt = "import QtQuick 2.0\nItem { function doTest() { return bvalue  } }";
+
+    let _lock = lock_for_test();
+    let mut _app = QmlEngine::new();
+    _app.load_data(qml_txt.into());
+
+    let mut obj = Basic::default();
+    obj.bvalue = 12;
+
+    let obj_rc = RefCell::new(obj);
+
+    _app.set_object(unsafe { QObjectPinned::new(&obj_rc) });
+    let res = _app.invoke_method("doTest".into(), &[]);
+    let res: Option<i32> = QMetaType::from_qvariant(res);
+    assert_eq!(res, Some(12));
+    assert_ne!(res, Some(10));
 }
