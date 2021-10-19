@@ -173,6 +173,14 @@ impl QmlEngine {
         })
     }
 
+    /// Sets an object for this QML context (calls QQmlEngine::rootContext()->setContextObject)
+    pub fn set_object<T: QObject + Sized>(&mut self, obj: QObjectPinned<T>) {
+        let obj_ptr = obj.get_or_create_cpp_object();
+        cpp!(unsafe [self as "QmlEngineHolder *", obj_ptr as "QObject *"] {
+            self->engine->rootContext()->setContextObject(obj_ptr);
+        })
+    }
+
     /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
     ///
     // (TODO: consider making the lifetime the one of the engine, instead of static)
