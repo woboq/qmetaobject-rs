@@ -28,7 +28,7 @@ fn main() {
 
     if qt_version >= Version::new(6, 0, 0) {
         // This example is not supported on Qt 6 and above because graphics
-        // API used used for it were removed.
+        // API used for it were removed.
         println!("cargo:rustc-cfg=no_qt");
         return;
     }
