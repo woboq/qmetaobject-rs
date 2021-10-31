@@ -1063,3 +1063,88 @@ cpp! {{
         }
     };
 }}
+
+cpp! {{
+    #include <qmetaobject_rust.hpp>
+    #include <QtQuick/QQuickItem>
+    #include <QtQuick/QQuickPaintedItem>
+    #include <QtGui/QPainter>
+
+    struct Rust_QQuickPaintedItem : RustObject<QQuickPaintedItem> {
+        void classBegin() override {
+            QQuickPaintedItem::classBegin();
+            rust!(Rust_QQuickPaintedItem_classBegin[
+                rust_object: QObjectPinned<dyn QQuickPaintedItem> as "TraitObject"
+            ] {
+                rust_object.borrow_mut().class_begin();
+            });
+        }
+
+        void componentComplete() override {
+            QQuickPaintedItem::componentComplete();
+            rust!(Rust_QQuickPaintedItem_componentComplete[
+                rust_object: QObjectPinned<dyn QQuickPaintedItem> as "TraitObject"
+            ] {
+                rust_object.borrow_mut().component_complete();
+            });
+        }
+
+        void mousePressEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+        void mouseMoveEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+        void mouseReleaseEvent(QMouseEvent *event) override { handleMouseEvent(event); }
+
+        void handleMouseEvent(QMouseEvent *event) {
+           if (!rust!(Rust_QQuickPaintedItem_mousePressEvent[
+                rust_object: QObjectPinned<dyn QQuickPaintedItem> as "TraitObject",
+                event: QMouseEvent as "QMouseEvent *"
+            ] -> bool as "bool" {
+                rust_object.borrow_mut().mouse_event(event)
+            })) { event->ignore(); }
+        }
+
+        void QT_QQUICKITEM_GEOMETRYCHANGE (const QRectF &new_geometry, const QRectF &old_geometry) override{
+            rust!(Rust_QQuickPaintedItem_geometryChanged[
+                rust_object: QObjectPinned<dyn QQuickPaintedItem> as "TraitObject",
+                new_geometry: QRectF as "QRectF",
+                old_geometry: QRectF as "QRectF"
+            ] {
+                rust_object.borrow_mut().geometry_changed(new_geometry, old_geometry);
+            });
+            QQuickPaintedItem::QT_QQUICKITEM_GEOMETRYCHANGE(new_geometry, old_geometry);
+        }
+
+        void releaseResources() override {
+            QQuickPaintedItem::releaseResources();
+            rust!(Rust_QQuickPaintedItem_releaseResources[
+                rust_object: QObjectPinned<dyn QQuickPaintedItem> as "TraitObject"
+            ] {
+                rust_object.borrow_mut().release_resources();
+            });
+        }
+
+        void paint(QPainter *p) override {
+            rust!(Rust_QQuickPaintedItem_paint[
+                rust_object: QObjectPinned<dyn QQuickPaintedItem> as "TraitObject",
+                p: *mut QPainter as "QPainter*"
+            ] {
+                rust_object.borrow_mut().paint(&mut *p);
+            });
+        }
+    };
+}}
+
+/// A QQuickItem-like trait to inherit from QQuickPaintedItem.
+pub trait QQuickPaintedItem: QQuickItem {
+    fn get_object_description() -> &'static QObjectDescriptor
+    where
+        Self: Sized,
+    {
+        unsafe {
+            &*cpp!([]-> *const QObjectDescriptor as "RustQObjectDescriptor const*" {
+                return RustQObjectDescriptor::instance<Rust_QQuickPaintedItem>();
+            })
+        }
+    }
+    
+    fn paint(&mut self, _p: &mut QPainter) { }
+}
