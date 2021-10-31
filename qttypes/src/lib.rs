@@ -1549,7 +1549,7 @@ impl QPainter {
 
     pub fn draw_convex_polygon(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
-        let points_count = points.len();
+        let points_count = points.len() as u64;
         cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawConvexPolygon(points_ptr, points_count);
         });
@@ -1594,14 +1594,14 @@ impl QPainter {
     }
     pub fn draw_lines(&mut self, lines: &[QLineF]) {
         let lines_ptr = lines.as_ptr();
-        let lines_count = lines.len();
+        let lines_count = lines.len() as u64;
         cpp!(unsafe [self as "QPainter*", lines_ptr as "QLineF*", lines_count as "uint64_t"] {
             self->drawLines(lines_ptr, lines_count);
         });
     }
     pub fn draw_lines_from_points(&mut self, point_pairs: &[QPointF]) {
         let point_pairs_ptr = point_pairs.as_ptr();
-        let point_pairs_count = point_pairs.len();
+        let point_pairs_count = point_pairs.len() as u64;
         cpp!(unsafe [self as "QPainter*", point_pairs_ptr as "QLineF*", point_pairs_count as "uint64_t"] {
             self->drawLines(point_pairs_ptr, point_pairs_count);
         });
@@ -1620,7 +1620,7 @@ impl QPainter {
     }
     pub fn draw_points(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
-        let points_count = points.len();
+        let points_count = points.len() as u64;
         cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawPoints(points_ptr, points_count);
         });
@@ -1628,14 +1628,14 @@ impl QPainter {
 
     pub fn draw_polygon(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
-        let points_count = points.len();
+        let points_count = points.len() as u64;
         cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawPolygon(points_ptr, points_count);
         });
     }
     pub fn draw_polyline(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
-        let points_count = points.len();
+        let points_count = points.len() as u64;
         cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawPolyline(points_ptr, points_count);
         });
@@ -1648,7 +1648,7 @@ impl QPainter {
     }
     pub fn draw_rects(&mut self, rects: &[QRectF]) {
         let rects_ptr = rects.as_ptr();
-        let rects_count = rects.len();
+        let rects_count = rects.len() as u64;
         cpp!(unsafe [self as "QPainter*", rects_ptr as "QRectF*", rects_count as "uint64_t"] {
             self->drawRects(rects_ptr, rects_count);
         });
