@@ -92,7 +92,7 @@ impl QmlEngine {
             .map(|arg| CString::new(arg.into_bytes()).expect("argument contains invalid c-string!"))
             .map(|arg| arg.into_raw())
             .collect();
-        let argc: i32 = arguments.len() as i32 - 1;
+        let argc: i32 = arguments.len() as i32;
         let argv: *mut *mut c_char = arguments.as_mut_ptr();
 
         let result = cpp!(unsafe [
