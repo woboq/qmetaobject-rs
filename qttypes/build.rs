@@ -24,8 +24,19 @@ use std::process::Command;
 use semver::Version;
 
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
-    let qmake = std::env::var("QMAKE").unwrap_or("qmake".to_string());
-    let output = Command::new(qmake).args(&["-query", var]).output()?;
+    let output = match std::env::var("QMAKE") {
+        Ok(env_var_value) =>
+            Command::new(env_var_value).args(&["-query", var]).output(),
+        Err(_env_var_err) =>
+            Command::new("qmake").args(&["-query", var]).output().or_else(|command_err| {
+                // Some Linux distributions (Fedora, Arch) rename qmake to qmake-qt5.
+                if command_err.kind() == std::io::ErrorKind::NotFound {
+                    Command::new("qmake-qt5").args(&["-query", var]).output()
+                } else {
+                    Err(command_err)
+                }
+            }),
+    }?;
     if !output.status.success() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
