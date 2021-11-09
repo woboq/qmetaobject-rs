@@ -1,17 +1,11 @@
 use std::ffi::CStr;
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread::JoinHandle;
+use std::sync::mpsc::SyncSender;
+use std::sync::mpsc::{self, RecvTimeoutError};
 
 use chrono::Timelike;
 use cstr::cstr;
 
 use qmetaobject::prelude::*;
-
-#[derive(Default)]
-struct AbortCondVar {
-    is_aborted: Mutex<bool>,
-    abort_condvar: Condvar,
-}
 
 #[allow(non_snake_case)]
 #[derive(Default, QObject)]
@@ -21,43 +15,37 @@ struct TimeModel {
     minute: qt_property!(u32; NOTIFY timeChanged READ get_minute),
     timeChanged: qt_signal!(),
 
-    thread: Option<(JoinHandle<()>, Arc<AbortCondVar>)>,
+    drop_notification: Option<SyncSender<()>>,
 }
 
 impl Drop for TimeModel {
     fn drop(&mut self) {
-        self.thread.as_ref().map(|x| {
-            let mut lock = x.1.is_aborted.lock().unwrap();
-            *lock = true;
-            x.1.abort_condvar.notify_one();
+        // tell the timer thread to stop
+        self.drop_notification.as_ref().map(|x| {
+            let _ignored_result = x.send(());
         });
     }
 }
 
 impl TimeModel {
     fn lazy_init(&mut self) {
-        if self.thread.is_none() {
+        if self.drop_notification.is_none() {
             let ptr = QPointer::from(&*self);
-            let cb = qmetaobject::queued_callback(move |()| {
+            let notify_time_changed = qmetaobject::queued_callback(move |()| {
                 ptr.as_ref().map(|x| x.timeChanged());
             });
-            let arc = Arc::<AbortCondVar>::new(Default::default());
-            let arc2 = arc.clone();
-            let thread = std::thread::spawn(move || loop {
-                let lock = arc2.is_aborted.lock().unwrap();
-                if *lock {
-                    break;
+
+            let (drop_notification_tx, drop_notification_rx) = mpsc::sync_channel(1);
+            std::thread::spawn(move || {
+                // We just wait on the channel for 1 second to simulate a one second timer
+                while drop_notification_rx.recv_timeout(std::time::Duration::from_millis(1000))
+                    == Err(RecvTimeoutError::Timeout)
+                {
+                    notify_time_changed(());
                 }
-                // We just wait on the condition variable for 1 second to simulate a one second timer
-                let lock = arc2
-                    .abort_condvar
-                    .wait_timeout(lock, std::time::Duration::from_millis(1000))
-                    .unwrap()
-                    .0;
-                std::mem::drop(lock);
-                cb(());
             });
-            self.thread = Some((thread, arc));
+
+            self.drop_notification = Some(drop_notification_tx);
         }
     }
     fn get_hour(&mut self) -> u32 {
