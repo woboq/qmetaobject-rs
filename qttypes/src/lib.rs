@@ -126,6 +126,7 @@ use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 use std::os::raw::c_char;
 use std::str::Utf8Error;
+use std::collections::HashMap;
 
 #[cfg(feature = "chrono")]
 use chrono::prelude::*;
@@ -1768,4 +1769,152 @@ pub enum QPainterRenderHint {
     NonCosmeticDefaultPen = 0x10,
     Qt4CompatiblePainting = 0x20,
     LosslessImageRendering = 0x40,
+}
+
+cpp! {{
+    #include <QtCore/QJsonObject>
+    #include <QtCore/QJsonArray>
+    #include <QtCore/QJsonValue>
+}}
+cpp_class!(
+    /// Wrapper around [`QJsonValue`][class] class.
+    ///
+    /// [class]: https://doc.qt.io/qt-5/qjsonvalue.html
+    #[derive(Default)]
+    pub unsafe struct QJsonValue as "QJsonValue"
+);
+impl Into<QVariant> for QJsonValue {
+    fn into(self) -> QVariant {
+        cpp!(unsafe [self as "QJsonValue"] -> QVariant as "QVariant" {
+            return self.toVariant();
+        })
+    }
+}
+impl From<QVariant> for QJsonValue {
+    fn from(v: QVariant) -> QJsonValue {
+        cpp!(unsafe [v as "QVariant"] -> QJsonValue as "QJsonValue" {
+            return QJsonValue::fromVariant(v);
+        })
+    }
+}
+
+impl From<QJsonObject> for QJsonValue {
+    fn from(v: QJsonObject) -> QJsonValue {
+        cpp!(unsafe [v as "QJsonObject"] -> QJsonValue as "QJsonValue" {
+            return QJsonValue(v);
+        })
+    }
+}
+impl From<QJsonArray> for QJsonValue {
+    fn from(v: QJsonArray) -> QJsonValue {
+        cpp!(unsafe [v as "QJsonArray"] -> QJsonValue as "QJsonValue" {
+            return QJsonValue(v);
+        })
+    }
+}
+impl From<QString> for QJsonValue {
+    fn from(v: QString) -> QJsonValue {
+        cpp!(unsafe [v as "QString"] -> QJsonValue as "QJsonValue" {
+            return QJsonValue(v);
+        })
+    }
+}
+impl From<bool> for QJsonValue {
+    fn from(v: bool) -> QJsonValue {
+        cpp!(unsafe [v as "bool"] -> QJsonValue as "QJsonValue" {
+            return QJsonValue(v);
+        })
+    }
+}
+impl From<i64> for QJsonValue {
+    fn from(v: i64) -> QJsonValue {
+        cpp!(unsafe [v as "qint64"] -> QJsonValue as "QJsonValue" {
+            return QJsonValue(v);
+        })
+    }
+}
+impl From<f64> for QJsonValue {
+    fn from(v: f64) -> QJsonValue {
+        cpp!(unsafe [v as "double"] -> QJsonValue as "QJsonValue" {
+            return QJsonValue(v);
+        })
+    }
+}
+
+cpp_class!(
+    /// Wrapper around [`QJsonObject`][class] class.
+    ///
+    /// [class]: https://doc.qt.io/qt-5/qjsonobject.html
+    #[derive(Default)]
+    pub unsafe struct QJsonObject as "QJsonObject"
+);
+
+impl From<HashMap<String, String>> for QJsonObject {
+    fn from(v: HashMap<String, String>) -> QJsonObject {
+        let keys: Vec<QString> = v.keys().cloned().map(QString::from).collect();
+        let values: Vec<QString> = v.into_values().map(QString::from).collect();
+        let keys_ptr = keys.as_ptr();
+        let values_ptr = values.as_ptr();
+        let len = keys.len();
+        cpp!(unsafe [keys_ptr as "const QString*", values_ptr as "const QString*", len as "size_t"] -> QJsonObject as "QJsonObject" {
+            QJsonObject obj;
+            for (size_t i = 0; i < len; ++i) {
+                obj.insert(keys_ptr[i], values_ptr[i]);
+            }
+            return obj;
+        })
+    }
+}
+impl From<HashMap<String, QJsonValue>> for QJsonObject {
+    fn from(v: HashMap<String, QJsonValue>) -> QJsonObject {
+        let keys: Vec<QString> = v.keys().cloned().map(QString::from).collect();
+        let values: Vec<QJsonValue> = v.into_values().collect();
+        let keys_ptr = keys.as_ptr();
+        let values_ptr = values.as_ptr();
+        let len = keys.len();
+        cpp!(unsafe [keys_ptr as "const QString*", values_ptr as "const QJsonValue*", len as "size_t"] -> QJsonObject as "QJsonObject" {
+            QJsonObject obj;
+            for (size_t i = 0; i < len; ++i) {
+                obj.insert(keys_ptr[i], values_ptr[i]);
+            }
+            return obj;
+        })
+    }
+}
+
+impl From<QJsonValue> for QJsonObject {
+    fn from(v: QJsonValue) -> QJsonObject {
+        cpp!(unsafe [v as "QJsonValue"] -> QJsonObject as "QJsonObject" {
+            return v.toObject();
+        })
+    }
+}
+cpp_class!(
+    /// Wrapper around [`QJsonArray`][class] class.
+    ///
+    /// [class]: https://doc.qt.io/qt-5/qjsonarray.html
+    #[derive(Default)]
+    pub unsafe struct QJsonArray as "QJsonArray"
+);
+
+impl From<Vec<QJsonValue>> for QJsonArray {
+    fn from(v: Vec<QJsonValue>) -> QJsonArray {
+        let ptr = v.as_ptr();
+        let len = v.len();
+        cpp!(unsafe [ptr as "const QJsonValue*", len as "size_t"] -> QJsonArray as "QJsonArray" {
+            QJsonArray arr;
+            for (size_t i = 0; i < len; ++i) {
+                arr.append(ptr[i]);
+            }
+            return arr;
+        })
+    }
+}
+
+impl From<QJsonValue> for QJsonArray {
+    fn from(v: QJsonValue) -> QJsonArray {
+        cpp!(unsafe [v as "QJsonValue"] -> QJsonArray as "QJsonArray" {
+            return v.toArray();
+        })
+    }
 }
