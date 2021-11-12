@@ -1852,7 +1852,7 @@ cpp_class!(
 impl From<HashMap<String, String>> for QJsonObject {
     fn from(v: HashMap<String, String>) -> QJsonObject {
         let keys: Vec<QString> = v.keys().cloned().map(QString::from).collect();
-        let values: Vec<QString> = v.into_values().map(QString::from).collect();
+        let values: Vec<QString> = v.values().cloned().map(QString::from).collect();
         let keys_ptr = keys.as_ptr();
         let values_ptr = values.as_ptr();
         let len = keys.len();
@@ -1868,7 +1868,7 @@ impl From<HashMap<String, String>> for QJsonObject {
 impl From<HashMap<String, QJsonValue>> for QJsonObject {
     fn from(v: HashMap<String, QJsonValue>) -> QJsonObject {
         let keys: Vec<QString> = v.keys().cloned().map(QString::from).collect();
-        let values: Vec<QJsonValue> = v.into_values().collect();
+        let values: Vec<QJsonValue> = v.values().cloned().collect();
         let keys_ptr = keys.as_ptr();
         let values_ptr = values.as_ptr();
         let len = keys.len();
