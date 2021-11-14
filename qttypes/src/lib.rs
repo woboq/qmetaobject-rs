@@ -1772,72 +1772,135 @@ pub enum QPainterRenderHint {
 }
 
 cpp! {{
+    #include <QtCore/QJsonDocument>
+    #include <QtCore/QJsonValue>
     #include <QtCore/QJsonObject>
     #include <QtCore/QJsonArray>
-    #include <QtCore/QJsonValue>
 }}
 cpp_class!(
     /// Wrapper around [`QJsonValue`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qjsonvalue.html
-    #[derive(Default)]
+    #[derive(Default, PartialEq, Eq, Clone)]
     pub unsafe struct QJsonValue as "QJsonValue"
 );
+
 impl Into<QVariant> for QJsonValue {
     fn into(self) -> QVariant {
-        cpp!(unsafe [self as "QJsonValue"] -> QVariant as "QVariant" {
-            return self.toVariant();
-        })
+        cpp!(unsafe [self as "QJsonValue"] -> QVariant as "QVariant" { return self.toVariant(); })
     }
 }
 impl From<QVariant> for QJsonValue {
     fn from(v: QVariant) -> QJsonValue {
-        cpp!(unsafe [v as "QVariant"] -> QJsonValue as "QJsonValue" {
-            return QJsonValue::fromVariant(v);
-        })
+        cpp!(unsafe [v as "QVariant"] -> QJsonValue as "QJsonValue" { return QJsonValue::fromVariant(v); })
     }
 }
 
+impl Into<QJsonObject> for QJsonValue {
+    fn into(self) -> QJsonObject {
+        cpp!(unsafe [self as "QJsonValue"] -> QJsonObject as "QJsonObject" { return self.toObject(); })
+    }
+}
 impl From<QJsonObject> for QJsonValue {
     fn from(v: QJsonObject) -> QJsonValue {
-        cpp!(unsafe [v as "QJsonObject"] -> QJsonValue as "QJsonValue" {
-            return QJsonValue(v);
-        })
+        cpp!(unsafe [v as "QJsonObject"] -> QJsonValue as "QJsonValue" { return QJsonValue(v); })
+    }
+}
+impl Into<QJsonArray> for QJsonValue {
+    fn into(self) -> QJsonArray {
+        cpp!(unsafe [self as "QJsonValue"] -> QJsonArray as "QJsonArray" { return self.toArray(); })
     }
 }
 impl From<QJsonArray> for QJsonValue {
     fn from(v: QJsonArray) -> QJsonValue {
-        cpp!(unsafe [v as "QJsonArray"] -> QJsonValue as "QJsonValue" {
-            return QJsonValue(v);
-        })
+        cpp!(unsafe [v as "QJsonArray"] -> QJsonValue as "QJsonValue" { return QJsonValue(v); })
+    }
+}
+
+impl Into<QString> for QJsonValue {
+    fn into(self) -> QString {
+        cpp!(unsafe [self as "QJsonValue"] -> QString as "QString" { return self.toString(); })
     }
 }
 impl From<QString> for QJsonValue {
     fn from(v: QString) -> QJsonValue {
-        cpp!(unsafe [v as "QString"] -> QJsonValue as "QJsonValue" {
-            return QJsonValue(v);
-        })
+        cpp!(unsafe [v as "QString"] -> QJsonValue as "QJsonValue" { return QJsonValue(v); })
+    }
+}
+
+impl Into<bool> for QJsonValue {
+    fn into(self) -> bool {
+        cpp!(unsafe [self as "QJsonValue"] -> bool as "bool" { return self.toBool(); })
     }
 }
 impl From<bool> for QJsonValue {
     fn from(v: bool) -> QJsonValue {
-        cpp!(unsafe [v as "bool"] -> QJsonValue as "QJsonValue" {
-            return QJsonValue(v);
-        })
+        cpp!(unsafe [v as "bool"] -> QJsonValue as "QJsonValue" { return QJsonValue(v); })
     }
 }
-impl From<i64> for QJsonValue {
-    fn from(v: i64) -> QJsonValue {
-        cpp!(unsafe [v as "qint64"] -> QJsonValue as "QJsonValue" {
-            return QJsonValue(v);
-        })
+
+impl Into<f64> for QJsonValue {
+    fn into(self) -> f64 {
+        cpp!(unsafe [self as "QJsonValue"] -> f64 as "double" { return self.toDouble(); })
     }
 }
 impl From<f64> for QJsonValue {
     fn from(v: f64) -> QJsonValue {
-        cpp!(unsafe [v as "double"] -> QJsonValue as "QJsonValue" {
-            return QJsonValue(v);
-        })
+        cpp!(unsafe [v as "double"] -> QJsonValue as "QJsonValue" { return QJsonValue(v); })
+    }
+}
+
+#[test]
+fn test_qjsonvalue() {
+    let test_str = QJsonValue::from(QVariant::from(QString::from("test")));
+    let test_str2 = QJsonValue::from(QString::from("test"));
+    assert!(test_str == test_str2);
+    assert_eq!(<QJsonValue as Into<QString>>::into(test_str), QString::from("test"));
+
+    let test_bool = QJsonValue::from(true);
+    let test_bool_variant: QVariant = QJsonValue::from(true).into();
+    let test_bool_variant2 = QVariant::from(true);
+    assert!(test_bool_variant == test_bool_variant2);
+    assert_eq!(<QJsonValue as Into<bool>>::into(test_bool), true);
+
+    let test_f64 = QJsonValue::from(1.2345);
+    let test_f64_variant: QVariant = QJsonValue::from(1.2345).into();
+    let test_f64_variant2 = QVariant::from(1.2345);
+    assert!(test_f64_variant == test_f64_variant2);
+    assert_eq!(<QJsonValue as Into<f64>>::into(test_f64), 1.2345);
+    
+    let values = QJsonArray::from(vec![
+        QJsonValue::from(QString::from("test")), 
+        QJsonValue::from(true), 
+        QJsonValue::from(false), 
+        QJsonValue::from(1.2345), 
+        QJsonValue::from(456.0), 
+    ]);
+
+    assert_eq!(values.to_json().to_string(), "[\"test\",true,false,1.2345,456]");
+}
+
+cpp_class!(
+    /// Wrapper around [`QStringList`][class] class.
+    ///
+    /// [class]: https://doc.qt.io/qt-5/qstringlist.html
+    #[derive(Default, Clone)]
+    pub unsafe struct QStringList as "QStringList"
+);
+impl QStringList {
+    pub fn len(&self) -> usize {
+        cpp!(unsafe [self as "QStringList*"] -> usize as "size_t" { return self->size(); })
+    }
+}
+impl Index<usize> for QStringList {
+    type Output = QString;
+
+    fn index(&self, index: usize) -> &QString {
+        unsafe {
+            &*cpp!([self as "QStringList*", index as "size_t"] -> *const QString as "const QString*" {
+                return &(*self)[index];
+            })
+        }
     }
 }
 
@@ -1845,9 +1908,60 @@ cpp_class!(
     /// Wrapper around [`QJsonObject`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qjsonobject.html
-    #[derive(Default)]
+    #[derive(Default, PartialEq, Eq, Clone)]
     pub unsafe struct QJsonObject as "QJsonObject"
 );
+
+impl QJsonObject {
+    pub fn to_json(&self) -> QByteArray {
+        cpp!(unsafe [self as "QJsonObject*"] -> QByteArray as "QByteArray" { return QJsonDocument(*self).toJson(QJsonDocument::Compact); })
+    }
+    pub fn to_json_pretty(&self) -> QByteArray {
+        cpp!(unsafe [self as "QJsonObject*"] -> QByteArray as "QByteArray" { return QJsonDocument(*self).toJson(QJsonDocument::Indented); })
+    }
+    pub fn insert(&mut self, key: &str, value: QJsonValue) {
+        let len = key.len();
+        let ptr = key.as_ptr();
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*", value as "QJsonValue"] { self->insert(QLatin1String(ptr, len), std::move(value)); })
+    }
+    pub fn value(&self, key: &str) -> QJsonValue {
+        let len = key.len();
+        let ptr = key.as_ptr();
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> QJsonValue as "QJsonValue" { return self->value(QLatin1String(ptr, len)); })
+    }
+    pub fn take(&mut self, key: &str) -> QJsonValue {
+        let len = key.len();
+        let ptr = key.as_ptr();
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> QJsonValue as "QJsonValue" { return self->take(QLatin1String(ptr, len)); })
+    }
+    pub fn remove(&mut self, key: &str) {
+        let len = key.len();
+        let ptr = key.as_ptr();
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] { return self->remove(QLatin1String(ptr, len)); })
+    }
+    pub fn len(&self) -> usize {
+        cpp!(unsafe [self as "QJsonObject*"] -> usize as "size_t" { return self->size(); })
+    }
+    pub fn is_empty(&self) -> bool {
+        cpp!(unsafe [self as "QJsonObject*"] -> bool as "bool" { return self->isEmpty(); })
+    }
+    pub fn contains(&self, key: &str) -> bool {
+        let len = key.len();
+        let ptr = key.as_ptr();
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> bool as "bool" { return self->contains(QLatin1String(ptr, len)); })
+    }
+    pub fn keys(&self) -> Vec<String> {
+        let len = self.len();
+        let mut vec = Vec::with_capacity(len);
+
+        let keys = cpp!(unsafe [self as "QJsonObject*"] -> QStringList as "QStringList" { return self->keys(); });
+
+        for i in 0..len {
+            vec.push(keys[i].to_string());
+        }
+        vec
+    }
+}
 
 impl From<HashMap<String, String>> for QJsonObject {
     fn from(v: HashMap<String, String>) -> QJsonObject {
@@ -1882,20 +1996,86 @@ impl From<HashMap<String, QJsonValue>> for QJsonObject {
     }
 }
 
-impl From<QJsonValue> for QJsonObject {
-    fn from(v: QJsonValue) -> QJsonObject {
-        cpp!(unsafe [v as "QJsonValue"] -> QJsonObject as "QJsonObject" {
-            return v.toObject();
-        })
-    }
+cpp! {{ #include <QtCore/QDebug> }}
+
+#[test]
+fn test_qjsonobject() {
+    let mut hashmap = HashMap::new();
+    hashmap.insert("key".to_owned(), "value".to_owned());
+    hashmap.insert("test".to_owned(), "hello".to_owned());
+    let object = QJsonObject::from(hashmap);
+    assert_eq!(object.to_json().to_string(), "{\"key\":\"value\",\"test\":\"hello\"}");
+
+
+    let array = QJsonArray::from(vec![
+        QJsonValue::from(QString::from("test")), 
+        QJsonValue::from(true), 
+        QJsonValue::from(false), 
+        QJsonValue::from(1.2345), 
+        QJsonValue::from(456.0), 
+    ]);
+
+    let mut valuemap = HashMap::new();
+    valuemap.insert("1_string".to_owned(), QJsonValue::from(QString::from("test")));
+    valuemap.insert("2_bool".to_owned(), QJsonValue::from(true));
+    valuemap.insert("3_f64".to_owned(), QJsonValue::from(1.2345));
+    valuemap.insert("4_int".to_owned(), QJsonValue::from(456.0));
+    valuemap.insert("5_array".to_owned(), QJsonValue::from(array));
+    valuemap.insert("6_object".to_owned(), QJsonValue::from(object));
+    let object = QJsonObject::from(valuemap);
+    assert_eq!(object.to_json().to_string(), "{\"1_string\":\"test\",\"2_bool\":true,\"3_f64\":1.2345,\"4_int\":456,\"5_array\":[\"test\",true,false,1.2345,456],\"6_object\":{\"key\":\"value\",\"test\":\"hello\"}}");
+
+    let at_f64: f64 = object.value("3_f64").into();
+    assert_eq!(at_f64, 1.2345);
+
+    let at_string = object.value("1_string");
+    assert_eq!(<QJsonValue as Into<QString>>::into(at_string).to_string(), "test");
+
+    let mut object = QJsonObject::default();
+    object.insert("key", QJsonValue::from(QString::from("value")));
+    object.insert("test", QJsonValue::from(QString::from("hello")));
+    assert_eq!(object.to_json().to_string(), "{\"key\":\"value\",\"test\":\"hello\"}");
+
+    assert_eq!(object.keys(), vec!["key".to_owned(), "test".to_owned()]);
 }
+
 cpp_class!(
     /// Wrapper around [`QJsonArray`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qjsonarray.html
-    #[derive(Default)]
+    #[derive(Default, PartialEq, Eq, Clone)]
     pub unsafe struct QJsonArray as "QJsonArray"
 );
+
+impl QJsonArray {
+    pub fn to_json(&self) -> QByteArray {
+        cpp!(unsafe [self as "QJsonArray*"] -> QByteArray as "QByteArray" { return QJsonDocument(*self).toJson(QJsonDocument::Compact); })
+    }
+    pub fn to_json_pretty(&self) -> QByteArray {
+        cpp!(unsafe [self as "QJsonArray*"] -> QByteArray as "QByteArray" { return QJsonDocument(*self).toJson(QJsonDocument::Indented); })
+    }
+    pub fn push(&mut self, value: QJsonValue) {
+        cpp!(unsafe [self as "QJsonArray*", value as "QJsonValue"] { self->append(std::move(value)); })
+    }
+    pub fn insert(&mut self, index: usize, element: QJsonValue) {
+        cpp!(unsafe [self as "QJsonArray*", index as "size_t", element as "QJsonValue"] { self->insert(index, std::move(element)); })
+    }
+    pub fn at(&self, index: usize) -> QJsonValue {
+        cpp!(unsafe [self as "QJsonArray*", index as "size_t"] -> QJsonValue as "QJsonValue" { return self->at(index); })
+    }
+    pub fn take_at(&mut self, index: usize) -> QJsonValue {
+        cpp!(unsafe [self as "QJsonArray*", index as "size_t"] -> QJsonValue as "QJsonValue" { return self->takeAt(index); })
+    }
+    pub fn remove_at(&mut self, index: usize) {
+        cpp!(unsafe [self as "QJsonArray*", index as "size_t"] { return self->removeAt(index); })
+    }
+    pub fn len(&self) -> usize {
+        cpp!(unsafe [self as "QJsonArray*"] -> usize as "size_t" { return self->size(); })
+    }
+    pub fn is_empty(&self) -> bool {
+        cpp!(unsafe [self as "QJsonArray*"] -> bool as "bool" { return self->isEmpty(); })
+    }
+}
 
 impl From<Vec<QJsonValue>> for QJsonArray {
     fn from(v: Vec<QJsonValue>) -> QJsonArray {
@@ -1911,10 +2091,24 @@ impl From<Vec<QJsonValue>> for QJsonArray {
     }
 }
 
-impl From<QJsonValue> for QJsonArray {
-    fn from(v: QJsonValue) -> QJsonArray {
-        cpp!(unsafe [v as "QJsonValue"] -> QJsonArray as "QJsonArray" {
-            return v.toArray();
-        })
-    }
+#[test]
+fn test_qjsonarray() {
+    let mut array = QJsonArray::default();
+    array.push(QJsonValue::from(QString::from("test")));
+    array.push(QJsonValue::from(true));
+    array.push(QJsonValue::from(false));
+    array.push(QJsonValue::from(1.2345));
+    assert_eq!(array.to_json().to_string(), "[\"test\",true,false,1.2345]");
+
+    let mut vec = Vec::new();
+    vec.push(QJsonValue::from(QString::from("test")));
+    vec.push(QJsonValue::from(true));
+    vec.push(QJsonValue::from(false));
+    vec.push(QJsonValue::from(1.2345));
+    assert!(QJsonArray::from(vec) == array);
+
+    assert_eq!(array.len(), 4);
+
+    assert_eq!(<QJsonValue as Into<QString>>::into(array.at(0)).to_string(), "test");
+    assert!(array.at(3) == QJsonValue::from(1.2345));
 }
