@@ -217,13 +217,6 @@ impl QColor {
         })
     }
 
-    // void 	getHsl(int *h, int *s, int *l, int *a = nullptr) const
-    // void 	getHslF(qreal *h, qreal *s, qreal *l, qreal *a = nullptr) const
-    // void 	getHsv(int *h, int *s, int *v, int *a = nullptr) const
-    // void 	getHsvF(qreal *h, qreal *s, qreal *v, qreal *a = nullptr) const
-    // void 	getRgb(int *r, int *g, int *b, int *a = nullptr) const
-    // void 	getRgbF(qreal *r, qreal *g, qreal *b, qreal *a = nullptr) const
-
     /// This function should be const but at least in my local include (5.12) it is not marked as const and causes compilation to fail
     /// > void getCmyk(int *c, int *m, int *y, int *k, int *a = nullptr);
     pub fn get_cmyka(&mut self) -> (i32, i32, i32, i32, i32) {
@@ -318,13 +311,6 @@ impl QColor {
         res
     }
 
-    // fn getRgb(&self, r: int *, g: int *, b: int *, a: int * = nullptr) {
-    //     unsafe {{
-    //         cpp!([self as "const QColor*", r as "int *", g as "int *", b as "int *", a as "int *"] -> void as "void" {
-    //             return self->getRgb(r, g, b, a);
-    //         })
-    //     }}
-    // }
     /// Wrapper around [`getRgbF(qreal *r, qreal *g, qreal *b, qreal *a = nullptr)`][method] method.
     ///
     /// # Wrapper-specific
@@ -417,18 +403,6 @@ impl QColor {
         })
     }
 
-    // pub fn hue(&self) -> i32 {
-    //     cpp!(unsafe [self as "const QColor*"] -> i32 as "int" {
-    //         return self->hue();
-    //     })
-    // }
-
-    // pub fn hue_f(&self) -> qreal {
-    //     cpp!(unsafe [self as "const QColor*"] -> qreal as "qreal" {
-    //         return self->hueF();
-    //     })
-    // }
-
     pub fn is_valid(&self) -> bool {
         cpp!(unsafe [self as "const QColor*"] -> bool as "bool" {
             return self->isValid();
@@ -511,18 +485,6 @@ impl QColor {
             return self->rgba();
         }))
     }
-
-    // pub fn saturation(&self) -> i32 {
-    //     cpp!(unsafe [self as "const QColor*"] -> i32 as "int" {
-    //         return self->saturation();
-    //     })
-    // }
-
-    // pub fn saturation_f(&self) -> qreal {
-    //     cpp!(unsafe [self as "const QColor*"] -> qreal as "qreal" {
-    //         return self->saturationF();
-    //     })
-    // }
 
     pub fn set_alpha(&mut self, alpha: i32) {
         cpp!(unsafe [self as "QColor*", alpha as "int"] {
@@ -901,7 +863,7 @@ mod tests {
 
     #[test]
     fn test_hsl() {
-        let mut color = QColor::from_hsl(255, 200, 100, Some(213));
+        let color = QColor::from_hsl(255, 200, 100, Some(213));
         assert_eq!(255, color.hsl_hue());
         assert_eq!(200, color.hsl_saturation());
         assert_eq!(100, color.lightness());
@@ -911,7 +873,7 @@ mod tests {
 
     #[test]
     fn test_hsv() {
-        let mut color = QColor::from_hsv(255, 200, 100, Some(213));
+        let color = QColor::from_hsv(255, 200, 100, Some(213));
         assert_eq!(255, color.hsv_hue());
         assert_eq!(200, color.hsv_saturation());
         assert_eq!(100, color.value());

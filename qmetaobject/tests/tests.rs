@@ -968,14 +968,14 @@ fn test_qvariant_qimage_qpixmap() {
     assert_eq!(pix.size(), QSize { width: 12, height: 23 });
     let img2 = QImage::from_qvariant(pix.clone().to_qvariant()).unwrap();
     assert_eq!(img2.size(), QSize { width: 12, height: 23 });
-    assert!(img2.get_pixel_color(2, 2) == QColor::from_rgb_f(0., 0., 1.));
-    assert!(img2.get_pixel_color(3, 4) == QColor::from_rgb_f(1., 0., 0.));
+    assert!(img2.get_pixel_color(2, 2) == QColor::from_rgb_f(0., 0., 1., None));
+    assert!(img2.get_pixel_color(3, 4) == QColor::from_rgb_f(1., 0., 0., None));
 
     let mut img3: QImage = pix.into();
     assert!(img2 == img3);
     assert_eq!(img3.size(), QSize { width: 12, height: 23 });
-    assert!(img3.get_pixel_color(2, 2) == QColor::from_rgb_f(0., 0., 1.));
-    assert!(img3.get_pixel_color(8, 4) == QColor::from_rgb_f(1., 0., 0.));
+    assert!(img3.get_pixel_color(2, 2) == QColor::from_rgb_f(0., 0., 1., None));
+    assert!(img3.get_pixel_color(8, 4) == QColor::from_rgb_f(1., 0., 0., None));
     img3.set_pixel_color(8, 8, QColor::from_name("black"));
     assert!(img2 != img3);
 }
