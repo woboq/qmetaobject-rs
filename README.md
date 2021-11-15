@@ -112,7 +112,7 @@ This feature is disabled by default.
 
 Link against **`qtwidgets`** module. This will use `QApplication` instead of `QGuiApplication`. 
 
-This feature is enabled by default and is required for `webengine` feature.
+This feature is enabled by default.
 
 ## What if a wrapper for the Qt C++ API is missing?
 

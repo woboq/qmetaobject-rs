@@ -207,7 +207,7 @@ fn main() {
     link_lib("Quick");
     #[cfg(feature = "qtquick")]
     link_lib("Qml");
-    #[cfg(all(feature = "qtwebengine", feature = "qtwidgets"))]
+    #[cfg(feature = "qtwebengine")]
     if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
         println!("cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.", qt_version);
     } else if (cargo_target_os == "windows") && (cargo_target_env != "msvc") {

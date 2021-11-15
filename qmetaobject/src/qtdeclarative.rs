@@ -24,22 +24,19 @@ use crate::*;
 /// So this is a guard that will be used to panic if the engine is created twice
 static HAS_ENGINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-#[cfg(feature = "widgets")]
-cpp! {{
-    #include <QtWidgets/QApplication>
-    #define QAPPLICATION QApplication
-}}
-#[cfg(not(feature = "widgets"))]
-cpp! {{
-    #include <QtGui/QGuiApplication>
-    #define QAPPLICATION QGuiApplication
-}}
-
 cpp! {{
     #include <memory>
     #include <QtQuick/QtQuick>
     #include <QtCore/QDebug>
     #include <QtQml/QQmlComponent>
+    
+    #ifdef NO_WIDGETS
+    # define QAPPLICATION QGuiApplication
+    # include <QtGui/QGuiApplication>
+    #else
+    # define QAPPLICATION QApplication
+    # include <QtWidgets/QApplication>
+    #endif
 
     struct SingleApplicationGuard {
         SingleApplicationGuard() {
