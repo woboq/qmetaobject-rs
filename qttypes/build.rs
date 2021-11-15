@@ -201,14 +201,13 @@ fn main() {
     };
     link_lib("Core");
     link_lib("Gui");
-    #[cfg(not(feature = "nowidgets"))]
+    #[cfg(feature = "qtwidgets")]
     link_lib("Widgets");
     #[cfg(feature = "qtquick")]
     link_lib("Quick");
     #[cfg(feature = "qtquick")]
     link_lib("Qml");
-    #[cfg(feature = "webengine")]
-    #[cfg(not(feature = "nowidgets"))]
+    #[cfg(all(feature = "qtwebengine", feature = "qtwidgets"))]
     if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
         println!("cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.", qt_version);
     } else if (cargo_target_os == "windows") && (cargo_target_env != "msvc") {
@@ -220,8 +219,7 @@ fn main() {
     link_lib("QuickControls2");
     #[cfg(feature = "qtmultimedia")]
     link_lib("Multimedia");
-    #[cfg(feature = "qtmultimediawidgets")]
-    #[cfg(not(feature = "nowidgets"))]
+    #[cfg(all(feature = "qtmultimediawidgets", feature = "qtwidgets"))]
     link_lib("MultimediaWidgets");
     #[cfg(feature = "qtsql")]
     link_lib("Sql");

@@ -31,10 +31,10 @@ qtmultimediawidgets = []
 qtsql = []
 # Link against QtTest
 qttest = []
-# Don't link QtWidgets and use QGuiApplication
-nowidgets = []
+# Link against QtWidgets
+qtwidgets = []
 
-default = ["required"]
+default = ["required", "qtwidgets"]
 
 [dependencies]
 cpp = "0.5.6"

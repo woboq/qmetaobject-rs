@@ -104,7 +104,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!   if Qt is not found. Otherwise, when not enabled, the build will continue, but any use of the classes will
 //!   panic at runtime.
 //! - **`chrono`**: enable the conversion between [`QDateTime`] related types and the types from the `chrono` crate.
-//! - **`nowidgets`**: Don't link against **`qtwidgets`** module. This will use `QGuiApplication` instead of `QApplcation`. 
 //!
 //! Link against these Qt modules using cargo features:
 //!
@@ -117,6 +116,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! | **`qtsql`**               | Qt SQL                |
 //! | **`qttest`**              | Qt Test               |
 //! | **`qtwebengine`**         | Qt WebEngine          |
+//! | **`qtwidgets`**           | Qt Widgets            |
 //!
 
 #![cfg_attr(no_qt, allow(unused))]
