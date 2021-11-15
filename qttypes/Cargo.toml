@@ -31,6 +31,8 @@ qtmultimediawidgets = []
 qtsql = []
 # Link against QtTest
 qttest = []
+# Don't link QtWidgets and use QGuiApplication
+nowidgets = []
 
 default = ["required"]
 

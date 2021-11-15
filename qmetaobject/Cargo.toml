@@ -15,6 +15,7 @@ repository = "https://github.com/woboq/qmetaobject-rs"
 default = ["log"]
 chrono_qdatetime = ["qttypes/chrono"]
 webengine = ["qttypes/qtwebengine"]
+nowidgets = ["qttypes/nowidgets"]
 
 [dependencies]
 qttypes = { path = "../qttypes", version = "0.2.4", features = ["qtquick"] }
