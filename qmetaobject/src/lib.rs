@@ -208,6 +208,7 @@ pub mod qtquickcontrols2;
 pub mod scenegraph;
 pub mod tablemodel;
 #[cfg(feature = "webengine")]
+#[cfg(not(feature = "nowidgets"))]
 #[cfg(not(any(qt_6_0, qt_6_1)))]
 #[cfg(not(all(target_os = "windows", not(target_env = "msvc"))))]
 pub mod webengine;
