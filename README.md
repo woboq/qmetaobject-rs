@@ -110,7 +110,7 @@ This feature is disabled by default.
 
 ### `nowidgets`
 
-Don't link against **`qtwidgets`** module. This will use `QGuiApplication` instead of `QApplcation`. 
+Don't link against **`qtwidgets`** module. This will use `QGuiApplication` instead of `QApplication`. 
 
 This feature is disabled by default.
 
