@@ -26,7 +26,7 @@ qtquickcontrols2 = []
 # Link against QtMultimedia
 qtmultimedia = []
 # Link against QtMultimediaWidgets
-qtmultimediawidgets = []
+qtmultimediawidgets = ["qtwidgets"]
 # Link against QtSql
 qtsql = []
 # Link against QtTest

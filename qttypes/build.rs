@@ -219,7 +219,7 @@ fn main() {
     link_lib("QuickControls2");
     #[cfg(feature = "qtmultimedia")]
     link_lib("Multimedia");
-    #[cfg(all(feature = "qtmultimediawidgets", feature = "qtwidgets"))]
+    #[cfg(feature = "qtmultimediawidgets")]
     link_lib("MultimediaWidgets");
     #[cfg(feature = "qtsql")]
     link_lib("Sql");

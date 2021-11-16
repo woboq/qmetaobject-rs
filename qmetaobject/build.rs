@@ -34,7 +34,7 @@ fn main() {
         config.flag(&qt_library_path);
     }
     if cfg!(not(feature = "widgets")) {
-        config.flag("-DNO_WIDGETS");
+        config.define("NO_WIDGETS", None);
     }
     if qt_version >= Version::new(6, 0, 0) {
         config.flag_if_supported("-std=c++17");
