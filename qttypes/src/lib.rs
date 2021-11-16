@@ -137,6 +137,8 @@ use cpp::{cpp, cpp_class};
 mod core;
 pub use crate::core::{qreal, QByteArray, QString, QUrl};
 
+mod gui;
+pub use crate::gui::{NameFormat, QColor, QRgb, QRgba64, Spec};
 #[cfg(no_qt)]
 mod no_qt {
     pub fn panic<T>() -> T {
@@ -984,91 +986,6 @@ fn test_qpointf_qrectf() {
     let pt = QPointF { x: 12., y: 5.5 };
     assert!(!rect.contains(pt));
     assert!(rect.contains(pt + rect.top_left()));
-}
-
-cpp_class!(
-    /// Wrapper around [`QColor`][class] class.
-    ///
-    /// [class]: https://doc.qt.io/qt-5/qcolor.html
-    #[derive(Default, Clone, Copy, PartialEq)]
-    pub unsafe struct QColor as "QColor"
-);
-impl QColor {
-    /// Wrapper around [`QColor(QLatin1String)`][ctor] constructor.
-    ///
-    /// [ctor]: https://doc.qt.io/qt-5/qcolor.html#QColor-8
-    pub fn from_name(name: &str) -> Self {
-        let len = name.len();
-        let ptr = name.as_ptr();
-        cpp!(unsafe [len as "size_t", ptr as "char*"] -> QColor as "QColor" {
-            return QColor(QLatin1String(ptr, len));
-        })
-    }
-
-    /// Wrapper around [`fromRgbF(qreal r, qreal g, qreal b, qreal a = 1.0)`][ctor] constructor.
-    ///
-    /// # Wrapper-specific
-    ///
-    /// Alpha is left at default `1.0`. To set it to something other that 1.0, use [`from_rgba_f`][].
-    ///
-    /// [ctor]: https://doc.qt.io/qt-5/qcolor.html#fromRgbF
-    /// [`from_rgba_f`]: #method.from_rgba_f
-    pub fn from_rgb_f(r: qreal, g: qreal, b: qreal) -> Self {
-        cpp!(unsafe [r as "qreal", g as "qreal", b as "qreal"] -> QColor as "QColor" {
-            return QColor::fromRgbF(r, g, b);
-        })
-    }
-
-    /// Wrapper around [`fromRgbF(qreal r, qreal g, qreal b, qreal a = 1.0)`][ctor] constructor.
-    ///
-    /// # Wrapper-specific
-    ///
-    /// Same as [`from_rgb_f`][], but accept an alpha value
-    ///
-    /// [ctor]: https://doc.qt.io/qt-5/qcolor.html#fromRgbF
-    /// [`from_rgb_f`]: #method.from_rgb_f
-    pub fn from_rgba_f(r: qreal, g: qreal, b: qreal, a: qreal) -> Self {
-        cpp!(unsafe [r as "qreal", g as "qreal", b as "qreal", a as "qreal"] -> QColor as "QColor" {
-            return QColor::fromRgbF(r, g, b, a);
-        })
-    }
-    /// Wrapper around [`getRgbF(qreal *r, qreal *g, qreal *b, qreal *a = nullptr)`][method] method.
-    ///
-    /// # Wrapper-specific
-    ///
-    /// Returns red, green, blue and alpha components as a tuple, instead of mutable references.
-    ///
-    /// [method]: https://doc.qt.io/qt-5/qcolor.html#getRgbF
-    pub fn get_rgba(&self) -> (qreal, qreal, qreal, qreal) {
-        let res = (0., 0., 0., 0.);
-        let (ref r, ref g, ref b, ref a) = res;
-        cpp!(unsafe [self as "const QColor*", r as "qreal*", g as "qreal*", b as "qreal*", a as "qreal*"] {
-        #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-            float r_, g_, b_, a_;
-            self->getRgbF(&r_, &g_, &b_, &a_);
-            *r = r_; *g = g_; *b = b_; *a = a_;
-        #else
-            return self->getRgbF(r, g, b, a);
-        #endif
-        });
-        res
-    }
-}
-
-#[test]
-fn test_qcolor() {
-    let blue1 = QColor::from_name("blue");
-    let blue2 = QColor::from_rgb_f(0., 0., 1.);
-    assert_eq!(blue1.get_rgba().0, 0.);
-    assert_eq!(blue1.get_rgba().2, 1.);
-    assert!(blue1 == blue2);
-
-    let red1 = QColor::from_name("red");
-    let red2 = QColor::from_rgb_f(1., 0., 0.);
-    assert_eq!(red1.get_rgba().0, 1.);
-    assert_eq!(red1.get_rgba().2, 0.);
-    assert!(red1 == red2);
-    assert!(blue1 != red1);
 }
 
 /// Bindings for [`QSize`][class] class.
