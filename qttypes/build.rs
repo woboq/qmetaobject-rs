@@ -25,9 +25,8 @@ use semver::Version;
 
 fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     let output = match std::env::var("QMAKE") {
-        Ok(env_var_value) =>
-            Command::new(env_var_value).args(&["-query", var]).output(),
-        Err(_env_var_err) =>
+        Ok(env_var_value) => Command::new(env_var_value).args(&["-query", var]).output(),
+        Err(_env_var_err) => {
             Command::new("qmake").args(&["-query", var]).output().or_else(|command_err| {
                 // Some Linux distributions (Fedora, Arch) rename qmake to qmake-qt5.
                 if command_err.kind() == std::io::ErrorKind::NotFound {
@@ -35,7 +34,8 @@ fn qmake_query(var: &str) -> Result<String, std::io::Error> {
                 } else {
                     Err(command_err)
                 }
-            }),
+            })
+        }
     }?;
     if !output.status.success() {
         return Err(std::io::Error::new(
@@ -50,7 +50,11 @@ fn qmake_query(var: &str) -> Result<String, std::io::Error> {
     Ok(std::str::from_utf8(&output.stdout).expect("UTF-8 conversion failed").trim().to_string())
 }
 
-fn open_core_header(file: &str, qt_include_path: &str, qt_library_path: &str) -> BufReader<std::fs::File> {
+fn open_core_header(
+    file: &str,
+    qt_include_path: &str,
+    qt_library_path: &str,
+) -> BufReader<std::fs::File> {
     let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
 
     let mut path = PathBuf::from(qt_include_path);
@@ -143,9 +147,7 @@ fn main() {
             panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set.")
         }
     };
-    let qt_version = qt_version
-        .parse::<Version>()
-        .expect("Parsing Qt version failed");
+    let qt_version = qt_version.parse::<Version>().expect("Parsing Qt version failed");
 
     let mut config = cpp_build::Config::new();
 
@@ -169,20 +171,18 @@ fn main() {
     println!("cargo:FOUND=1");
 
     let macos_lib_search = if cargo_target_os == "macos" { "=framework" } else { "" };
-    let vers_suffix = if cargo_target_os == "macos" {
-        "".to_string()
-    } else {
-        qt_version.major.to_string()
-    };
+    let vers_suffix =
+        if cargo_target_os == "macos" { "".to_string() } else { qt_version.major.to_string() };
 
     // Windows debug suffix exclusively from MSVC land
     let debug = std::env::var("DEBUG").ok().map_or(false, |s| s == "true");
-    let windows_dbg_suffix = if debug && (cargo_target_os == "windows") && (cargo_target_env == "msvc") {
-        println!("cargo:rustc-link-lib=msvcrtd");
-        "d"
-    } else {
-        ""
-    };
+    let windows_dbg_suffix =
+        if debug && (cargo_target_os == "windows") && (cargo_target_env == "msvc") {
+            println!("cargo:rustc-link-lib=msvcrtd");
+            "d"
+        } else {
+            ""
+        };
 
     if std::env::var("CARGO_CFG_TARGET_FAMILY").as_ref().map(|s| s.as_ref()) == Ok("unix") {
         println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", &qt_library_path);
@@ -208,7 +208,10 @@ fn main() {
     link_lib("Qml");
     #[cfg(feature = "qtwebengine")]
     if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
-        println!("cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.", qt_version);
+        println!(
+            "cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.",
+            qt_version
+        );
     } else if (cargo_target_os == "windows") && (cargo_target_env != "msvc") {
         println!("cargo:warning=On Windows, WebEngine module is only available under MSVC 2017 or MSVC2019.");
     } else {

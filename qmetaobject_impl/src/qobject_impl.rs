@@ -365,10 +365,14 @@ impl MetaObject {
     }
 
     fn add_string(&mut self, string: String) -> u32 {
-        if let Some((pos, _)) = self.string_data.iter().enumerate().find(|(_, val)| *val == &string) {
+        if let Some((pos, _)) = self.string_data.iter().enumerate().find(|(_, val)| *val == &string)
+        {
             return pos as u32;
         }
-        assert!(self.string_data.len() < i32::MAX as usize, "String Data: Too many strings registered");
+        assert!(
+            self.string_data.len() < i32::MAX as usize,
+            "String Data: Too many strings registered"
+        );
         assert!(string.len() <= i32::MAX as usize, "String Data: String is too large");
 
         self.string_data.push(string);
@@ -489,7 +493,10 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                             for it in parsed.1 {
                                 match it {
                                     Flag::Notify(i) => {
-                                        assert!(notify_signal.is_none(), "Duplicate NOTIFY for a property");
+                                        assert!(
+                                            notify_signal.is_none(),
+                                            "Duplicate NOTIFY for a property"
+                                        );
                                         notify_signal = Some(i);
                                         flags |= 0x00400000;
                                     }
