@@ -557,7 +557,7 @@ impl QColor {
         })
     }
 
-    pub fn name_format(&self, format: NameFormat) -> QString {
+    pub fn name_with_format(&self, format: NameFormat) -> QString {
         cpp!(unsafe [self as "const QColor*", format as "QColor::NameFormat"] -> QString as "QString" {
             return self->name(format);
         })
