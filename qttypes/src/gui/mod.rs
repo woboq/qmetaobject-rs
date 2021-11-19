@@ -1,2 +1,2 @@
 mod qcolor;
-pub use self::qcolor::{NameFormat, QColor, QRgb, QRgba64, Spec};
+pub use self::qcolor::{QColor, QColorNameFormat, QColorSpec, QRgb, QRgba64};

@@ -135,7 +135,7 @@ mod core;
 pub use crate::core::{qreal, QByteArray, QString, QUrl};
 
 mod gui;
-pub use crate::gui::{NameFormat, QColor, QRgb, QRgba64, Spec};
+pub use crate::gui::{QColor, QColorNameFormat, QColorSpec, QRgb, QRgba64};
 #[cfg(no_qt)]
 mod no_qt {
     pub fn panic<T>() -> T {

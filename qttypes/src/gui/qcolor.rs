@@ -73,10 +73,10 @@ impl Into<u64> for QRgba64 {
 #[repr(u32)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
-pub enum NameFormat {
-    // #RRGGBB A "#" character followed by three two-digit hexadecimal numbers (i.e. #RRGGBB).
+pub enum QColorNameFormat {
+    /// #RRGGBB A "#" character followed by three two-digit hexadecimal numbers (i.e. #RRGGBB).
     HexRgb = 0,
-    //#AARRGGBB A "#" character followed by four two-digit hexadecimal numbers (i.e. #AARRGGBB).
+    ///#AARRGGBB A "#" character followed by four two-digit hexadecimal numbers (i.e. #AARRGGBB).
     HexArgb = 1,
 }
 
@@ -86,7 +86,7 @@ pub enum NameFormat {
 #[repr(u32)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
-pub enum Spec {
+pub enum QColorSpec {
     Invalid = 0,
     Rgb = 1,
     Hsv = 2,
@@ -295,7 +295,7 @@ impl QColor {
         })
     }
 
-    pub fn convert_to(&self, color_spec: Spec) -> QColor {
+    pub fn convert_to(&self, color_spec: QColorSpec) -> QColor {
         cpp!(unsafe [self as "const QColor*", color_spec as "QColor::Spec"] -> QColor as "QColor" {
             return self->convertTo(color_spec);
         })
@@ -557,7 +557,7 @@ impl QColor {
         })
     }
 
-    pub fn name_with_format(&self, format: NameFormat) -> QString {
+    pub fn name_with_format(&self, format: QColorNameFormat) -> QString {
         cpp!(unsafe [self as "const QColor*", format as "QColor::NameFormat"] -> QString as "QString" {
             return self->name(format);
         })
@@ -749,8 +749,8 @@ impl QColor {
         })
     }
 
-    pub fn spec(&self) -> Spec {
-        cpp!(unsafe [self as "const QColor*"] -> Spec as "QColor::Spec" { return self->spec(); })
+    pub fn spec(&self) -> QColorSpec {
+        cpp!(unsafe [self as "const QColor*"] -> QColorSpec as "QColor::Spec" { return self->spec(); })
     }
 
     pub fn to_cmyk(&self) -> QColor {
@@ -809,6 +809,7 @@ impl QColor {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
