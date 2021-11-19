@@ -215,13 +215,16 @@ fn main() {
     #[cfg(feature = "qtquick")]
     link_lib("Qml");
     #[cfg(feature = "qtwebengine")]
-    if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
-        println!(
-            "cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.",
-            qt_version
-        );
-    } else if (cargo_target_os == "windows") && (cargo_target_env != "msvc") {
+    if (cargo_target_os == "windows") && (cargo_target_env != "msvc") {
         println!("cargo:warning=On Windows, WebEngine module is only available under MSVC 2017 or MSVC2019.");
+    } else if qt_version >= Version::new(6, 0, 0) {
+        if qt_version < Version::new(6, 2, 0) {
+            println!(
+                "cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2.",
+                qt_version
+            );
+        }
+        link_lib("WebEngineQuick");
     } else {
         link_lib("WebEngine");
     }

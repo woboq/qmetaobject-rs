@@ -1,9 +1,13 @@
 use cpp::cpp;
 
 cpp! {{
-#if !(QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && QT_VERSION < QT_VERSION_CHECK(6, 2, 0))
-#  if !(_WIN32 && ! defined(_MSC_VER))
-    #include <QtWebEngine/QtWebEngine>
+#if !(_WIN32 && ! defined(_MSC_VER))
+#  if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#    if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+#      include <QtWebEngineQuick/QtWebEngineQuick>
+#    endif
+#  else
+#    include <QtWebEngine/QtWebEngine>
 #  endif
 #endif
 }}
@@ -11,10 +15,14 @@ cpp! {{
 /// Refer to the Qt documentation of QtWebEngine::initialize()
 pub fn initialize() {
     cpp!(unsafe [] {
-    #if !(QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && QT_VERSION < QT_VERSION_CHECK(6, 2, 0))
-    #  if !(_WIN32 && ! defined(_MSC_VER))
+    #if !(_WIN32 && ! defined(_MSC_VER))
+    #  if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    #    if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+        QtWebEngineQuick::initialize();
+    #    endif
+    #  else
         QtWebEngine::initialize();
     #  endif
     #endif
-    });
+        });
 }
