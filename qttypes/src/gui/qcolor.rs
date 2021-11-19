@@ -1,7 +1,5 @@
-pub use crate::core::{qreal, QString};
-
-#[cfg(not(no_qt))]
-use cpp::{cpp, cpp_class};
+use crate::internal_prelude::*;
+use crate::{qreal, QString};
 
 cpp! {{
     #include <QtGui/QColor>
