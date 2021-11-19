@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 0.2.5 2021-11-19
+
+ - Completed QColor API
+ - Added wrapper around QJSon* types, QPainter, QPen, QBrush, QLineF
+ - Added QQuickPaintedItem
+ - Fixes to the qttype build script
+
 ## 0.2.4 2021-09-30
 
 - Fixed build with Qt < 5.8 and >= 6.2
