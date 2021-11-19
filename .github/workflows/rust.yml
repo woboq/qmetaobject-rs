@@ -32,6 +32,10 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
           components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v1
+      with:
+        key: rust_cache
+
     - name: Cache Qt
       id: cache-qt
       uses: actions/cache@v1
@@ -51,7 +55,6 @@ jobs:
       if: matrix.os != 'macos-latest'
       run: cargo test --all-features
 
-
   # Qt6 is in a different job right now because it does not have many modules and most example don't compile
   qt6:
     strategy:
@@ -68,6 +71,10 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v1
+      with:
+        key: rust_cache6
+
     - name: Cache Qt
       id: cache-qt6
       uses: actions/cache@v1
@@ -77,10 +84,30 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v2
       with:
-        version: 6.1.0
+        version: 6.2.0
         cached: ${{ steps.cache-qt6.outputs.cache-hit }}
     - name: Test
       run: |
         cargo test --manifest-path qttypes/Cargo.toml
         cargo test --manifest-path qmetaobject_impl/Cargo.toml
         cargo test --manifest-path qmetaobject/Cargo.toml
+
+
+no_qt:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+          profile: minimal
+          toolchain: stable
+          override: true
+    - uses: Swatinem/rust-cache@v1
+      with:
+        key: rust_cache
+    - name: Build qttypes without qt
+      run: |
+        cargo build --manifest-path qttypes/Cargo.toml --no-default-features
