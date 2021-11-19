@@ -122,11 +122,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use std::collections::HashMap;
 use std::convert::From;
-use std::fmt::Display;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
-use std::os::raw::c_char;
-use std::str::Utf8Error;
 
 #[cfg(feature = "chrono")]
 use chrono::prelude::*;
