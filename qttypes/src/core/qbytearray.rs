@@ -1,11 +1,8 @@
-#[cfg(not(no_qt))]
-use cpp::{cpp, cpp_class};
-
+use crate::internal_prelude::*;
+use crate::QString;
 use std::fmt::Display;
 use std::os::raw::c_char;
 use std::str::Utf8Error;
-
-use crate::core::QString;
 
 cpp! {{
     #include <QtCore/QString>

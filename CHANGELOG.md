@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 0.2.6 2021-11-19 (qttype only)
+
+ - Fix build when Qt is not found and the required feature is off
+
 ## 0.2.5 2021-11-19
 
  - Completed QColor API

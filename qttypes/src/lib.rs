@@ -128,40 +128,47 @@ use std::ops::{Index, IndexMut};
 #[cfg(feature = "chrono")]
 use chrono::prelude::*;
 
-#[cfg(not(no_qt))]
-use cpp::{cpp, cpp_class};
+#[cfg(no_qt)]
+pub(crate) mod no_qt {
+    pub fn panic<T>() -> T {
+        panic!("Qt was not found during build")
+    }
+}
+
+pub(crate) mod internal_prelude {
+    #[cfg(not(no_qt))]
+    pub(crate) use cpp::{cpp, cpp_class};
+    #[cfg(no_qt)]
+    macro_rules! cpp {
+        {{ $($t:tt)* }} => {};
+        {$(unsafe)? [$($a:tt)*] -> $ret:ty as $b:tt { $($t:tt)* } } => {
+            crate::no_qt::panic::<$ret>()
+        };
+        { $($t:tt)* } => {
+            crate::no_qt::panic::<()>()
+        };
+    }
+
+    #[cfg(no_qt)]
+    macro_rules! cpp_class {
+        ($(#[$($attrs:tt)*])* $vis:vis unsafe struct $name:ident as $type:expr) => {
+            #[derive(Default, Ord, Eq, PartialEq, PartialOrd, Clone, Copy)]
+            #[repr(C)]
+            $vis struct $name;
+        };
+    }
+    #[cfg(no_qt)]
+    pub(crate) use cpp;
+    #[cfg(no_qt)]
+    pub(crate) use cpp_class;
+}
+use internal_prelude::*;
 
 mod core;
 pub use crate::core::{qreal, QByteArray, QString, QUrl};
 
 mod gui;
 pub use crate::gui::{QColor, QColorNameFormat, QColorSpec, QRgb, QRgba64};
-#[cfg(no_qt)]
-mod no_qt {
-    pub fn panic<T>() -> T {
-        panic!("Qt was not found during build")
-    }
-}
-
-#[cfg(no_qt)]
-macro_rules! cpp {
-    {{ $($t:tt)* }} => {};
-    {$(unsafe)? [$($a:tt)*] -> $ret:ty as $b:tt { $($t:tt)* } } => {
-        crate::no_qt::panic::<$ret>()
-    };
-    { $($t:tt)* } => {
-        crate::no_qt::panic::<()>()
-    };
-}
-
-#[cfg(no_qt)]
-macro_rules! cpp_class {
-    ($(#[$($attrs:tt)*])* $vis:vis unsafe struct $name:ident as $type:expr) => {
-        #[derive(Default, Ord, Eq, PartialEq, PartialOrd, Clone, Copy)]
-        #[repr(C)]
-        $vis struct $name;
-    };
-}
 
 cpp! {{
     #include <QtCore/QByteArray>

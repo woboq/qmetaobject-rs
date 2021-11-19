@@ -1,7 +1,5 @@
-#[cfg(not(no_qt))]
-use cpp::{cpp, cpp_class};
-
-use crate::core::QString;
+use crate::internal_prelude::*;
+use crate::QString;
 
 cpp! {{
     #include <QtCore/QString>

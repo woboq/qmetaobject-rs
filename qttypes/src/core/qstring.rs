@@ -1,8 +1,6 @@
-#[cfg(not(no_qt))]
-use cpp::{cpp, cpp_class};
-
 use crate::core::QByteArray;
 use crate::core::QUrl;
+use crate::internal_prelude::*;
 
 use std::fmt::Display;
 
