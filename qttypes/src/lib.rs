@@ -1246,7 +1246,7 @@ cpp_class!(
     ///
     /// [class]: https://doc.qt.io/qt-5/qbrush.html
     #[derive(Default)]
-    pub unsafe struct QBrush as "QBrush"
+    pub unsafe struct QBrush as "QBrush "
 );
 impl QBrush {
     pub fn from_color(color: QColor) -> Self {
@@ -1277,16 +1277,16 @@ cpp_class!(
     /// Wrapper around [`QPainter`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qpainter.html
-    pub unsafe struct QPainter as "QPainter"
+    pub unsafe struct QPainter as "QPainter "
 );
 impl QPainter {
     pub fn draw_arc(&mut self, rectangle: QRectF, start_angle: i32, span_angle: i32) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF", start_angle as "int", span_angle as "int"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF", start_angle as "int", span_angle as "int"] {
             self->drawArc(rectangle, start_angle, span_angle);
         });
     }
     pub fn draw_chord(&mut self, rectangle: QRectF, start_angle: i32, span_angle: i32) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF", start_angle as "int", span_angle as "int"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF", start_angle as "int", span_angle as "int"] {
             self->drawChord(rectangle, start_angle, span_angle);
         });
     }
@@ -1294,29 +1294,29 @@ impl QPainter {
     pub fn draw_convex_polygon(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
         let points_count = points.len() as u64;
-        cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
+        cpp!(unsafe [self as "QPainter *", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawConvexPolygon(points_ptr, points_count);
         });
     }
 
     pub fn draw_ellipse(&mut self, rectangle: QRectF) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF"] {
             self->drawEllipse(rectangle);
         });
     }
     pub fn draw_ellipse_with_center(&mut self, center: QPointF, rx: qreal, ry: qreal) {
-        cpp!(unsafe [self as "QPainter*", center as "QPointF", rx as "qreal", ry as "qreal"] {
+        cpp!(unsafe [self as "QPainter *", center as "QPointF", rx as "qreal", ry as "qreal"] {
             self->drawEllipse(center, rx, ry);
         });
     }
 
     pub fn draw_image_fit_rect(&mut self, rectangle: QRectF, image: QImage) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF", image as "QImage"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF", image as "QImage"] {
             self->drawImage(rectangle, image);
         });
     }
     pub fn draw_image_at_point(&mut self, point: QPointF, image: QImage) {
-        cpp!(unsafe [self as "QPainter*", point as "QPointF", image as "QImage"] {
+        cpp!(unsafe [self as "QPainter *", point as "QPointF", image as "QImage"] {
             self->drawImage(point, image);
         });
     }
@@ -1326,7 +1326,7 @@ impl QPainter {
         image: QImage,
         source_rect: QRectF,
     ) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF", image as "QImage", source_rect as "QRectF"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF", image as "QImage", source_rect as "QRectF"] {
             self->drawImage(rectangle, image, source_rect);
         });
     }
@@ -1336,46 +1336,46 @@ impl QPainter {
         image: QImage,
         source_rect: QRectF,
     ) {
-        cpp!(unsafe [self as "QPainter*", point as "QPointF", image as "QImage", source_rect as "QRectF"] {
+        cpp!(unsafe [self as "QPainter *", point as "QPointF", image as "QImage", source_rect as "QRectF"] {
             self->drawImage(point, image, source_rect);
         });
     }
 
     pub fn draw_line(&mut self, line: QLineF) {
-        cpp!(unsafe [self as "QPainter*", line as "QLineF"] {
+        cpp!(unsafe [self as "QPainter *", line as "QLineF"] {
             self->drawLine(line);
         });
     }
     pub fn draw_lines(&mut self, lines: &[QLineF]) {
         let lines_ptr = lines.as_ptr();
         let lines_count = lines.len() as u64;
-        cpp!(unsafe [self as "QPainter*", lines_ptr as "QLineF*", lines_count as "uint64_t"] {
+        cpp!(unsafe [self as "QPainter *", lines_ptr as "QLineF*", lines_count as "uint64_t"] {
             self->drawLines(lines_ptr, lines_count);
         });
     }
     pub fn draw_lines_from_points(&mut self, point_pairs: &[QPointF]) {
         let point_pairs_ptr = point_pairs.as_ptr();
         let point_pairs_count = point_pairs.len() as u64;
-        cpp!(unsafe [self as "QPainter*", point_pairs_ptr as "QLineF*", point_pairs_count as "uint64_t"] {
+        cpp!(unsafe [self as "QPainter *", point_pairs_ptr as "QLineF*", point_pairs_count as "uint64_t"] {
             self->drawLines(point_pairs_ptr, point_pairs_count);
         });
     }
 
     pub fn draw_pie(&mut self, rectangle: QRectF, start_angle: i32, span_angle: i32) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF", start_angle as "int", span_angle as "int"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF", start_angle as "int", span_angle as "int"] {
             self->drawPie(rectangle, start_angle, span_angle);
         });
     }
 
     pub fn draw_point(&mut self, point: QPointF) {
-        cpp!(unsafe [self as "QPainter*", point as "QPointF"] {
+        cpp!(unsafe [self as "QPainter *", point as "QPointF"] {
             self->drawPoint(point);
         });
     }
     pub fn draw_points(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
         let points_count = points.len() as u64;
-        cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
+        cpp!(unsafe [self as "QPainter *", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawPoints(points_ptr, points_count);
         });
     }
@@ -1383,43 +1383,43 @@ impl QPainter {
     pub fn draw_polygon(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
         let points_count = points.len() as u64;
-        cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
+        cpp!(unsafe [self as "QPainter *", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawPolygon(points_ptr, points_count);
         });
     }
     pub fn draw_polyline(&mut self, points: &[QPointF]) {
         let points_ptr = points.as_ptr();
         let points_count = points.len() as u64;
-        cpp!(unsafe [self as "QPainter*", points_ptr as "QPointF*", points_count as "uint64_t"] {
+        cpp!(unsafe [self as "QPainter *", points_ptr as "QPointF*", points_count as "uint64_t"] {
             self->drawPolyline(points_ptr, points_count);
         });
     }
 
     pub fn draw_rect(&mut self, rectangle: QRectF) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF"] {
             self->drawRect(rectangle);
         });
     }
     pub fn draw_rects(&mut self, rects: &[QRectF]) {
         let rects_ptr = rects.as_ptr();
         let rects_count = rects.len() as u64;
-        cpp!(unsafe [self as "QPainter*", rects_ptr as "QRectF*", rects_count as "uint64_t"] {
+        cpp!(unsafe [self as "QPainter *", rects_ptr as "QRectF*", rects_count as "uint64_t"] {
             self->drawRects(rects_ptr, rects_count);
         });
     }
     pub fn draw_rounded_rect(&mut self, rect: QRectF, x_radius: qreal, y_radius: qreal) {
-        cpp!(unsafe [self as "QPainter*", rect as "QRectF", x_radius as "qreal", y_radius as "qreal"] {
+        cpp!(unsafe [self as "QPainter *", rect as "QRectF", x_radius as "qreal", y_radius as "qreal"] {
             self->drawRoundedRect(rect, x_radius, y_radius);
         });
     }
 
     pub fn draw_text(&mut self, position: QPointF, text: QString) {
-        cpp!(unsafe [self as "QPainter*", position as "QPointF", text as "QString"] {
+        cpp!(unsafe [self as "QPainter *", position as "QPointF", text as "QString"] {
             self->drawText(position, text);
         });
     }
     pub fn draw_text_in_rect(&mut self, rectangle: QRectF, flags: u32, text: QString) -> QRectF {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF", flags as "uint32_t", text as "QString"] -> QRectF as "QRectF" {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF", flags as "uint32_t", text as "QString"] -> QRectF as "QRectF" {
             QRectF boundingRect;
             self->drawText(rectangle, flags, text, &boundingRect);
             return boundingRect;
@@ -1427,78 +1427,78 @@ impl QPainter {
     }
 
     pub fn erase_rect(&mut self, rectangle: QRectF) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF"] {
             self->eraseRect(rectangle);
         });
     }
 
     pub fn fill_rect(&mut self, rectangle: QRectF, brush: QBrush) {
-        cpp!(unsafe [self as "QPainter*", rectangle as "QRectF", brush as "QBrush"] {
+        cpp!(unsafe [self as "QPainter *", rectangle as "QRectF", brush as "QBrush"] {
             self->fillRect(rectangle, brush);
         });
     }
 
     pub fn reset_transform(&mut self) {
-        cpp!(unsafe [self as "QPainter*"] {
+        cpp!(unsafe [self as "QPainter *"] {
             self->resetTransform();
         });
     }
 
     pub fn restore(&mut self) {
-        cpp!(unsafe [self as "QPainter*"] {
+        cpp!(unsafe [self as "QPainter *"] {
             self->restore();
         });
     }
 
     pub fn rotate(&mut self, angle: qreal) {
-        cpp!(unsafe [self as "QPainter*", angle as "qreal"] {
+        cpp!(unsafe [self as "QPainter *", angle as "qreal"] {
             self->rotate(angle);
         });
     }
 
     pub fn save(&mut self) {
-        cpp!(unsafe [self as "QPainter*"] {
+        cpp!(unsafe [self as "QPainter *"] {
             self->save();
         });
     }
 
     pub fn scale(&mut self, sx: qreal, sy: qreal) {
-        cpp!(unsafe [self as "QPainter*", sx as "qreal", sy as "qreal"] {
+        cpp!(unsafe [self as "QPainter *", sx as "qreal", sy as "qreal"] {
             self->scale(sx, sy);
         });
     }
 
     pub fn set_background(&mut self, brush: QBrush) {
-        cpp!(unsafe [self as "QPainter*", brush as "QBrush"] {
+        cpp!(unsafe [self as "QPainter *", brush as "QBrush"] {
             self->setBackground(brush);
         });
     }
 
     pub fn set_brush(&mut self, brush: QBrush) {
-        cpp!(unsafe [self as "QPainter*", brush as "QBrush"] {
+        cpp!(unsafe [self as "QPainter *", brush as "QBrush"] {
             self->setBrush(brush);
         });
     }
 
     pub fn set_opacity(&mut self, opacity: qreal) {
-        cpp!(unsafe [self as "QPainter*", opacity as "qreal"] {
+        cpp!(unsafe [self as "QPainter *", opacity as "qreal"] {
             self->setOpacity(opacity);
         });
     }
 
     pub fn set_pen(&mut self, pen: QPen) {
-        cpp!(unsafe [self as "QPainter*", pen as "QPen"] {
+        cpp!(unsafe [self as "QPainter *", pen as "QPen"] {
             self->setPen(pen);
         });
     }
 
     pub fn translate(&mut self, offset: QPointF) {
-        cpp!(unsafe [self as "QPainter*", offset as "QPointF"] {
+        cpp!(unsafe [self as "QPainter *", offset as "QPointF"] {
             self->translate(offset);
         });
     }
     pub fn set_render_hint(&mut self, hint: QPainterRenderHint, on: bool) {
-        cpp!(unsafe [self as "QPainter*", hint as "QPainter::RenderHint", on as "bool"] {
+        cpp!(unsafe [self as "QPainter *", hint as "QPainter::RenderHint", on as "bool"] {
             self->setRenderHint(hint, on);
         });
     }
