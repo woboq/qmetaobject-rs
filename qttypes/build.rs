@@ -23,7 +23,20 @@ use std::process::Command;
 
 use semver::Version;
 
-fn qmake_query(var: &str) -> Result<String, std::io::Error> {
+fn report_error(_err: &str) -> ! {
+    {
+        #[cfg(feature = "required")]
+        panic!("{}", _err);
+        #[cfg(not(feature = "required"))]
+        {
+            println!("cargo:rustc-cfg=no_qt");
+            println!("cargo:FOUND=0");
+            std::process::exit(0)
+        }
+    }
+}
+
+fn qmake_query(var: &str) -> String {
     let output = match std::env::var("QMAKE") {
         Ok(env_var_value) => Command::new(env_var_value).args(&["-query", var]).output(),
         Err(_env_var_err) => {
@@ -36,18 +49,23 @@ fn qmake_query(var: &str) -> Result<String, std::io::Error> {
                 }
             })
         }
-    }?;
+    };
+    let output = match output {
+        Ok(output) => output,
+        Err(err) => report_error(&format!(
+            "Error: Failed to execute qmake. Make sure 'qmake' is in your path!\n{}",
+            err
+        )),
+    };
+
     if !output.status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "qmake returned with error:\n{}\n{}",
-                std::str::from_utf8(&output.stderr).unwrap_or_default(),
-                std::str::from_utf8(&output.stdout).unwrap_or_default()
-            ),
+        report_error(&format!(
+            "qmake returned with error:\n{}\n{}",
+            std::str::from_utf8(&output.stderr).unwrap_or_default(),
+            std::str::from_utf8(&output.stdout).unwrap_or_default()
         ));
     }
-    Ok(std::str::from_utf8(&output.stdout).expect("UTF-8 conversion failed").trim().to_string())
+    std::str::from_utf8(&output.stdout).expect("UTF-8 conversion failed").trim().to_string()
 }
 
 fn open_core_header(
@@ -66,7 +84,13 @@ fn open_core_header(
             path.push(file);
         }
     }
-    let f = std::fs::File::open(&path).expect(&format!("Cannot open `{:?}`", path));
+    let f = match std::fs::File::open(&path) {
+        Ok(f) => f,
+        Err(e) => report_error(&format!(
+            "Cannot open `{:?}`, please make sure that the Qt headers are installed.\n{}",
+            path, e
+        )),
+    };
     BufReader::new(f)
 }
 
@@ -121,26 +145,10 @@ fn main() {
             (qt_version, qt_include_path, qt_library_path)
         }
         (None, None) => {
-            let qt_version = match qmake_query("QT_VERSION") {
-                Ok(v) => v,
-                Err(_err) => {
-                    #[cfg(feature = "required")]
-                    panic!(
-                        "Error: Failed to execute qmake. Make sure 'qmake' is in your path!\n{:?}",
-                        _err
-                    );
-                    #[cfg(not(feature = "required"))]
-                    {
-                        println!("cargo:rerun-if-env-changed=QMAKE");
-                        println!("cargo:rustc-cfg=no_qt");
-                        println!("cargo:FOUND=0");
-                        return;
-                    }
-                }
-            };
-            let qt_include_path = qmake_query("QT_INSTALL_HEADERS").unwrap();
-            let qt_library_path = qmake_query("QT_INSTALL_LIBS").unwrap();
             println!("cargo:rerun-if-env-changed=QMAKE");
+            let qt_version = qmake_query("QT_VERSION");
+            let qt_include_path = qmake_query("QT_INSTALL_HEADERS");
+            let qt_library_path = qmake_query("QT_INSTALL_LIBS");
             (qt_version, qt_include_path, qt_library_path)
         }
         (Some(_), None) | (None, Some(_)) => {
