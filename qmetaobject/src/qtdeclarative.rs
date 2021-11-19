@@ -1152,6 +1152,6 @@ pub trait QQuickPaintedItem: QQuickItem {
             })
         }
     }
-    
-    fn paint(&mut self, _p: &mut QPainter) { }
+
+    fn paint(&mut self, _p: &mut QPainter) {}
 }

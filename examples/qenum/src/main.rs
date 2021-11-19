@@ -1,4 +1,3 @@
-
 use cstr::cstr;
 
 use qmetaobject::prelude::*;
@@ -14,7 +13,8 @@ enum Options {
 fn main() {
     qml_register_enum::<Options>(cstr!("RustCode"), 1, 0, cstr!("Options"));
     let mut engine = QmlEngine::new();
-    engine.load_data(r#"
+    engine.load_data(
+        r#"
         import QtQuick 2.6
         import QtQuick.Window 2.0
         // Import our Rust classes
@@ -27,6 +27,8 @@ fn main() {
                 text: `Hello! Bar is ${Options.Bar}, Foo is ${Options.Foo}.`
             }
         }
-    "#.into());
+    "#
+        .into(),
+    );
     engine.exec();
 }

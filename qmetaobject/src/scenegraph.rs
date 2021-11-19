@@ -423,12 +423,14 @@ impl SGNode<TransformNode> {
         }
         let raw = self.raw;
         let sub = unsafe {
-            SGNode::<ContainerNode>::from_raw(cpp!([raw as "QSGNode*"] -> *mut c_void as "QSGNode*" {
-                auto n = raw->firstChild();
-                if (n)
-                    n->setFlag(QSGNode::OwnedByParent, false); // now we own it;
-                return n;
-            }))
+            SGNode::<ContainerNode>::from_raw(
+                cpp!([raw as "QSGNode*"] -> *mut c_void as "QSGNode*" {
+                    auto n = raw->firstChild();
+                    if (n)
+                        n->setFlag(QSGNode::OwnedByParent, false); // now we own it;
+                    return n;
+                }),
+            )
         };
         let sub = f(sub);
         let node = sub.into_raw();

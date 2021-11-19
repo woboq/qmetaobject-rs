@@ -34,7 +34,10 @@ fn main() {
         .expect("Parsing Qt version failed");
 
     if qt_version >= Version::new(6, 0, 0) && qt_version < Version::new(6, 2, 0) {
-        println!("cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.", qt_version);
+        println!(
+            "cargo:warning=WebEngine is not supported on Qt {} yet. It is planned for Qt 6.2 LTS.",
+            qt_version
+        );
         println!("cargo:rustc-cfg=no_qt");
     }
 }

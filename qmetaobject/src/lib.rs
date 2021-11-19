@@ -195,20 +195,20 @@ pub use qttypes::*;
 pub use tablemodel::*;
 
 pub mod connections;
-pub mod qtcore;
 pub mod future;
 pub mod itemmodel;
 pub mod listmodel;
 pub mod log;
 pub mod qmetatype;
 pub mod qrc;
+pub mod qtcore;
 pub mod qtdeclarative;
 #[cfg(qt_5_7)]
 pub mod qtquickcontrols2;
 pub mod scenegraph;
 pub mod tablemodel;
 #[cfg(feature = "webengine")]
-#[cfg(not(any(qt_6_0, qt_6_1)))]
+#[cfg(not(all(qt_6_0, not(qt_6_2))))]
 #[cfg(not(all(target_os = "windows", not(target_env = "msvc"))))]
 pub mod webengine;
 
@@ -264,7 +264,8 @@ impl QObjectCppWrapper {
 
 // TODO: Remove before 1.0
 #[doc(hidden)]
-#[deprecated] pub type QObjectDescription = QObjectDescriptor;
+#[deprecated]
+pub type QObjectDescription = QObjectDescriptor;
 
 #[doc(hidden)]
 #[repr(C)]
