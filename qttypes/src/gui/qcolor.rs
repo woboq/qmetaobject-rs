@@ -1147,15 +1147,12 @@ mod tests {
         let b = rgb.blue();
 
         assert_eq!((0xffff, 0xeeee, 0xdddd, 0xcccc), (r, g, b, a));
-<<<<<<< HEAD
 
         let a = rgb.alpha8();
         let r = rgb.red8();
         let g = rgb.green8();
         let b = rgb.blue8();
         assert_eq!((0xff, 0xee, 0xdd, 0xcc), (r, g, b, a));
-=======
->>>>>>> a059596ae622730b92e394dddcfdfd4147956ca4
     }
 
     #[test]
@@ -1169,11 +1166,7 @@ mod tests {
         let hex32 = rgb.into();
         assert_eq!(0xccffeedd as u32, hex32);
 
-<<<<<<< HEAD
         // // u16 conversion (this is the method Qt uses to calculate it)
-=======
-        // u16 conversion (this is the method Qt uses to calculate it)
->>>>>>> a059596ae622730b92e394dddcfdfd4147956ca4
         let rgb16 = (r & 0xf800) | ((g >> 10) << 5) | (b >> 11);
         assert_eq!(rgb16, rgb.into());
     }
