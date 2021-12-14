@@ -122,6 +122,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use std::collections::HashMap;
 use std::convert::From;
+use std::fmt;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
@@ -1661,6 +1662,16 @@ impl Index<usize> for QStringList {
                 return &(*self)[index];
             })
         }
+    }
+}
+
+impl fmt::Debug for QStringList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut temp = f.debug_list();
+        for i in 0..self.len() {
+            temp.entry(&self[i]);
+        }
+        temp.finish()
     }
 }
 
