@@ -123,6 +123,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use std::collections::HashMap;
 use std::convert::From;
+use std::fmt;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
@@ -1649,10 +1650,41 @@ cpp_class!(
     pub unsafe struct QStringList as "QStringList"
 );
 impl QStringList {
+    pub fn new() -> QStringList {
+        cpp!(unsafe [] -> QStringList as "QStringList" {
+            return QStringList();
+        })
+    }
+
+    pub fn insert(&mut self, index: usize, value: QString) {
+        cpp!(unsafe [self as "QStringList*", index as "size_t", value as "QString"] {
+            self->insert(index, value);
+        });
+    }
+
+    pub fn push(&mut self, value: QString) {
+        cpp!(unsafe [self as "QStringList*", value as "QString"] {
+           self->append(value);
+        });
+    }
+
+    pub fn clear(&mut self) {
+        cpp!(unsafe [self as "QStringList*"] {
+            self->clear();
+        });
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        cpp!(unsafe [self as "QStringList*", index as "size_t"] {
+            self->removeAt(index);
+        })
+    }
+
     pub fn len(&self) -> usize {
         cpp!(unsafe [self as "QStringList*"] -> usize as "size_t" { return self->size(); })
     }
 }
+
 impl Index<usize> for QStringList {
     type Output = QString;
 
@@ -1663,6 +1695,35 @@ impl Index<usize> for QStringList {
             })
         }
     }
+}
+
+impl fmt::Debug for QStringList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut temp = f.debug_list();
+        for i in 0..self.len() {
+            temp.entry(&self[i]);
+        }
+        temp.finish()
+    }
+}
+
+#[test]
+fn test_qstringlist() {
+    let mut qstringlist = QStringList::new();
+    qstringlist.push("One".into());
+    qstringlist.push("Two".into());
+
+    assert_eq!(qstringlist.len(), 2);
+    assert_eq!(qstringlist[0], QString::from("One"));
+
+    qstringlist.remove(0);
+    assert_eq!(qstringlist[0], QString::from("Two"));
+
+    qstringlist.insert(0, "Three".into());
+    assert_eq!(qstringlist[0], QString::from("Three"));
+
+    qstringlist.clear();
+    assert_eq!(qstringlist.len(), 0);
 }
 
 cpp_class!(
