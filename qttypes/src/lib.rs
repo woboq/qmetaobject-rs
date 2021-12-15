@@ -1661,7 +1661,7 @@ impl QStringList {
         });
     }
 
-    pub fn append(&mut self, value: QString) {
+    pub fn push(&mut self, value: QString) {
         cpp!(unsafe [self as "QStringList*", value as "QString"] {
            self->append(value);
         });
@@ -1673,7 +1673,7 @@ impl QStringList {
         });
     }
 
-    pub fn remove_at(&mut self, index: usize) {
+    pub fn remove(&mut self, index: usize) {
         cpp!(unsafe [self as "QStringList*", index as "size_t"] {
             self->removeAt(index);
         })
