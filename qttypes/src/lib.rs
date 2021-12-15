@@ -1706,6 +1706,25 @@ impl fmt::Debug for QStringList {
     }
 }
 
+#[test]
+fn test_qstringlist() {
+    let mut qstringlist = QStringList::new();
+    qstringlist.push("One".into());
+    qstringlist.push("Two".into());
+
+    assert_eq!(qstringlist.len(), 2);
+    assert_eq!(qstringlist[0], QString::from("One"));
+
+    qstringlist.remove(0);
+    assert_eq!(qstringlist[0], QString::from("Two"));
+
+    qstringlist.insert(0, "Three".into());
+    assert_eq!(qstringlist[0], QString::from("Three"));
+
+    qstringlist.clear();
+    assert_eq!(qstringlist.len(), 0);
+}
+
 cpp_class!(
     /// Wrapper around [`QJsonObject`][class] class.
     ///
