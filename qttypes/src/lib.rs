@@ -1649,10 +1649,41 @@ cpp_class!(
     pub unsafe struct QStringList as "QStringList"
 );
 impl QStringList {
+    pub fn new() -> QStringList {
+        cpp!(unsafe [] -> QStringList as "QStringList" {
+            return QStringList();
+        })
+    }
+
+    pub fn insert(&mut self, index: usize, value: QString) {
+        cpp!(unsafe [self as "QStringList*", index as "size_t", value as "QString"] {
+            self->insert(index, value);
+        });
+    }
+
+    pub fn append(&mut self, value: QString) {
+        cpp!(unsafe [self as "QStringList*", value as "QString"] {
+           self->append(value);
+        });
+    }
+
+    pub fn clear(&mut self) {
+        cpp!(unsafe [self as "QStringList*"] {
+            self->clear();
+        });
+    }
+
+    pub fn remove_at(&mut self, index: usize) {
+        cpp!(unsafe [self as "QStringList*", index as "size_t"] {
+            self->removeAt(index);
+        })
+    }
+
     pub fn len(&self) -> usize {
         cpp!(unsafe [self as "QStringList*"] -> usize as "size_t" { return self->size(); })
     }
 }
+
 impl Index<usize> for QStringList {
     type Output = QString;
 
