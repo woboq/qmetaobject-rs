@@ -200,6 +200,26 @@ fn register_type() {
     ));
 }
 
+#[test]
+#[cfg(qt_5_9)]
+fn register_module() {
+    qml_register_module(CStr::from_bytes_with_nul(b"TestEmptyModule\0").unwrap(), 1, 2);
+
+    let obj = MyObject::default(); // not used but needed for do_test
+    assert!(do_test(
+        obj,
+        r"
+        import TestEmptyModule 1.2 as TM
+
+        QtObject {
+            function doTest() {
+                return typeof TM === 'object';
+            }
+        }
+        "
+    ));
+}
+
 #[derive(Default, QObject)]
 struct RegisterSingletonInstanceObj {
     base: qt_base_class!(trait QObject),

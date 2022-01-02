@@ -502,6 +502,32 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     })
 }
 
+/// Wrapper around [`void qmlRegisterModule(const char *uri, int versionMajor, int versionMinor)`][qt] function.
+///
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterModule
+#[cfg(qt_5_9)]
+pub fn qml_register_module(
+    uri: &CStr,
+    version_major: u32,
+    version_minor: u32,
+) {
+    let uri_ptr = uri.as_ptr();
+
+    cpp!(unsafe [
+        uri_ptr as "const char *",
+        version_major as "int",
+        version_minor as "int"
+    ] {
+    #if QT_VERSION >= QT_VERSION_CHECK(5,9,0)
+        qmlRegisterModule(
+            uri_ptr,
+            version_major,
+            version_minor
+        );
+    #endif
+    });
+}
+
 /// Alias for type of `QQmlPrivate::RegisterSingletonType::qobjectApi` callback
 /// and its C++ counterpart.
 type QmlRegisterSingletonTypeCallback =
