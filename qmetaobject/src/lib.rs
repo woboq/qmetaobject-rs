@@ -216,6 +216,8 @@ pub mod webengine;
 pub mod prelude {
     #[cfg(qt_5_8)]
     pub use crate::qtdeclarative::qml_register_enum;
+    #[cfg(qt_5_9)]
+    pub use crate::qtdeclarative::qml_register_module;
     pub use crate::{
         qml_register_type, qrc, qt_base_class, qt_method, qt_plugin, qt_property, qt_signal,
         QAbstractListModel, QByteArray, QColor, QDate, QDateTime, QEnum, QModelIndex, QObject,
