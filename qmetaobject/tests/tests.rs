@@ -1066,5 +1066,4 @@ fn test_setting_context_object() {
     let res = _app.invoke_method("doTest".into(), &[]);
     let res: Option<i32> = QMetaType::from_qvariant(res);
     assert_eq!(res, Some(12));
-    assert_ne!(res, Some(10));
 }
