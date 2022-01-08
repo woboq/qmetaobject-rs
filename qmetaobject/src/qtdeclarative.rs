@@ -506,11 +506,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 ///
 /// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterModule
 #[cfg(qt_5_9)]
-pub fn qml_register_module(
-    uri: &CStr,
-    version_major: u32,
-    version_minor: u32,
-) {
+pub fn qml_register_module(uri: &CStr, version_major: u32, version_minor: u32) {
     let uri_ptr = uri.as_ptr();
 
     cpp!(unsafe [
@@ -937,6 +933,18 @@ pub enum QJSValueSpecialValue {
 }
 
 impl QJSValue {
+    pub fn null() -> Self {
+        cpp!(unsafe [] -> QJSValue as "QJSValue" {
+            return QJSValue(QJSValue::SpecialValue::NullValue);
+        })
+    }
+
+    pub fn undefined() -> Self {
+        cpp!(unsafe [] -> QJSValue as "QJSValue" {
+            return QJSValue(QJSValue::SpecialValue::UndefinedValue);
+        })
+    }
+
     pub fn is_bool(&self) -> bool {
         cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
             return self->isBool();
@@ -1113,9 +1121,11 @@ mod qjsvalue_tests {
     #[test]
     fn test_is_undefined() {
         let undefined_value = QJSValue::from(QJSValueSpecialValue::UndefinedValue);
+        let default_value = QJSValue::default();
         let num_value = QJSValue::from(42);
 
         assert!(undefined_value.is_undefined());
+        assert!(default_value.is_undefined());
         assert!(!num_value.is_undefined());
     }
 
