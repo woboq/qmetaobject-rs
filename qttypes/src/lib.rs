@@ -1222,6 +1222,34 @@ impl QPen {
     //    qreal	widthF() const
 }
 
+/// Bindings for [`QStandardPaths::StandardLocation`][enum] enum.
+///
+/// [enum]: https://doc.qt.io/qt-5/qstandardpaths.html#StandardLocation-enum
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[allow(non_camel_case_types)]
+pub enum QStandardPathLocation {
+    DesktopLocation = 0,
+    DocumentsLocation = 1,
+    FontsLocation = 2,
+    ApplicationsLocation = 3,
+    MusicLocation = 4,
+    MoviesLocation = 5,
+    PicturesLocation = 6,
+    TempLocation = 7,
+    HomeLocation = 8,
+    AppLocalDataLocation = 9,
+    CacheLocation = 10,
+    GenericDataLocation = 11,
+    RuntimeLocation = 12,
+    ConfigLocation = 13,
+    DownloadLocation = 14,
+    GenericCacheLocation = 15,
+    GenericConfigLocation = 16,
+    AppDataLocation = 17,
+    AppConfigLocation = 18,
+}
+
 /// Bindings for [`Qt::BrushStyle`][enum] enum.
 ///
 /// [enum]: https://doc.qt.io/qt-5/qt.html#BrushStyle-enum
