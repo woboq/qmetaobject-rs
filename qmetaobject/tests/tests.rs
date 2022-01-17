@@ -176,8 +176,8 @@ fn call_method() {
 struct RegisteredObj {
     base: qt_base_class!(trait QObject),
     value: qt_property!(u32),
-    square: qt_method!(
-        fn square(&self, v: u32) -> u32 {
+    multiply_values: qt_method!(
+        fn multiply_values(&self, v: u32) -> u32 {
             self.value * v
         }
     ),
@@ -204,7 +204,7 @@ fn register_type() {
                 value: 55
             }
             function doTest() {
-                return test.square(66) === 55 * 66;
+                return test.multiply_values(66) === 55 * 66;
             }
         }
         "
@@ -215,8 +215,8 @@ fn register_type() {
 struct RegisteredObjWithNoDefault {
     base: qt_base_class!(trait QObject),
     value: qt_property!(u32),
-    square: qt_method!(
-        fn square(&self, v: u32) -> u32 {
+    multiply_values: qt_method!(
+        fn multiply_values(&self, v: u32) -> u32 {
             self.value * self.internal_value * v
         }
     ),
@@ -226,10 +226,10 @@ struct RegisteredObjWithNoDefault {
 impl RegisteredObjWithNoDefault {
     fn new(internal_value: u32) -> RegisteredObjWithNoDefault {
         RegisteredObjWithNoDefault {
-            internal_value: internal_value,
+            internal_value,
             base: Default::default(),
             value: Default::default(),
-            square: Default::default(),
+            multiply_values: Default::default(),
         }
     }
 }
@@ -254,7 +254,7 @@ fn register_uncreatable_type() {
 
         Item {
             function doTest() {
-                return _obj.square(66) === 44 * 55 * 66;
+                return _obj.multiply_values(66) === 44 * 55 * 66;
             }
         }
         "

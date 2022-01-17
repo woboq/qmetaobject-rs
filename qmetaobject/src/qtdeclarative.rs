@@ -397,9 +397,9 @@ impl QmlComponent {
     }
 }
 
-/// Register the given type as a QML type
+/// Wrapper around [`template <typename T> int qmlRegisterType(const char *uri, int versionMajor, int versionMinor, const char *qmlName)`][qt] function.
 ///
-/// Refer to the Qt documentation for qmlRegisterType.
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterType
 pub fn qml_register_type<T: QObject + Default + Sized>(
     uri: &CStr,
     version_major: u32,
@@ -502,9 +502,9 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
     })
 }
 
-/// Register the given type as an uncreatable QML type
+/// Wrapper around [`template <typename T> int qmlRegisterUncreatableType(const char *uri, int versionMajor, int versionMinor, const char *qmlName, const QString &message)`][qt] function.
 ///
-/// Refer to the Qt documentation for QQmlEngine::qmlRegisterUncreatableType.
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterUncreatableType
 pub fn qml_register_uncreatable_type<T: QObject + Sized>(
     uri: &CStr,
     version_major: u32,
@@ -515,12 +515,6 @@ pub fn qml_register_uncreatable_type<T: QObject + Sized>(
     let uri_ptr = uri.as_ptr();
     let qml_name_ptr = qml_name.as_ptr();
     let meta_object = T::static_meta_object();
-
-    extern "C" fn extra_destruct(c: *mut c_void) {
-        cpp!(unsafe [c as "QObject *"] {
-            QQmlPrivate::qdeclarativeelement_destructor(c);
-        })
-    }
 
     let size = T::cpp_size();
 
@@ -545,10 +539,6 @@ pub fn qml_register_uncreatable_type<T: QObject + Sized>(
         listName[listLen+nameLen] = '>';
         listName[listLen+nameLen+1] = '\0';*/
         // END
-
-        int parserStatusCast = meta_object && qmeta_inherits(meta_object, &QQuickItem::staticMetaObject)
-            ? QQmlPrivate::StaticCastSelector<QQuickItem, QQmlParserStatus>::cast()
-            : -1;
 
         QQmlPrivate::RegisterType api = {
             /*version*/ 0,
@@ -582,7 +572,7 @@ pub fn qml_register_uncreatable_type<T: QObject + Sized>(
             /*attachedPropertiesFunction*/ nullptr,
             /*attachedPropertiesMetaObject*/ nullptr,
 
-            /*parserStatusCast*/ parserStatusCast,
+            /*parserStatusCast*/ -1,
             /*valueSourceCast*/ -1,
             /*valueInterceptorCast*/ -1,
 
