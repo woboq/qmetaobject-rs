@@ -226,7 +226,7 @@ impl Graph {
 Alternatively, we could add a proper method wrapper, and call it without `unsafe`:
 
 ```rust
-#[repr(u32)]
+#[repr(C)]
 enum QQuickItemFlag {
     ItemClipsChildrenToShape = 0x01,
     ItemAcceptsInputMethod = 0x02,
