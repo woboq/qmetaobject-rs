@@ -57,7 +57,7 @@ struct Graph {
 ///
 /// [enum]: https://doc.qt.io/qt-5/qquickitem.html#Flag-enum
 #[allow(unused)]
-#[repr(u32)]
+#[repr(C)]
 enum QQuickItemFlag {
     ItemClipsChildrenToShape = 0x01,
     ItemAcceptsInputMethod = 0x02,

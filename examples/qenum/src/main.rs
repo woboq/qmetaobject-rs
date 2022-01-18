@@ -3,7 +3,7 @@ use cstr::cstr;
 use qmetaobject::prelude::*;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, QEnum)]
-#[repr(u32)]
+#[repr(C)]
 enum Options {
     Foo = 1,
     Bar = 2,
