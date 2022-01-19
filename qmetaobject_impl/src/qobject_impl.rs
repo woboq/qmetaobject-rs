@@ -1153,9 +1153,9 @@ fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
             if list.path.is_ident("repr") && list.nested.len() == 1 {
                 match &list.nested[0] {
                     syn::NestedMeta::Meta(syn::Meta::Path(word)) => {
-                        const ACCEPTABLE_TYPES: &[&str] =
+                        const ACCEPTABLE_REPRESENTATIONS: &[&str] =
                             &["u8", "u16", "u32", "i8", "i16", "i32", "C"];
-                        ACCEPTABLE_TYPES.iter().any(|w| word.is_ident(w))
+                        ACCEPTABLE_REPRESENTATIONS.iter().any(|w| word.is_ident(w))
                     }
                     _ => false,
                 }
@@ -1179,7 +1179,7 @@ pub fn generate_enum(input: TokenStream, qt_version: QtVersion) -> TokenStream {
     if !is_repr_explicit {
         panic!(
             "#[derive(QEnum)] only support enum with explicit #[repr(*)], \
-                possible types are u8, u16, u32, i8, i16, i32, C"
+                possible representations are u8, u16, u32, i8, i16, i32, C"
         )
     }
 
