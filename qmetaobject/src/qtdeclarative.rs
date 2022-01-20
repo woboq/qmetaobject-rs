@@ -299,7 +299,7 @@ impl Default for QQuickView {
 }
 
 /// See QQmlComponent::CompilationMode
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CompilationMode {
     PreferSynchronous,
@@ -307,7 +307,7 @@ pub enum CompilationMode {
 }
 
 /// See QQmlComponent::Status
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ComponentStatus {
     Null,
@@ -885,7 +885,7 @@ impl<'a> dyn QQuickItem + 'a {
 /// Only a specific subset of [`QEvent::Type`][qt] enum.
 ///
 /// [qt]: https://doc.qt.io/qt-5/qevent.html#Type-enum
-#[repr(u32)]
+#[repr(C)]
 #[non_exhaustive]
 pub enum QMouseEventType {
     MouseButtonPress = 2,
