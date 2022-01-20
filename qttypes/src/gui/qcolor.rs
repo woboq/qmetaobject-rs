@@ -68,7 +68,7 @@ impl Into<u64> for QRgba64 {
 /// Bindings for [`QColor::NameFormat`][class] enum class.
 ///
 /// [class]: https://doc.qt.io/qt-5/qcolor.html#NameFormat-enum
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum QColorNameFormat {
@@ -81,7 +81,7 @@ pub enum QColorNameFormat {
 /// Bindings for [`QColor::Spec`][class] enum class.
 ///
 /// [class]: https://doc.qt.io/qt-5/qcolor.html#Spec-enum
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum QColorSpec {

@@ -1028,7 +1028,7 @@ pub struct QMargins {
 /// Bindings for [`QImage::Format`][class] enum class.
 ///
 /// [class]: https://doc.qt.io/qt-5/qimage.html#Format-enum
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum ImageFormat {
@@ -1160,7 +1160,7 @@ impl From<QImage> for QPixmap {
 /// Bindings for [`Qt::PenStyle`][enum] enum.
 ///
 /// [enum]: https://doc.qt.io/qt-5/qt.html#PenStyle-enum
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum PenStyle {
@@ -1253,7 +1253,7 @@ pub enum QStandardPathLocation {
 /// Bindings for [`Qt::BrushStyle`][enum] enum.
 ///
 /// [enum]: https://doc.qt.io/qt-5/qt.html#BrushStyle-enum
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum BrushStyle {
@@ -1547,7 +1547,7 @@ impl QPainter {
 /// Bindings for [`QPainter::RenderHint`][enum] enum.
 ///
 /// [enum]: https://doc.qt.io/qt-5/qpainter.html#RenderHint-enum
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum QPainterRenderHint {
