@@ -506,11 +506,7 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
 ///
 /// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterModule
 #[cfg(qt_5_9)]
-pub fn qml_register_module(
-    uri: &CStr,
-    version_major: u32,
-    version_minor: u32,
-) {
+pub fn qml_register_module(uri: &CStr, version_major: u32, version_minor: u32) {
     let uri_ptr = uri.as_ptr();
 
     cpp!(unsafe [
