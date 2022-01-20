@@ -1673,7 +1673,7 @@ cpp_class!(
     /// Wrapper around [`QStringList`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qstringlist.html
-    #[derive(Default, Clone)]
+    #[derive(Default, Clone, PartialEq, Eq)]
     pub unsafe struct QStringList as "QStringList"
 );
 impl QStringList {
@@ -1734,6 +1734,19 @@ impl fmt::Debug for QStringList {
     }
 }
 
+impl<T, const N: usize> From<[T; N]> for QStringList
+where
+    QString: From<T>,
+{
+    fn from(s: [T; N]) -> Self {
+        let mut list = QStringList::new();
+        for i in s {
+            list.push(QString::from(i));
+        }
+        list
+    }
+}
+
 #[test]
 fn test_qstringlist() {
     let mut qstringlist = QStringList::new();
@@ -1748,6 +1761,10 @@ fn test_qstringlist() {
 
     qstringlist.insert(0, "Three".into());
     assert_eq!(qstringlist[0], QString::from("Three"));
+
+    assert_eq!(qstringlist, QStringList::from(["Three", "Two"]));
+    assert_eq!(qstringlist, QStringList::from(["Three".to_string(), "Two".to_string()]));
+    assert_eq!(qstringlist, QStringList::from([QString::from("Three"), QString::from("Two")]));
 
     qstringlist.clear();
     assert_eq!(qstringlist.len(), 0);
