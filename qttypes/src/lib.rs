@@ -1760,6 +1760,20 @@ where
     }
 }
 
+impl<T> From<&[T]> for QStringList
+where
+    T: Clone,
+    QString: From<T>,
+{
+    fn from(s: &[T]) -> Self {
+        let mut list = QStringList::new();
+        for i in s {
+            list.push(QString::from(i.clone())); // i: &T in case of slice.
+        }
+        list
+    }
+}
+
 impl<T> From<QStringList> for Vec<T>
 where
     T: Clone,
@@ -1796,6 +1810,13 @@ fn test_qstringlist() {
     assert_eq!(qstringlist, QStringList::from(vec!["Three", "Two"]));
     assert_eq!(qstringlist, QStringList::from(vec!["Three".to_string(), "Two".to_string()]));
     assert_eq!(qstringlist, QStringList::from(vec![QString::from("Three"), QString::from("Two")]));
+
+    assert_eq!(qstringlist, QStringList::from(["Three", "Two"].as_slice()));
+    assert_eq!(qstringlist, QStringList::from(["Three".to_string(), "Two".to_string()].as_slice()));
+    assert_eq!(
+        qstringlist,
+        QStringList::from([QString::from("Three"), QString::from("Two")].as_slice())
+    );
 
     let temp: Vec<String> = qstringlist.clone().into();
     assert_eq!(temp, vec!["Three".to_string(), "Two".to_string()]);
