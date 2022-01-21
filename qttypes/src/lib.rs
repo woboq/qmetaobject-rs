@@ -1715,7 +1715,7 @@ impl QStringList {
 impl Index<usize> for QStringList {
     type Output = QString;
 
-    fn index(&self, index: usize) -> &QString {
+    fn index(&self, index: usize) -> &Self::Output {
         unsafe {
             &*cpp!([self as "QStringList*", index as "size_t"] -> *const QString as "const QString*" {
                 return &(*self)[index];
