@@ -1747,6 +1747,33 @@ where
     }
 }
 
+impl<T> From<Vec<T>> for QStringList
+where
+    QString: From<T>,
+{
+    fn from(s: Vec<T>) -> Self {
+        let mut list = QStringList::new();
+        for i in s {
+            list.push(QString::from(i));
+        }
+        list
+    }
+}
+
+impl<T> From<QStringList> for Vec<T>
+where
+    T: Clone,
+    QString: Into<T>,
+{
+    fn from(arr: QStringList) -> Self {
+        let mut v = Vec::with_capacity(arr.len());
+        for i in 0..arr.len() {
+            v.push(arr[i].clone().into());
+        }
+        v
+    }
+}
+
 #[test]
 fn test_qstringlist() {
     let mut qstringlist = QStringList::new();
@@ -1765,6 +1792,15 @@ fn test_qstringlist() {
     assert_eq!(qstringlist, QStringList::from(["Three", "Two"]));
     assert_eq!(qstringlist, QStringList::from(["Three".to_string(), "Two".to_string()]));
     assert_eq!(qstringlist, QStringList::from([QString::from("Three"), QString::from("Two")]));
+
+    assert_eq!(qstringlist, QStringList::from(vec!["Three", "Two"]));
+    assert_eq!(qstringlist, QStringList::from(vec!["Three".to_string(), "Two".to_string()]));
+    assert_eq!(qstringlist, QStringList::from(vec![QString::from("Three"), QString::from("Two")]));
+
+    let temp: Vec<String> = qstringlist.clone().into();
+    assert_eq!(temp, vec!["Three".to_string(), "Two".to_string()]);
+    let temp: Vec<QString> = qstringlist.clone().into();
+    assert_eq!(temp, vec![QString::from("Three"), QString::from("Two")]);
 
     qstringlist.clear();
     assert_eq!(qstringlist.len(), 0);
