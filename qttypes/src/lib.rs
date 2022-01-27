@@ -1811,12 +1811,12 @@ fn test_qstringlist() {
     assert_eq!(qstringlist, QStringList::from(vec!["Three".to_string(), "Two".to_string()]));
     assert_eq!(qstringlist, QStringList::from(vec![QString::from("Three"), QString::from("Two")]));
 
-    assert_eq!(qstringlist, QStringList::from(["Three", "Two"].as_slice()));
-    assert_eq!(qstringlist, QStringList::from(["Three".to_string(), "Two".to_string()].as_slice()));
-    assert_eq!(
-        qstringlist,
-        QStringList::from([QString::from("Three"), QString::from("Two")].as_slice())
-    );
+    let t = ["Three", "Two"];
+    assert_eq!(qstringlist, QStringList::from(t));
+    let t = ["Three".to_string(), "Two".to_string()];
+    assert_eq!(qstringlist, QStringList::from(t));
+    let t = [QString::from("Three"), QString::from("Two")];
+    assert_eq!(qstringlist, QStringList::from(t));
 
     let temp: Vec<String> = qstringlist.clone().into();
     assert_eq!(temp, vec!["Three".to_string(), "Two".to_string()]);
