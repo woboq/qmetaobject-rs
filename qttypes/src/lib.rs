@@ -122,7 +122,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use std::collections::HashMap;
 use std::convert::From;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
@@ -557,6 +557,13 @@ impl QVariant {
 
     // FIXME: do more wrappers
 }
+
+impl fmt::Debug for QVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_qbytearray().to_string().as_str())
+    }
+}
+
 impl From<QString> for QVariant {
     /// Wrapper around [`QVariant(const QString &)`][ctor] constructor.
     ///
@@ -881,6 +888,7 @@ cpp_class!(
     /// Wrapper around [`QVariantMap`][type] typedef.
     ///
     /// [type]: https://doc.qt.io/qt-5/qvariant.html#QVariantMap-typedef
+    #[derive(Default, PartialEq, Eq)]
     pub unsafe struct QVariantMap as "QVariantMap"
 );
 
@@ -970,6 +978,12 @@ impl IndexMut<QString> for QVariantMap {
                 return &(*self)[key];
             })
         }
+    }
+}
+
+impl fmt::Debug for QVariantMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.into_iter()).finish()
     }
 }
 
@@ -1108,7 +1122,6 @@ mod qvariantmap_tests {
 
         for (k, v) in map.into_iter() {
             assert_eq!(hashmap[k.to_string().as_str()].to_string(), v.to_qbytearray().to_string());
-            // println!("Key: {}, Value: {}", k, v.to_qbytearray().to_string());
         }
     }
 }
