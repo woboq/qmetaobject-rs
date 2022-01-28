@@ -876,6 +876,79 @@ mod tests {
 }
 
 cpp_class!(
+    /// Wrapper around [`QVariantMap`][type] typedef.
+    ///
+    /// [type]: https://doc.qt.io/qt-5/qvariant.html#QVariantMap-typedef
+    pub unsafe struct QVariantMap as "QVariantMap"
+);
+
+impl QVariantMap {
+    /// Wrapper around [`insert(int, const QString &, const QVariant &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#insert
+    pub fn insert(&mut self, key: QString, element: QVariant) {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString", element as "QVariant"] {
+            self->insert(key, std::move(element));
+        })
+    }
+
+    /// Wrapper around [`remove(const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#remove
+    pub fn remove(&mut self, key: QString) -> usize {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString"] -> usize as "size_t" {
+            return self->remove(key);
+        })
+    }
+
+    /// Wrapper around [`take(const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#take
+    pub fn take(&mut self, key: QString) -> QVariant {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString"] -> QVariant as "QVariant" {
+            return self->take(key);
+        })
+    }
+
+    /// Wrapper around [`size()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#size
+    pub fn len(&self) -> usize {
+        cpp!(unsafe [self as "QVariantMap*"] -> usize as "size_t" {
+            return self->size();
+        })
+    }
+
+    /// Wrapper around [`isEmpty()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#isEmpty
+    pub fn is_empty(&self) -> bool {
+        cpp!(unsafe [self as "QVariantMap*"] -> bool as "bool" {
+            return self->isEmpty();
+        })
+    }
+}
+
+#[cfg(test)]
+mod qvariantmap_tests {
+    use super::*;
+
+    #[test]
+    fn test_qvariantmap() {
+        let mut map = QVariantMap::default();
+
+        let key1 = QString::from("a");
+        let val1 = QString::from("abc");
+
+        assert!(map.is_empty());
+        map.insert(key1.clone(), val1.clone().into());
+        assert_eq!(map.len(), 1);
+        assert_eq!(map.take(key1.clone()).to_qbytearray().to_string(), val1.to_string());
+        assert!(map.is_empty());
+    }
+}
+
+cpp_class!(
     /// Wrapper around [`QModelIndex`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qmodelindex.html
