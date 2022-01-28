@@ -927,6 +927,48 @@ impl QVariantMap {
             return self->isEmpty();
         })
     }
+
+    /// Wrapper around [`contains(const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#contains
+    pub fn contains(&self, key: QString) -> bool {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString"] -> bool as "bool" {
+            return self->contains(key);
+        })
+    }
+}
+
+impl Index<QString> for QVariantMap {
+    type Output = QVariant;
+
+    /// Wrapper around [`at(int)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#at
+    #[track_caller]
+    fn index(&self, key: QString) -> &QVariant {
+        unsafe {
+            cpp!([self as "QVariantMap*", key as "QString"] -> *const QVariant as "const QVariant*" {
+                auto x = self->constFind(key);
+                if (x == self->constEnd()) {
+                    return NULL;
+                } else {
+                    return &x.value();
+                }
+            }).as_ref()
+        }.expect("key not in the QVariant")
+    }
+}
+impl IndexMut<QString> for QVariantMap {
+    /// Wrapper around [`operator[](int)`][method] operator method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#operator-5b-5d
+    fn index_mut(&mut self, key: QString) -> &mut QVariant {
+        unsafe {
+            &mut *cpp!([self as "QVariantMap*", key as "QString"] -> *mut QVariant as "QVariant*" {
+                return &(*self)[key];
+            })
+        }
+    }
 }
 
 #[cfg(test)]
@@ -943,8 +985,21 @@ mod qvariantmap_tests {
         assert!(map.is_empty());
         map.insert(key1.clone(), val1.clone().into());
         assert_eq!(map.len(), 1);
+        assert_eq!(map[key1.clone()].to_qbytearray().to_string(), val1.to_string());
+
         assert_eq!(map.take(key1.clone()).to_qbytearray().to_string(), val1.to_string());
         assert!(map.is_empty());
+
+        map[key1.clone()] = val1.clone().into();
+        assert_eq!(map[key1.clone()].to_qbytearray().to_string(), val1.to_string());
+    }
+
+    #[test]
+    #[should_panic(expected = "key not in the QVariant")]
+    fn test_index_panic() {
+        let map = QVariantMap::default();
+
+        map[QString::from("t")].to_qbytearray().to_string();
     }
 }
 
