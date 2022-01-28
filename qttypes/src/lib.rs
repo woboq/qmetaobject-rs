@@ -184,6 +184,8 @@ cpp! {{
     #include <QtGui/QPainter>
     #include <QtGui/QPen>
     #include <QtGui/QBrush>
+
+    #include <tuple>
 }}
 
 cpp_class!(
@@ -971,6 +973,100 @@ impl IndexMut<QString> for QVariantMap {
     }
 }
 
+cpp_class!(unsafe struct QVariantMapIteratorInternal as "QVariantMap::iterator");
+
+/// Internal class used to iterate over a [`QVariantMap`][]
+///
+/// [`QVariantMap`]: ./struct.QVariantMap.html
+pub struct QVariantMapIterator<'a> {
+    map: &'a QVariantMap,
+    iterator: QVariantMapIteratorInternal,
+}
+
+impl<'a> QVariantMapIterator<'a> {
+    fn key(&self) -> Option<&'a QString> {
+        let iterator = &self.iterator;
+        unsafe {
+            cpp!([iterator as "QVariantMap::iterator*"] -> *mut QString as "const QString*" {
+                return &iterator->key();
+            })
+            .as_ref()
+        }
+    }
+
+    fn value(&self) -> Option<&'a QVariant> {
+        let iterator = &self.iterator;
+        unsafe {
+            cpp!([iterator as "QVariantMap::iterator*"] -> *mut QVariant as "QVariant*" {
+                return &iterator->value();
+            })
+            .as_ref()
+        }
+    }
+
+    fn check_end(&self) -> bool {
+        let map = self.map;
+        let iterator = &self.iterator;
+        cpp!(unsafe [iterator as "QVariantMap::iterator*", map as "QVariantMap*"] -> bool as "bool" {
+            return (*iterator == map->end());
+        })
+    }
+
+    fn increment(&mut self) {
+        let iterator = &self.iterator;
+        cpp!(unsafe [iterator as "QVariantMap::iterator*"] {
+            ++(*iterator);
+        })
+    }
+}
+
+impl<'a> Iterator for QVariantMapIterator<'a> {
+    type Item = (&'a QString, &'a QVariant);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.check_end() {
+            return None;
+        }
+
+        let key = self.key();
+        let value = self.value();
+
+        self.increment();
+
+        match (key, value) {
+            (Some(k), Some(v)) => Some((k, v)),
+            _ => None,
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a QVariantMap {
+    type Item = (&'a QString, &'a QVariant);
+    type IntoIter = QVariantMapIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let iter = cpp!(unsafe [self as "QVariantMap*"] -> QVariantMapIteratorInternal as "QVariantMap::iterator" {
+            return self->begin();
+        });
+        Self::IntoIter { map: self, iterator: iter }
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for QVariantMap
+where
+    K: Into<QString>,
+    V: Into<QVariant>,
+{
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut m = QVariantMap::default();
+        for i in iter {
+            let (k, v) = i;
+            m.insert(k.into(), v.into());
+        }
+        m
+    }
+}
+
 #[cfg(test)]
 mod qvariantmap_tests {
     use super::*;
@@ -1000,6 +1096,20 @@ mod qvariantmap_tests {
         let map = QVariantMap::default();
 
         map[QString::from("t")].to_qbytearray().to_string();
+    }
+
+    #[test]
+    fn test_iter() {
+        let hashmap =
+            HashMap::from([("Mercury", 0.4), ("Venus", 0.7), ("Earth", 1.0), ("Mars", 1.5)]);
+        let map: QVariantMap = hashmap.clone().into_iter().collect();
+
+        assert_eq!(map.len(), hashmap.len());
+
+        for (k, v) in map.into_iter() {
+            assert_eq!(hashmap[k.to_string().as_str()].to_string(), v.to_qbytearray().to_string());
+            // println!("Key: {}, Value: {}", k, v.to_qbytearray().to_string());
+        }
     }
 }
 
