@@ -123,6 +123,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt::{self, Write};
+use std::hash::Hash;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
@@ -524,7 +525,7 @@ cpp_class!(
     /// Wrapper around [`QVariant`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qvariant.html
-    #[derive(PartialEq)]
+    #[derive(PartialEq, Eq)]
     pub unsafe struct QVariant as "QVariant"
 );
 impl QVariant {
@@ -1081,6 +1082,28 @@ where
     }
 }
 
+impl<K, V> From<HashMap<K, V>> for QVariantMap
+where
+    K: Into<QString>,
+    V: Into<QVariant>,
+{
+    fn from(m: HashMap<K, V>) -> Self {
+        m.into_iter().collect()
+    }
+}
+
+impl<K, V> From<QVariantMap> for HashMap<K, V>
+where
+    K: Hash + Eq,
+    V: Eq,
+    QString: Into<K>,
+    QVariant: Into<V>,
+{
+    fn from(m: QVariantMap) -> Self {
+        m.into_iter().map(|(k, v)| (k.clone().into(), v.clone().into())).collect()
+    }
+}
+
 #[cfg(test)]
 mod qvariantmap_tests {
     use super::*;
@@ -1116,13 +1139,24 @@ mod qvariantmap_tests {
     fn test_iter() {
         let hashmap =
             HashMap::from([("Mercury", 0.4), ("Venus", 0.7), ("Earth", 1.0), ("Mars", 1.5)]);
-        let map: QVariantMap = hashmap.clone().into_iter().collect();
+        let map: QVariantMap = hashmap.clone().into();
 
         assert_eq!(map.len(), hashmap.len());
 
         for (k, v) in map.into_iter() {
             assert_eq!(hashmap[k.to_string().as_str()].to_string(), v.to_qbytearray().to_string());
         }
+    }
+
+    #[test]
+    fn test_from() {
+        let hashmap1 = HashMap::from([
+            ("A".to_string(), QVariant::from(QString::from("abc"))),
+            ("B".to_string(), QVariant::from(QString::from("def"))),
+        ]);
+        let qvariantmap: QVariantMap = hashmap1.clone().into();
+        let hashmap2 = qvariantmap.into();
+        assert_eq!(hashmap1, hashmap2);
     }
 }
 
