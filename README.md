@@ -1,6 +1,5 @@
 # QMetaObject crate for Rust
 
-[![Appveyor Build status](https://ci.appveyor.com/api/projects/status/8l5te3wlj2ie4njc/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/qmetaobject-rs/branch/master)
 [![Crates.io](https://img.shields.io/crates/v/qmetaobject.svg)](https://crates.io/crates/qmetaobject)
 [![Documentation](https://docs.rs/qmetaobject/badge.svg)](https://docs.rs/qmetaobject/)
 
