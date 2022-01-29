@@ -123,6 +123,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use std::collections::HashMap;
 use std::convert::From;
 use std::fmt;
+use std::hash::Hash;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
@@ -522,7 +523,7 @@ cpp_class!(
     /// Wrapper around [`QVariant`][class] class.
     ///
     /// [class]: https://doc.qt.io/qt-5/qvariant.html
-    #[derive(PartialEq)]
+    #[derive(PartialEq, Eq)]
     pub unsafe struct QVariant as "QVariant"
 );
 impl QVariant {
@@ -555,6 +556,13 @@ impl QVariant {
 
     // FIXME: do more wrappers
 }
+
+impl fmt::Debug for QVariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_qbytearray().to_string().as_str())
+    }
+}
+
 impl From<QString> for QVariant {
     /// Wrapper around [`QVariant(const QString &)`][ctor] constructor.
     ///
@@ -872,6 +880,326 @@ mod tests {
         assert_eq!(qs1.to_string(), "hello");
         assert_eq!(qs2.to_string(), "hello");
         assert_eq!(qba4.to_string(), "hello");
+    }
+}
+
+cpp_class!(
+    /// Wrapper around [`QVariantMap`][type] typedef.
+    ///
+    /// [type]: https://doc.qt.io/qt-5/qvariant.html#QVariantMap-typedef
+    #[derive(Default, PartialEq, Eq)]
+    pub unsafe struct QVariantMap as "QVariantMap"
+);
+
+impl QVariantMap {
+    /// Wrapper around [`insert(int, const QString &, const QVariant &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#insert
+    pub fn insert(&mut self, key: QString, element: QVariant) {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString", element as "QVariant"] {
+            self->insert(key, std::move(element));
+        })
+    }
+
+    /// Wrapper around [`remove(const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#remove
+    pub fn remove(&mut self, key: QString) -> usize {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString"] -> usize as "size_t" {
+            return self->remove(key);
+        })
+    }
+
+    /// Wrapper around [`take(const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#take
+    pub fn take(&mut self, key: QString) -> QVariant {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString"] -> QVariant as "QVariant" {
+            return self->take(key);
+        })
+    }
+
+    /// Wrapper around [`size()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#size
+    pub fn len(&self) -> usize {
+        cpp!(unsafe [self as "const QVariantMap*"] -> usize as "size_t" {
+            return self->size();
+        })
+    }
+
+    /// Wrapper around [`isEmpty()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#isEmpty
+    pub fn is_empty(&self) -> bool {
+        cpp!(unsafe [self as "const QVariantMap*"] -> bool as "bool" {
+            return self->isEmpty();
+        })
+    }
+
+    /// Wrapper around [`contains(const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#contains
+    pub fn contains(&self, key: QString) -> bool {
+        cpp!(unsafe [self as "const QVariantMap*", key as "QString"] -> bool as "bool" {
+            return self->contains(key);
+        })
+    }
+
+    /// Wrapper around [`clear()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#clear
+    pub fn clear(&mut self) {
+        cpp!(unsafe [self as "QVariantMap*"] {
+            self->clear();
+        })
+    }
+
+    /// Wrapper around [`value(const QString &, const QVariant &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#value
+    pub fn value(&self, key: QString, default_value: QVariant) -> QVariant {
+        cpp!(unsafe [self as "const QVariantMap*", key as "QString", default_value as "QVariant"] -> QVariant as "QVariant" {
+            return self->value(key, default_value);
+        })
+    }
+
+    /// Wrapper around [`key(const QVariant &, const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#key
+    pub fn key(&self, value: QVariant, default_key: QString) -> QString {
+        cpp!(unsafe [self as "const QVariantMap*", default_key as "QString", value as "QVariant"] -> QString as "QString" {
+            return self->key(value, default_key);
+        })
+    }
+}
+
+impl Index<QString> for QVariantMap {
+    type Output = QVariant;
+
+    /// Wrapper around [`at(int)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#at
+    #[track_caller]
+    fn index(&self, key: QString) -> &Self::Output {
+        cpp!(unsafe [self as "const QVariantMap*", key as "QString"] -> Option<&QVariant> as "const QVariant*" {
+                auto x = self->constFind(key);
+                if (x == self->constEnd()) {
+                    return NULL;
+                } else {
+                    return &x.value();
+                }
+            }).expect("key not in the QVariant")
+    }
+}
+impl IndexMut<QString> for QVariantMap {
+    /// Wrapper around [`operator[](int)`][method] operator method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#operator-5b-5d
+    fn index_mut(&mut self, key: QString) -> &mut Self::Output {
+        unsafe {
+            &mut *cpp!([self as "QVariantMap*", key as "QString"] -> *mut QVariant as "QVariant*" {
+                return &(*self)[key];
+            })
+        }
+    }
+}
+
+impl fmt::Debug for QVariantMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.into_iter()).finish()
+    }
+}
+
+cpp_class!(unsafe struct QVariantMapIteratorInternal as "QVariantMap::iterator");
+
+/// Internal class used to iterate over a [`QVariantMap`]
+pub struct QVariantMapIterator<'a> {
+    map: &'a QVariantMap,
+    iterator: QVariantMapIteratorInternal,
+}
+
+impl<'a> QVariantMapIterator<'a> {
+    fn key(&self) -> Option<&'a QString> {
+        let iterator = &self.iterator;
+        cpp!(unsafe [iterator as "const QVariantMap::iterator*"] -> Option<&QString> as "const QString*" {
+            return &iterator->key();
+        })
+    }
+
+    fn value(&self) -> Option<&'a QVariant> {
+        let iterator = &self.iterator;
+        cpp!(unsafe [iterator as "const QVariantMap::iterator*"] -> Option<&QVariant> as "QVariant*" {
+            return &iterator->value();
+        })
+    }
+
+    fn check_end(&self) -> bool {
+        let map = self.map;
+        let iterator = &self.iterator;
+        cpp!(unsafe [iterator as "const QVariantMap::iterator*", map as "const QVariantMap*"] -> bool as "bool" {
+            return (*iterator == map->end());
+        })
+    }
+
+    fn increment(&mut self) {
+        let iterator = &self.iterator;
+        cpp!(unsafe [iterator as "QVariantMap::iterator*"] {
+            ++(*iterator);
+        })
+    }
+}
+
+impl<'a> Iterator for QVariantMapIterator<'a> {
+    type Item = (&'a QString, &'a QVariant);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.check_end() {
+            return None;
+        }
+
+        let key = self.key();
+        let value = self.value();
+
+        self.increment();
+
+        match (key, value) {
+            (Some(k), Some(v)) => Some((k, v)),
+            _ => None,
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a QVariantMap {
+    type Item = (&'a QString, &'a QVariant);
+    type IntoIter = QVariantMapIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let iter = cpp!(unsafe [self as "QVariantMap*"] -> QVariantMapIteratorInternal as "QVariantMap::iterator" {
+            return self->begin();
+        });
+        Self::IntoIter { map: self, iterator: iter }
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for QVariantMap
+where
+    K: Into<QString>,
+    V: Into<QVariant>,
+{
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut m = QVariantMap::default();
+        for i in iter {
+            let (k, v) = i;
+            m.insert(k.into(), v.into());
+        }
+        m
+    }
+}
+
+impl<K, V> From<HashMap<K, V>> for QVariantMap
+where
+    K: Into<QString>,
+    V: Into<QVariant>,
+{
+    fn from(m: HashMap<K, V>) -> Self {
+        m.into_iter().collect()
+    }
+}
+
+impl<K, V, const N: usize> From<[(K, V); N]> for QVariantMap
+where
+    K: Into<QString>,
+    V: Into<QVariant>,
+{
+    fn from(m: [(K, V); N]) -> Self {
+        let mut temp = QVariantMap::default();
+        for (key, val) in m {
+            temp.insert(key.into(), val.into());
+        }
+        temp
+    }
+}
+
+impl<K, V> From<QVariantMap> for HashMap<K, V>
+where
+    K: Hash + Eq,
+    V: Eq,
+    QString: Into<K>,
+    QVariant: Into<V>,
+{
+    fn from(m: QVariantMap) -> Self {
+        m.into_iter().map(|(k, v)| (k.clone().into(), v.clone().into())).collect()
+    }
+}
+
+#[cfg(test)]
+mod qvariantmap_tests {
+    use super::*;
+
+    #[test]
+    fn test_qvariantmap() {
+        let mut map = QVariantMap::default();
+
+        let key1 = QString::from("a");
+        let val1 = QString::from("abc");
+
+        assert!(map.is_empty());
+        map.insert(key1.clone(), val1.clone().into());
+        assert_eq!(map.len(), 1);
+        assert_eq!(map[key1.clone()].to_qbytearray().to_string(), val1.to_string());
+
+        assert_eq!(map.take(key1.clone()).to_qbytearray().to_string(), val1.to_string());
+        assert!(map.is_empty());
+
+        map[key1.clone()] = val1.clone().into();
+
+        let default_value = QVariant::from(10);
+
+        assert_eq!(map[key1.clone()].to_qbytearray().to_string(), val1.to_string());
+        assert_eq!(map.value(key1.clone(), default_value.clone()), val1.clone().into());
+        assert_eq!(map.value(val1.clone(), default_value.clone()), default_value.clone());
+
+        assert_eq!(map.key(val1.clone().into(), val1.clone()), key1.clone());
+        assert_eq!(map.key(key1.clone().into(), val1.clone()), val1.clone());
+    }
+
+    #[test]
+    #[should_panic(expected = "key not in the QVariant")]
+    fn test_index_panic() {
+        let map = QVariantMap::default();
+
+        map[QString::from("t")].to_qbytearray().to_string();
+    }
+
+    #[test]
+    fn test_iter() {
+        let hashmap =
+            HashMap::from([("Mercury", 0.4), ("Venus", 0.7), ("Earth", 1.0), ("Mars", 1.5)]);
+        let map: QVariantMap = hashmap.clone().into();
+
+        assert_eq!(map.len(), hashmap.len());
+
+        for (k, v) in map.into_iter() {
+            assert_eq!(hashmap[k.to_string().as_str()].to_string(), v.to_qbytearray().to_string());
+        }
+    }
+
+    #[test]
+    fn test_from() {
+        let hashmap1 = HashMap::from([
+            ("A".to_string(), QVariant::from(QString::from("abc"))),
+            ("B".to_string(), QVariant::from(QString::from("def"))),
+        ]);
+        let qvariantmap1: QVariantMap = hashmap1.clone().into();
+        let hashmap2 = qvariantmap1.clone().into();
+        assert_eq!(hashmap1, hashmap2);
+
+        let qvariantmap2 = QVariantMap::from([
+            ("A".to_string(), QVariant::from(QString::from("abc"))),
+            ("B".to_string(), QVariant::from(QString::from("def"))),
+        ]);
+        assert_eq!(qvariantmap1, qvariantmap2);
     }
 }
 
