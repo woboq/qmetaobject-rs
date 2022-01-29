@@ -945,6 +945,33 @@ impl QVariantMap {
             return self->contains(key);
         })
     }
+
+    /// Wrapper around [`clear()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#clear
+    pub fn clear(&mut self) {
+        cpp!(unsafe [self as "QVariantMap*"] {
+            self->clear();
+        })
+    }
+
+    /// Wrapper around [`value(const QString &, const QVariant &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#value
+    pub fn value(&self, key: QString, default_value: QVariant) -> QVariant {
+        cpp!(unsafe [self as "QVariantMap*", key as "QString", default_value as "QVariant"] -> QVariant as "QVariant" {
+            return self->value(key, default_value);
+        })
+    }
+
+    /// Wrapper around [`key(const QVariant &, const QString &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qmap.html#key
+    pub fn key(&self, value: QVariant, default_key: QString) -> QString {
+        cpp!(unsafe [self as "QVariantMap*", default_key as "QString", value as "QVariant"] -> QString as "QString" {
+            return self->key(value, default_key);
+        })
+    }
 }
 
 impl Index<QString> for QVariantMap {
@@ -1136,7 +1163,15 @@ mod qvariantmap_tests {
         assert!(map.is_empty());
 
         map[key1.clone()] = val1.clone().into();
+
+        let default_value = QVariant::from(10);
+
         assert_eq!(map[key1.clone()].to_qbytearray().to_string(), val1.to_string());
+        assert_eq!(map.value(key1.clone(), default_value.clone()), val1.clone().into());
+        assert_eq!(map.value(val1.clone(), default_value.clone()), default_value.clone());
+
+        assert_eq!(map.key(val1.clone().into(), val1.clone()), key1.clone());
+        assert_eq!(map.key(key1.clone().into(), val1.clone()), val1.clone());
     }
 
     #[test]
