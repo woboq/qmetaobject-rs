@@ -122,7 +122,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use std::collections::HashMap;
 use std::convert::From;
-use std::fmt::{self, Write};
+use std::fmt;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
@@ -185,8 +185,6 @@ cpp! {{
     #include <QtGui/QPainter>
     #include <QtGui/QPen>
     #include <QtGui/QBrush>
-
-    #include <tuple>
 }}
 
 cpp_class!(
@@ -1092,6 +1090,20 @@ where
     }
 }
 
+impl<K, V, const N: usize> From<[(K, V); N]> for QVariantMap
+where
+    K: Into<QString>,
+    V: Into<QVariant>,
+{
+    fn from(m: [(K, V); N]) -> Self {
+        let mut temp = QVariantMap::default();
+        for (key, val) in m {
+            temp.insert(key.into(), val.into());
+        }
+        temp
+    }
+}
+
 impl<K, V> From<QVariantMap> for HashMap<K, V>
 where
     K: Hash + Eq,
@@ -1154,9 +1166,15 @@ mod qvariantmap_tests {
             ("A".to_string(), QVariant::from(QString::from("abc"))),
             ("B".to_string(), QVariant::from(QString::from("def"))),
         ]);
-        let qvariantmap: QVariantMap = hashmap1.clone().into();
-        let hashmap2 = qvariantmap.into();
+        let qvariantmap1: QVariantMap = hashmap1.clone().into();
+        let hashmap2 = qvariantmap1.clone().into();
         assert_eq!(hashmap1, hashmap2);
+
+        let qvariantmap2 = QVariantMap::from([
+            ("A".to_string(), QVariant::from(QString::from("abc"))),
+            ("B".to_string(), QVariant::from(QString::from("def"))),
+        ]);
+        assert_eq!(qvariantmap1, qvariantmap2);
     }
 }
 
