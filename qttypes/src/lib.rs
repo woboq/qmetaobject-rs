@@ -923,7 +923,7 @@ impl QVariantMap {
     ///
     /// [method]: https://doc.qt.io/qt-5/qmap.html#size
     pub fn len(&self) -> usize {
-        cpp!(unsafe [self as "QVariantMap*"] -> usize as "size_t" {
+        cpp!(unsafe [self as "const QVariantMap*"] -> usize as "size_t" {
             return self->size();
         })
     }
@@ -932,7 +932,7 @@ impl QVariantMap {
     ///
     /// [method]: https://doc.qt.io/qt-5/qmap.html#isEmpty
     pub fn is_empty(&self) -> bool {
-        cpp!(unsafe [self as "QVariantMap*"] -> bool as "bool" {
+        cpp!(unsafe [self as "const QVariantMap*"] -> bool as "bool" {
             return self->isEmpty();
         })
     }
@@ -941,7 +941,7 @@ impl QVariantMap {
     ///
     /// [method]: https://doc.qt.io/qt-5/qmap.html#contains
     pub fn contains(&self, key: QString) -> bool {
-        cpp!(unsafe [self as "QVariantMap*", key as "QString"] -> bool as "bool" {
+        cpp!(unsafe [self as "const QVariantMap*", key as "QString"] -> bool as "bool" {
             return self->contains(key);
         })
     }
@@ -959,7 +959,7 @@ impl QVariantMap {
     ///
     /// [method]: https://doc.qt.io/qt-5/qmap.html#value
     pub fn value(&self, key: QString, default_value: QVariant) -> QVariant {
-        cpp!(unsafe [self as "QVariantMap*", key as "QString", default_value as "QVariant"] -> QVariant as "QVariant" {
+        cpp!(unsafe [self as "const QVariantMap*", key as "QString", default_value as "QVariant"] -> QVariant as "QVariant" {
             return self->value(key, default_value);
         })
     }
@@ -968,7 +968,7 @@ impl QVariantMap {
     ///
     /// [method]: https://doc.qt.io/qt-5/qmap.html#key
     pub fn key(&self, value: QVariant, default_key: QString) -> QString {
-        cpp!(unsafe [self as "QVariantMap*", default_key as "QString", value as "QVariant"] -> QString as "QString" {
+        cpp!(unsafe [self as "const QVariantMap*", default_key as "QString", value as "QVariant"] -> QString as "QString" {
             return self->key(value, default_key);
         })
     }
@@ -981,24 +981,22 @@ impl Index<QString> for QVariantMap {
     ///
     /// [method]: https://doc.qt.io/qt-5/qlist.html#at
     #[track_caller]
-    fn index(&self, key: QString) -> &QVariant {
-        unsafe {
-            cpp!([self as "QVariantMap*", key as "QString"] -> *const QVariant as "const QVariant*" {
+    fn index(&self, key: QString) -> &Self::Output {
+        cpp!(unsafe [self as "const QVariantMap*", key as "QString"] -> Option<&QVariant> as "const QVariant*" {
                 auto x = self->constFind(key);
                 if (x == self->constEnd()) {
                     return NULL;
                 } else {
                     return &x.value();
                 }
-            }).as_ref()
-        }.expect("key not in the QVariant")
+            }).expect("key not in the QVariant")
     }
 }
 impl IndexMut<QString> for QVariantMap {
     /// Wrapper around [`operator[](int)`][method] operator method.
     ///
     /// [method]: https://doc.qt.io/qt-5/qlist.html#operator-5b-5d
-    fn index_mut(&mut self, key: QString) -> &mut QVariant {
+    fn index_mut(&mut self, key: QString) -> &mut Self::Output {
         unsafe {
             &mut *cpp!([self as "QVariantMap*", key as "QString"] -> *mut QVariant as "QVariant*" {
                 return &(*self)[key];
@@ -1015,9 +1013,7 @@ impl fmt::Debug for QVariantMap {
 
 cpp_class!(unsafe struct QVariantMapIteratorInternal as "QVariantMap::iterator");
 
-/// Internal class used to iterate over a [`QVariantMap`][]
-///
-/// [`QVariantMap`]: ./struct.QVariantMap.html
+/// Internal class used to iterate over a [`QVariantMap`]
 pub struct QVariantMapIterator<'a> {
     map: &'a QVariantMap,
     iterator: QVariantMapIteratorInternal,
@@ -1026,28 +1022,22 @@ pub struct QVariantMapIterator<'a> {
 impl<'a> QVariantMapIterator<'a> {
     fn key(&self) -> Option<&'a QString> {
         let iterator = &self.iterator;
-        unsafe {
-            cpp!([iterator as "QVariantMap::iterator*"] -> *mut QString as "const QString*" {
-                return &iterator->key();
-            })
-            .as_ref()
-        }
+        cpp!(unsafe [iterator as "const QVariantMap::iterator*"] -> Option<&QString> as "const QString*" {
+            return &iterator->key();
+        })
     }
 
     fn value(&self) -> Option<&'a QVariant> {
         let iterator = &self.iterator;
-        unsafe {
-            cpp!([iterator as "QVariantMap::iterator*"] -> *mut QVariant as "QVariant*" {
-                return &iterator->value();
-            })
-            .as_ref()
-        }
+        cpp!(unsafe [iterator as "const QVariantMap::iterator*"] -> Option<&QVariant> as "QVariant*" {
+            return &iterator->value();
+        })
     }
 
     fn check_end(&self) -> bool {
         let map = self.map;
         let iterator = &self.iterator;
-        cpp!(unsafe [iterator as "QVariantMap::iterator*", map as "QVariantMap*"] -> bool as "bool" {
+        cpp!(unsafe [iterator as "const QVariantMap::iterator*", map as "const QVariantMap*"] -> bool as "bool" {
             return (*iterator == map->end());
         })
     }
