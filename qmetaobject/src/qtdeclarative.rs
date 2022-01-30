@@ -306,7 +306,7 @@ impl Default for QQuickView {
 }
 
 /// See QQmlComponent::CompilationMode
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CompilationMode {
     PreferSynchronous,
@@ -314,7 +314,7 @@ pub enum CompilationMode {
 }
 
 /// See QQmlComponent::Status
-#[repr(u32)]
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ComponentStatus {
     Null,
@@ -507,6 +507,28 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
         };
         QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &api);
     })
+}
+
+/// Wrapper around [`void qmlRegisterModule(const char *uri, int versionMajor, int versionMinor)`][qt] function.
+///
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterModule
+#[cfg(qt_5_9)]
+pub fn qml_register_module(uri: &CStr, version_major: u32, version_minor: u32) {
+    let uri_ptr = uri.as_ptr();
+
+    cpp!(unsafe [
+        uri_ptr as "const char *",
+        version_major as "int",
+        version_minor as "int"
+    ] {
+    #if QT_VERSION >= QT_VERSION_CHECK(5,9,0)
+        qmlRegisterModule(
+            uri_ptr,
+            version_major,
+            version_minor
+        );
+    #endif
+    });
 }
 
 /// Alias for type of `QQmlPrivate::RegisterSingletonType::qobjectApi` callback
@@ -870,7 +892,7 @@ impl<'a> dyn QQuickItem + 'a {
 /// Only a specific subset of [`QEvent::Type`][qt] enum.
 ///
 /// [qt]: https://doc.qt.io/qt-5/qevent.html#Type-enum
-#[repr(u32)]
+#[repr(C)]
 #[non_exhaustive]
 pub enum QMouseEventType {
     MouseButtonPress = 2,
@@ -908,6 +930,24 @@ cpp_class!(
 );
 
 impl QJSValue {
+    pub fn is_bool(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isBool();
+        })
+    }
+
+    pub fn is_number(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isNumber();
+        })
+    }
+
+    pub fn is_string(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isString();
+        })
+    }
+
     pub fn to_string(&self) -> QString {
         cpp!(unsafe [self as "const QJSValue *"] -> QString as "QString" {
             return self->toString();
@@ -1005,6 +1045,33 @@ mod qjsvalue_tests {
         assert_eq!(foo.to_number(), 45 as f64);
         assert_eq!(foo.to_string(), "45".into());
         assert_eq!(foo.to_variant().to_qbytearray(), "45".into());
+    }
+
+    #[test]
+    fn test_is_bool() {
+        let bool_value = QJSValue::from(true);
+        let num_value = QJSValue::from(42);
+
+        assert!(bool_value.is_bool());
+        assert!(!num_value.is_bool());
+    }
+
+    #[test]
+    fn test_is_number() {
+        let string_value = QJSValue::from(QString::from("Konqui"));
+        let num_value = QJSValue::from(42);
+
+        assert!(num_value.is_number());
+        assert!(!string_value.is_number());
+    }
+
+    #[test]
+    fn test_is_string() {
+        let string_value = QJSValue::from(QString::from("Konqui"));
+        let num_value = QJSValue::from(42);
+
+        assert!(string_value.is_string());
+        assert!(!num_value.is_string());
     }
 
     #[test]

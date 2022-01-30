@@ -35,20 +35,20 @@ fn self_test() {
 
     let mut obj = Basic::default();
     obj.value = true;
-    assert!(do_test(obj, "Item { function doTest() { return _obj.value  } }"));
+    assert!(do_test(obj, "Item { function doTest() { return _obj.value;  } }"));
 
     let mut obj = Basic::default();
     obj.value = false;
-    assert!(!do_test(obj, "Item { function doTest() { return _obj.value  } }"));
+    assert!(!do_test(obj, "Item { function doTest() { return _obj.value;  } }"));
 }
 
 #[test]
 fn self_test_variant() {
     let obj = QVariant::from(true);
-    assert!(do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
+    assert!(do_test_variant(obj, "Item { function doTest() { return _obj;  } }"));
 
     let obj = QVariant::from(false);
-    assert!(!do_test_variant(obj, "Item { function doTest() { return _obj  } }"));
+    assert!(!do_test_variant(obj, "Item { function doTest() { return _obj;  } }"));
 }
 
 #[derive(QObject, Default)]
@@ -91,24 +91,32 @@ fn property_read_write_notify() {
     let obj = MyObject::default();
     assert!(do_test(
         obj,
-        "Item {
-        property int yo: _obj.prop_x;
-        function doTest() {
-            _obj.prop_x = 123;
-            return yo === 123;
-        }}"
+        r"
+        Item {
+            property int yo: _obj.prop_x
+
+            function doTest() {
+                _obj.prop_x = 123;
+                return yo === 123;
+            }
+        }
+        "
     ));
 
     let obj = MyObject::default();
     assert!(do_test(
         obj,
-        "Item {
-        property string yo: _obj.prop_y + ' ' + _obj.prop_z;
-        function doTest() {
-            _obj.prop_y = 'hello';
-            _obj.prop_z = 'world';
-            return yo === 'hello world';
-        }}"
+        r"
+        Item {
+            property string yo: _obj.prop_y + ' ' + _obj.prop_z
+
+            function doTest() {
+                _obj.prop_y = 'hello';
+                _obj.prop_z = 'world';
+                return yo === 'hello world';
+            }
+        }
+        "
     ));
 }
 
@@ -117,10 +125,13 @@ fn call_method() {
     let obj = MyObject::default();
     assert!(do_test(
         obj,
-        "Item {
-        function doTest() {
-            return _obj.multiply_and_add1(45, 76) === 45*76+1;
-        }}"
+        r"
+        Item {
+            function doTest() {
+                return _obj.multiply_and_add1(45, 76) === 45 * 76 + 1;
+            }
+        }
+        "
     ));
 
     let obj = MyObject::default();
@@ -194,6 +205,26 @@ fn register_type() {
             }
             function doTest() {
                 return test.square(66) === 55 * 66;
+            }
+        }
+        "
+    ));
+}
+
+#[test]
+#[cfg(qt_5_9)]
+fn register_module() {
+    qml_register_module(CStr::from_bytes_with_nul(b"TestEmptyModule\0").unwrap(), 1, 2);
+
+    let obj = MyObject::default(); // not used but needed for do_test
+    assert!(do_test(
+        obj,
+        r"
+        import TestEmptyModule 1.2 as TM
+
+        QtObject {
+            function doTest() {
+                return typeof TM === 'object';
             }
         }
         "
@@ -372,7 +403,7 @@ fn qpointer_properties() {
     );
     assert!(do_test(
         my_obj,
-        "
+        r"
         import SomeObjectLib 1.0
 
         Item {
@@ -405,7 +436,7 @@ fn qpointer_properties_incompatible() {
         CStr::from_bytes_with_nul(b"ObjectWithSome\0").unwrap(),
     );
     assert!(test_loading_logs(
-        "
+        r"
         import SomeObjectLib 1.0
 
         Item {
@@ -465,7 +496,7 @@ fn getter() {
     let my_obj = ObjectWithGetter::default();
     assert!(do_test(
         my_obj,
-        "
+        r"
         Item {
             function doTest() {
                 return _obj.prop_x === 85
@@ -504,7 +535,7 @@ fn setter() {
     let my_obj = ObjectWithGetter::default();
     assert!(do_test(
         my_obj,
-        "
+        r"
         Item {
             property var test: '' + _obj.prop_x + _obj.prop_y;
             function doTest() {
@@ -750,7 +781,7 @@ fn enum_properties() {
     let my_obj = MyObject::default();
     assert!(do_test(
         my_obj,
-        "
+        r"
         import MyEnumLib 1.0
 
         Item {
@@ -826,7 +857,7 @@ fn load_data_as() {
     obj.value = true;
     let error = do_test_error_with_url(
         obj,
-        "Item { function doTest() { return _intentional_error } }",
+        "Item { function doTest() { return _intentional_error; } }",
         "file:///path/file.ext",
     );
     assert!(error.contains("file:///path/file.ext"));
@@ -889,7 +920,7 @@ fn test_future() {
 #[test]
 fn create_component() {
     let _lock = lock_for_test();
-    let qml_text = "
+    let qml_text = r"
         import QtQuick 2.0
 
         Item {}
@@ -1012,7 +1043,15 @@ fn test_setting_context_object() {
         base: qt_base_class!(trait QObject),
         bvalue: qt_property!(i32),
     }
-    let qml_txt = "import QtQuick 2.0\nItem { function doTest() { return bvalue  } }";
+    let qml_txt = r"
+    import QtQuick 2.0
+
+    Item {
+        function doTest() {
+            return bvalue;
+        }
+    }
+    ";
 
     let _lock = lock_for_test();
     let mut _app = QmlEngine::new();
@@ -1027,5 +1066,4 @@ fn test_setting_context_object() {
     let res = _app.invoke_method("doTest".into(), &[]);
     let res: Option<i32> = QMetaType::from_qvariant(res);
     assert_eq!(res, Some(12));
-    assert_ne!(res, Some(10));
 }

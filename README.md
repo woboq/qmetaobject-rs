@@ -1,6 +1,5 @@
 # QMetaObject crate for Rust
 
-[![Appveyor Build status](https://ci.appveyor.com/api/projects/status/8l5te3wlj2ie4njc/branch/master?svg=true)](https://ci.appveyor.com/project/ogoffart/qmetaobject-rs/branch/master)
 [![Crates.io](https://img.shields.io/crates/v/qmetaobject.svg)](https://crates.io/crates/qmetaobject)
 [![Documentation](https://docs.rs/qmetaobject/badge.svg)](https://docs.rs/qmetaobject/)
 
@@ -232,7 +231,7 @@ impl Graph {
 Alternatively, we could add a proper method wrapper, and call it without `unsafe`:
 
 ```rust
-#[repr(u32)]
+#[repr(C)]
 enum QQuickItemFlag {
     ItemClipsChildrenToShape = 0x01,
     ItemAcceptsInputMethod = 0x02,
