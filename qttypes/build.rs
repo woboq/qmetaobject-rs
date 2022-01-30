@@ -213,7 +213,6 @@ fn main() {
     };
     link_lib("Core");
     link_lib("Gui");
-    #[cfg(feature = "qtwidgets")]
     link_lib("Widgets");
     #[cfg(feature = "qtquick")]
     link_lib("Quick");

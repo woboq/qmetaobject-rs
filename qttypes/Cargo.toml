@@ -27,15 +27,13 @@ qtquickcontrols2 = []
 # Link against QtMultimedia
 qtmultimedia = []
 # Link against QtMultimediaWidgets
-qtmultimediawidgets = ["qtwidgets"]
+qtmultimediawidgets = []
 # Link against QtSql
 qtsql = []
 # Link against QtTest
 qttest = []
-# Link against QtWidgets
-qtwidgets = []
 
-default = ["required", "qtwidgets"]
+default = ["required"]
 
 [dependencies]
 cpp = "0.5.6"
