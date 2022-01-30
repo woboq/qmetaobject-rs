@@ -1,6 +1,5 @@
-use crate::core::QByteArray;
-use crate::core::QUrl;
 use crate::internal_prelude::*;
+use crate::qtcore::{QByteArray, QUrl};
 
 use std::fmt::Display;
 
