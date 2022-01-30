@@ -28,15 +28,8 @@ cpp! {{
     #include <memory>
     #include <QtQuick/QtQuick>
     #include <QtCore/QDebug>
+    #include <QtWidgets/QApplication>
     #include <QtQml/QQmlComponent>
-    
-    #ifdef NO_WIDGETS
-    # define QAPPLICATION QGuiApplication
-    # include <QtGui/QGuiApplication>
-    #else
-    # define QAPPLICATION QApplication
-    # include <QtWidgets/QApplication>
-    #endif
 
     struct SingleApplicationGuard {
         SingleApplicationGuard() {
@@ -54,12 +47,12 @@ cpp! {{
     };
 
     struct QmlEngineHolder : SingleApplicationGuard {
-        std::unique_ptr<QAPPLICATION> app;
+        std::unique_ptr<QApplication> app;
         std::unique_ptr<QQmlApplicationEngine> engine;
         std::unique_ptr<QQuickView> view;
 
         QmlEngineHolder(int &argc, char **argv)
-            : app(new QAPPLICATION(argc, argv))
+            : app(new QApplication(argc, argv))
             , engine(new QQmlApplicationEngine())
         {}
     };

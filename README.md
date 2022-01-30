@@ -107,12 +107,6 @@ Enables `QtWebEngine` functionality. For more details see the [example](./exampl
 
 This feature is disabled by default.
 
-### `widgets`
-
-Link against **`qtwidgets`** module. This will use `QApplication` instead of `QGuiApplication`. 
-
-This feature is enabled by default.
-
 ## What if a wrapper for the Qt C++ API is missing?
 
 It is quite likely that you would like to call a particular Qt function which

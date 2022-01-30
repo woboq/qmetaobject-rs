@@ -33,11 +33,12 @@ fn main() {
         config.flag("-F");
         config.flag(&qt_library_path);
     }
-    if cfg!(not(feature = "widgets")) {
-        config.define("NO_WIDGETS", None);
-    }
     if qt_version >= Version::new(6, 0, 0) {
-        config.flag_if_supported("-std=c++17");
+        if std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "android" {
+            config.flag("-std=c++17");
+        } else {
+            config.flag_if_supported("-std=c++17");
+        }
         config.flag_if_supported("/std:c++17");
         config.flag_if_supported("/Zc:__cplusplus");
     }
