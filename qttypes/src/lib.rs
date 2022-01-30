@@ -116,6 +116,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! | **`qtsql`**               | Qt SQL                |
 //! | **`qttest`**              | Qt Test               |
 //! | **`qtwebengine`**         | Qt WebEngine          |
+//! | **`qtwidgets`**           | Qt Widgets            |
 //!
 
 #![cfg_attr(no_qt, allow(unused))]

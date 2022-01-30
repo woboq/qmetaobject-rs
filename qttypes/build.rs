@@ -167,11 +167,7 @@ fn main() {
     detect_qreal_size(&qt_include_path, &qt_library_path);
 
     if qt_version >= Version::new(6, 0, 0) {
-        if std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "android" {
-            config.flag("-std=c++17");
-        } else {
-            config.flag_if_supported("-std=c++17");
-        }
+        config.flag_if_supported("-std=c++17");
         config.flag_if_supported("/std:c++17");
         config.flag_if_supported("/Zc:__cplusplus");
     }
@@ -213,6 +209,7 @@ fn main() {
     };
     link_lib("Core");
     link_lib("Gui");
+    #[cfg(feature = "qtwidgets")]
     link_lib("Widgets");
     #[cfg(feature = "qtquick")]
     link_lib("Quick");
