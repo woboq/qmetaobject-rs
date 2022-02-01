@@ -1,6 +1,7 @@
 use crate::internal_prelude::*;
 use crate::qtcore::{QByteArray, QUrl};
 
+use std::convert::TryFrom;
 use std::fmt::Display;
 
 cpp! {{
@@ -180,6 +181,96 @@ impl std::fmt::Debug for QString {
     }
 }
 
+impl TryFrom<QString> for f64 {
+    type Error = ();
+
+    fn try_from(value: QString) -> Result<Self, Self::Error> {
+        let flag: *mut bool = &mut false;
+        unsafe {
+            let t = cpp!([value as "QString", flag as "bool*"] -> f64 as "double" {
+                return value.toDouble(flag);
+            });
+            if *flag {
+                Ok(t)
+            } else {
+                Err(())
+            }
+        }
+    }
+}
+
+impl TryFrom<QString> for f32 {
+    type Error = ();
+
+    fn try_from(value: QString) -> Result<Self, Self::Error> {
+        let flag: *mut bool = &mut false;
+        unsafe {
+            let t = cpp!([value as "QString", flag as "bool*"] -> f32 as "float" {
+                return value.toFloat(flag);
+            });
+            if *flag {
+                Ok(t)
+            } else {
+                Err(())
+            }
+        }
+    }
+}
+
+impl TryFrom<QString> for i32 {
+    type Error = ();
+
+    fn try_from(value: QString) -> Result<Self, Self::Error> {
+        let flag: *mut bool = &mut false;
+        unsafe {
+            let t = cpp!([value as "QString", flag as "bool*"] -> i32 as "int32_t" {
+                return value.toInt(flag);
+            });
+            if *flag {
+                Ok(t)
+            } else {
+                Err(())
+            }
+        }
+    }
+}
+
+impl TryFrom<QString> for i64 {
+    type Error = ();
+
+    fn try_from(value: QString) -> Result<Self, Self::Error> {
+        let flag: *mut bool = &mut false;
+        unsafe {
+            let t = cpp!([value as "QString", flag as "bool*"] -> i64 as "qlonglong" {
+                return value.toLongLong(flag);
+            });
+            if *flag {
+                Ok(t)
+            } else {
+                Err(())
+            }
+        }
+    }
+}
+
+impl TryFrom<QString> for i16 {
+    type Error = ();
+
+    fn try_from(value: QString) -> Result<Self, Self::Error> {
+        let flag: *mut bool = &mut false;
+        unsafe {
+            let t = cpp!([value as "QString", flag as "bool*"] -> i16 as "int16_t" {
+                return value.toShort(flag);
+            });
+            if *flag {
+                Ok(t)
+            } else {
+                Err(())
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,5 +296,23 @@ mod tests {
         assert_eq!(upper.to_lower(), upper.to_case_folded());
 
         assert_eq!(QString::from(" ABC Hello\n").trimmed(), QString::from("ABC Hello"));
+    }
+
+    #[test]
+    fn conversions() {
+        assert_eq!(f64::try_from(QString::from("1.54")), Ok(1.54));
+        assert!(f64::try_from(QString::from("abc")).is_err());
+
+        assert_eq!(f32::try_from(QString::from("1.54")), Ok(1.54));
+        assert!(f32::try_from(QString::from("abc")).is_err());
+
+        assert_eq!(i32::try_from(QString::from("29")), Ok(29));
+        assert!(i32::try_from(QString::from("abc")).is_err());
+
+        assert_eq!(i64::try_from(QString::from("99487489")), Ok(99487489));
+        assert!(i64::try_from(QString::from("abc")).is_err());
+
+        assert_eq!(i16::try_from(QString::from("-32")), Ok(-32));
+        assert!(i16::try_from(QString::from("abc")).is_err());
     }
 }
