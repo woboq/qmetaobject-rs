@@ -3,6 +3,7 @@ use crate::qtcore::{QByteArray, QUrl};
 
 use std::convert::TryFrom;
 use std::fmt::Display;
+use std::path::{Path, PathBuf};
 
 cpp! {{
     #include <QtCore/QString>
@@ -156,6 +157,7 @@ impl QString {
         }
     }
 }
+
 impl From<QUrl> for QString {
     /// Wrapper around [`QUrl::toString(QUrl::FormattingOptions=...)`][method] method.
     ///
@@ -178,6 +180,20 @@ impl<'a> From<&'a str> for QString {
         cpp!(unsafe [len as "size_t", ptr as "char*"] -> QString as "QString" {
             return QString::fromUtf8(ptr, len);
         })
+    }
+}
+
+impl TryFrom<&Path> for QString {
+    type Error = ();
+
+    fn try_from(s: &Path) -> Result<Self, Self::Error> {
+        Ok(QString::from(s.to_str().ok_or(())?))
+    }
+}
+
+impl From<QString> for PathBuf {
+    fn from(s: QString) -> Self {
+        PathBuf::from(s.to_string())
     }
 }
 
@@ -315,5 +331,9 @@ mod tests {
 
         assert_eq!(i16::try_from(QString::from("-32")), Ok(-32));
         assert!(i16::try_from(QString::from("abc")).is_err());
+
+        let p = PathBuf::from("/home/ayush/");
+        let qstr = QString::try_from(p.as_path()).unwrap();
+        assert_eq!(p, PathBuf::from(qstr));
     }
 }
