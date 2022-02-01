@@ -1,5 +1,5 @@
 use crate::internal_prelude::*;
-use crate::qtcore::{QByteArray, QUrl};
+use crate::qtcore::{QByteArray, QUrl, UnicodeVersion};
 
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -9,6 +9,19 @@ cpp! {{
     #include <QtCore/QString>
     #include <QtCore/QUrl>
 }}
+
+/// Bindings for [`QString::NormalizationForm`][enum] enum.
+///
+/// [enum]: https://doc.qt.io/qt-5/qstring.html#NormalizationForm-enum
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[allow(non_camel_case_types)]
+pub enum NormalizationForm {
+    NormalizationForm_D = 0,
+    NormalizationForm_C = 1,
+    NormalizationForm_KD = 2,
+    NormalizationForm_KC = 3,
+}
 
 cpp_class!(
     /// Wrapper around [`QString`][class] class.
@@ -137,6 +150,9 @@ impl QString {
         })
     }
 
+    /// Wrapper around [`int QString::toInt(bool *ok = nullptr, int base = 10) const`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qstring.html#toInt
     pub fn to_int(&self, base: i32) -> Result<i32, ()> {
         let flag: *mut bool = &mut false;
         unsafe {
@@ -147,6 +163,9 @@ impl QString {
         }
     }
 
+    /// Wrapper around [`qlonglong QString::toLongLong(bool *ok = nullptr, int base = 10) const`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qstring.html#toLongLong
     pub fn to_long_long(&self, base: i32) -> Result<i64, ()> {
         let flag: *mut bool = &mut false;
         unsafe {
@@ -155,6 +174,15 @@ impl QString {
             });
             flag_check(*flag, t, ())
         }
+    }
+
+    /// Wrapper around [`QString QString::normalized(QString::NormalizationForm mode, QChar::UnicodeVersion version = QChar::Unicode_Unassigned) const`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qstring.html#normalized
+    pub fn normalized(&self, mode: NormalizationForm, version: UnicodeVersion) -> QString {
+        cpp!(unsafe [self as "const QString*", mode as "QString::NormalizationForm", version as "QChar::UnicodeVersion"] -> QString as "QString" {
+            return self->normalized(mode, version);
+        })
     }
 }
 
