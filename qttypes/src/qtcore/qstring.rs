@@ -135,6 +135,26 @@ impl QString {
             return self->simplified();
         })
     }
+
+    pub fn to_int(&self, base: i32) -> Result<i32, ()> {
+        let flag: *mut bool = &mut false;
+        unsafe {
+            let t = cpp!([self as "const QString*", flag as "bool*", base as "int32_t"] -> i32 as "int32_t" {
+                return self->toInt(flag, base);
+            });
+            flag_check(*flag, t, ())
+        }
+    }
+
+    pub fn to_long_long(&self, base: i32) -> Result<i64, ()> {
+        let flag: *mut bool = &mut false;
+        unsafe {
+            let t = cpp!([self as "const QString*", flag as "bool*", base as "int32_t"] -> i64 as "qlonglong" {
+                return self->toLongLong(flag, base);
+            });
+            flag_check(*flag, t, ())
+        }
+    }
 }
 impl From<QUrl> for QString {
     /// Wrapper around [`QUrl::toString(QUrl::FormattingOptions=...)`][method] method.
@@ -160,21 +180,25 @@ impl<'a> From<&'a str> for QString {
         })
     }
 }
+
 impl From<String> for QString {
     fn from(s: String) -> QString {
         QString::from(&*s)
     }
 }
+
 impl Into<String> for QString {
     fn into(self) -> String {
         String::from_utf16_lossy(self.to_slice())
     }
 }
+
 impl Display for QString {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         QByteArray::from(self.clone()).fmt(f)
     }
 }
+
 impl std::fmt::Debug for QString {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
@@ -190,11 +214,7 @@ impl TryFrom<QString> for f64 {
             let t = cpp!([value as "QString", flag as "bool*"] -> f64 as "double" {
                 return value.toDouble(flag);
             });
-            if *flag {
-                Ok(t)
-            } else {
-                Err(())
-            }
+            flag_check(*flag, t, ())
         }
     }
 }
@@ -208,11 +228,7 @@ impl TryFrom<QString> for f32 {
             let t = cpp!([value as "QString", flag as "bool*"] -> f32 as "float" {
                 return value.toFloat(flag);
             });
-            if *flag {
-                Ok(t)
-            } else {
-                Err(())
-            }
+            flag_check(*flag, t, ())
         }
     }
 }
@@ -221,17 +237,7 @@ impl TryFrom<QString> for i32 {
     type Error = ();
 
     fn try_from(value: QString) -> Result<Self, Self::Error> {
-        let flag: *mut bool = &mut false;
-        unsafe {
-            let t = cpp!([value as "QString", flag as "bool*"] -> i32 as "int32_t" {
-                return value.toInt(flag);
-            });
-            if *flag {
-                Ok(t)
-            } else {
-                Err(())
-            }
-        }
+        value.to_int(10)
     }
 }
 
@@ -239,17 +245,7 @@ impl TryFrom<QString> for i64 {
     type Error = ();
 
     fn try_from(value: QString) -> Result<Self, Self::Error> {
-        let flag: *mut bool = &mut false;
-        unsafe {
-            let t = cpp!([value as "QString", flag as "bool*"] -> i64 as "qlonglong" {
-                return value.toLongLong(flag);
-            });
-            if *flag {
-                Ok(t)
-            } else {
-                Err(())
-            }
-        }
+        value.to_long_long(10)
     }
 }
 
@@ -262,12 +258,17 @@ impl TryFrom<QString> for i16 {
             let t = cpp!([value as "QString", flag as "bool*"] -> i16 as "int16_t" {
                 return value.toShort(flag);
             });
-            if *flag {
-                Ok(t)
-            } else {
-                Err(())
-            }
+            flag_check(*flag, t, ())
         }
+    }
+}
+
+#[inline]
+fn flag_check<T, E>(flag: bool, ans: T, err: E) -> Result<T, E> {
+    if flag {
+        Ok(ans)
+    } else {
+        Err(err)
     }
 }
 
