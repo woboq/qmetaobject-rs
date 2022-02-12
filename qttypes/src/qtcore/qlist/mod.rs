@@ -1,3 +1,4 @@
+mod common;
 mod qstringlist;
 mod qvariantlist;
 
