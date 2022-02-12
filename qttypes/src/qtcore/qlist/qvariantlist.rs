@@ -5,6 +5,7 @@ use std::{
 
 use cpp::{cpp, cpp_class};
 
+use super::common::QListIterator;
 use crate::QVariant;
 
 cpp_class!(
@@ -59,6 +60,7 @@ impl QVariantList {
         })
     }
 }
+
 impl Index<usize> for QVariantList {
     type Output = QVariant;
 
@@ -88,33 +90,12 @@ impl IndexMut<usize> for QVariantList {
     }
 }
 
-/// Internal class used to iterate over a [`QVariantList`][]
-///
-/// [`QVariantList`]: ./struct.QVariantList.html
-pub struct QVariantListIterator<'a> {
-    list: &'a QVariantList,
-    index: usize,
-    size: usize,
-}
-
-impl<'a> Iterator for QVariantListIterator<'a> {
-    type Item = &'a QVariant;
-    fn next(&mut self) -> Option<&'a QVariant> {
-        if self.index == self.size {
-            None
-        } else {
-            self.index += 1;
-            Some(&self.list[self.index - 1])
-        }
-    }
-}
-
 impl<'a> IntoIterator for &'a QVariantList {
     type Item = &'a QVariant;
-    type IntoIter = QVariantListIterator<'a>;
+    type IntoIter = QListIterator<'a, QVariantList, QVariant>;
 
-    fn into_iter(self) -> QVariantListIterator<'a> {
-        QVariantListIterator::<'a> { list: self, index: 0, size: self.len() }
+    fn into_iter(self) -> Self::IntoIter {
+        QListIterator::new(self, 0, self.len())
     }
 }
 
