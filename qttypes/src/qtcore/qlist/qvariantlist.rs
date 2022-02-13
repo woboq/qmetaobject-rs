@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use cpp::{cpp, cpp_class};
+use crate::internal_prelude::*;
 
 use super::common::QListIterator;
 use crate::QVariant;
