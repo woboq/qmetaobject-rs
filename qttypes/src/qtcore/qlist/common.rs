@@ -1,5 +1,8 @@
 use std::{marker::PhantomData, ops::Index};
 
+/// Internal class used to iterate over a [`QList`][]
+///
+/// [`QList`]: https://doc.qt.io/qt-5/qlist.html
 pub struct QListIterator<'a, T, I>
 where
     T: Index<usize, Output = I>,
