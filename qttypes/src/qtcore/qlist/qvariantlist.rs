@@ -76,6 +76,7 @@ impl Index<usize> for QVariantList {
         }
     }
 }
+
 impl IndexMut<usize> for QVariantList {
     /// Wrapper around [`operator[](int)`][method] operator method.
     ///

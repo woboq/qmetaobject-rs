@@ -1,8 +1,10 @@
-use std::{fmt, ops::Index};
+use std::{fmt, iter::FromIterator, ops::Index};
 
 use cpp::{cpp, cpp_class};
 
 use crate::QString;
+
+use super::common::QListIterator;
 
 cpp_class!(
     /// Wrapper around [`QStringList`][class] class.
@@ -123,41 +125,79 @@ where
     }
 }
 
-#[test]
-fn test_qstringlist() {
-    let mut qstringlist = QStringList::new();
-    qstringlist.push("One".into());
-    qstringlist.push("Two".into());
+impl<'a> IntoIterator for &'a QStringList {
+    type Item = &'a QString;
+    type IntoIter = QListIterator<'a, QStringList, QString>;
 
-    assert_eq!(qstringlist.len(), 2);
-    assert_eq!(qstringlist[0], QString::from("One"));
+    fn into_iter(self) -> Self::IntoIter {
+        QListIterator::new(self, 0, self.len())
+    }
+}
 
-    qstringlist.remove(0);
-    assert_eq!(qstringlist[0], QString::from("Two"));
+impl<T> FromIterator<T> for QStringList
+where
+    T: Into<QString>,
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut l = QStringList::default();
+        for i in iter {
+            l.push(i.into());
+        }
+        l
+    }
+}
 
-    qstringlist.insert(0, "Three".into());
-    assert_eq!(qstringlist[0], QString::from("Three"));
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    assert_eq!(qstringlist, QStringList::from(["Three", "Two"]));
-    assert_eq!(qstringlist, QStringList::from(["Three".to_string(), "Two".to_string()]));
-    assert_eq!(qstringlist, QStringList::from([QString::from("Three"), QString::from("Two")]));
+    #[test]
+    fn test_qstringlist() {
+        let mut qstringlist = QStringList::new();
+        qstringlist.push("One".into());
+        qstringlist.push("Two".into());
 
-    assert_eq!(qstringlist, QStringList::from(vec!["Three", "Two"]));
-    assert_eq!(qstringlist, QStringList::from(vec!["Three".to_string(), "Two".to_string()]));
-    assert_eq!(qstringlist, QStringList::from(vec![QString::from("Three"), QString::from("Two")]));
+        assert_eq!(qstringlist.len(), 2);
+        assert_eq!(qstringlist[0], QString::from("One"));
 
-    let t = ["Three", "Two"];
-    assert_eq!(qstringlist, QStringList::from(t));
-    let t = ["Three".to_string(), "Two".to_string()];
-    assert_eq!(qstringlist, QStringList::from(t));
-    let t = [QString::from("Three"), QString::from("Two")];
-    assert_eq!(qstringlist, QStringList::from(t));
+        qstringlist.remove(0);
+        assert_eq!(qstringlist[0], QString::from("Two"));
 
-    let temp: Vec<String> = qstringlist.clone().into();
-    assert_eq!(temp, vec!["Three".to_string(), "Two".to_string()]);
-    let temp: Vec<QString> = qstringlist.clone().into();
-    assert_eq!(temp, vec![QString::from("Three"), QString::from("Two")]);
+        qstringlist.insert(0, "Three".into());
+        assert_eq!(qstringlist[0], QString::from("Three"));
 
-    qstringlist.clear();
-    assert_eq!(qstringlist.len(), 0);
+        assert_eq!(qstringlist, QStringList::from(["Three", "Two"]));
+        assert_eq!(qstringlist, QStringList::from(["Three".to_string(), "Two".to_string()]));
+        assert_eq!(qstringlist, QStringList::from([QString::from("Three"), QString::from("Two")]));
+
+        assert_eq!(qstringlist, QStringList::from(vec!["Three", "Two"]));
+        assert_eq!(qstringlist, QStringList::from(vec!["Three".to_string(), "Two".to_string()]));
+        assert_eq!(
+            qstringlist,
+            QStringList::from(vec![QString::from("Three"), QString::from("Two")])
+        );
+
+        let t = ["Three", "Two"];
+        assert_eq!(qstringlist, QStringList::from(t));
+        let t = ["Three".to_string(), "Two".to_string()];
+        assert_eq!(qstringlist, QStringList::from(t));
+        let t = [QString::from("Three"), QString::from("Two")];
+        assert_eq!(qstringlist, QStringList::from(t));
+
+        let temp: Vec<String> = qstringlist.clone().into();
+        assert_eq!(temp, vec!["Three".to_string(), "Two".to_string()]);
+        let temp: Vec<QString> = qstringlist.clone().into();
+        assert_eq!(temp, vec![QString::from("Three"), QString::from("Two")]);
+
+        qstringlist.clear();
+        assert_eq!(qstringlist.len(), 0);
+    }
+
+    #[test]
+    fn test_qstringlist_from_iter() {
+        let v = vec!["abc", "efg", "hij"];
+        let qvl: QStringList = v.clone().into_iter().collect();
+        assert_eq!(qvl.len(), 3);
+        assert_eq!(qvl[1].to_string(), v[1].to_string());
+    }
 }
