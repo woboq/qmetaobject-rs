@@ -63,11 +63,7 @@ impl Index<usize> for QStringList {
 
 impl fmt::Debug for QStringList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut temp = f.debug_list();
-        for i in 0..self.len() {
-            temp.entry(&self[i]);
-        }
-        temp.finish()
+        f.debug_list().entries(self.into_iter()).finish()
     }
 }
 
@@ -89,11 +85,7 @@ where
     QString: From<T>,
 {
     fn from(s: Vec<T>) -> Self {
-        let mut list = QStringList::new();
-        for i in s {
-            list.push(QString::from(i));
-        }
-        list
+        s.into_iter().map(QString::from).collect()
     }
 }
 
@@ -103,11 +95,7 @@ where
     QString: From<T>,
 {
     fn from(s: &[T]) -> Self {
-        let mut list = QStringList::new();
-        for i in s {
-            list.push(QString::from(i.clone())); // i: &T in case of slice.
-        }
-        list
+        s.iter().cloned().map(QString::from).collect()
     }
 }
 
@@ -117,11 +105,7 @@ where
     QString: Into<T>,
 {
     fn from(arr: QStringList) -> Self {
-        let mut v = Vec::with_capacity(arr.len());
-        for i in 0..arr.len() {
-            v.push(arr[i].clone().into());
-        }
-        v
+        arr.into_iter().cloned().map(|x| x.into()).collect()
     }
 }
 
