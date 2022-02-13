@@ -1,6 +1,6 @@
 use std::{fmt, iter::FromIterator, ops::Index};
 
-use cpp::{cpp, cpp_class};
+use crate::internal_prelude::*;
 
 use crate::QString;
 
