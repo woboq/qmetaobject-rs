@@ -158,12 +158,16 @@ fn main() {
     let qt_version = qt_version.parse::<Version>().expect("Parsing Qt version failed");
 
     let mut config = cpp_build::Config::new();
-
+    
     if cargo_target_os == "macos" {
         config.flag("-F");
         config.flag(&qt_library_path);
     }
-
+    
+    if cargo_target_os == "windows" && cargo_target_env == "msvc" {
+        config.flag("/permissive-");
+    }
+    
     detect_qreal_size(&qt_include_path, &qt_library_path);
 
     if qt_version >= Version::new(6, 0, 0) {
