@@ -155,25 +155,26 @@ fn main() {
             panic!("QT_INCLUDE_PATH and QT_LIBRARY_PATH env variable must be either both empty or both set.")
         }
     };
+    detect_qreal_size(&qt_include_path, &qt_library_path);
     let qt_version = qt_version.parse::<Version>().expect("Parsing Qt version failed");
 
-    let mut config = cpp_build::Config::new();
-    
+    let mut flags = vec![];
     if cargo_target_os == "macos" {
-        config.flag("-F");
-        config.flag(&qt_library_path);
+        flags.push("-F");
+        flags.push(&qt_library_path);
     }
-    
-    if cargo_target_os == "windows" && cargo_target_env == "msvc" {
-        config.flag("/permissive-");
-    }
-    
-    detect_qreal_size(&qt_include_path, &qt_library_path);
-
     if qt_version >= Version::new(6, 0, 0) {
-        config.flag_if_supported("-std=c++17");
-        config.flag_if_supported("/std:c++17");
-        config.flag_if_supported("/Zc:__cplusplus");
+        if cargo_target_env == "msvc" {
+            flags.push("/permissive-");
+            flags.push("/Zc:__cplusplus");
+            flags.push("/std:c++17");
+        } else {
+            flags.push("-std=c++17");
+        }
+    }
+    let mut config = cpp_build::Config::new();
+    for f in &flags {
+        config.flag(f);
     }
     config.include(&qt_include_path).build("src/lib.rs");
 
@@ -181,6 +182,7 @@ fn main() {
     println!("cargo:LIBRARY_PATH={}", &qt_library_path);
     println!("cargo:INCLUDE_PATH={}", &qt_include_path);
     println!("cargo:FOUND=1");
+    println!("cargo:COMPILE_FLAGS={}", flags.join(";"));
 
     let macos_lib_search = if cargo_target_os == "macos" { "=framework" } else { "" };
     let vers_suffix =

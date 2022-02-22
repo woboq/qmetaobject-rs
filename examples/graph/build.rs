@@ -20,7 +20,6 @@ use semver::Version;
 
 fn main() {
     let qt_include_path = std::env::var("DEP_QT_INCLUDE_PATH").unwrap();
-    let qt_library_path = std::env::var("DEP_QT_LIBRARY_PATH").unwrap();
     let qt_version = std::env::var("DEP_QT_VERSION")
         .unwrap()
         .parse::<Version>()
@@ -36,9 +35,8 @@ fn main() {
     #[allow(unused_mut)]
     let mut config = cpp_build::Config::new();
 
-    if cfg!(target_os = "macos") {
-        config.flag("-F");
-        config.flag(&qt_library_path);
+    for f in std::env::var("DEP_QT_COMPILE_FLAGS").unwrap().split_terminator(";") {
+        config.flag(f);
     }
 
     config

@@ -19,24 +19,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 use semver::Version;
 
 fn main() {
-    eprintln!("cargo:warning={:?}", std::env::vars().collect::<Vec<_>>());
-
     let qt_include_path = std::env::var("DEP_QT_INCLUDE_PATH").unwrap();
-    let qt_library_path = std::env::var("DEP_QT_LIBRARY_PATH").unwrap();
     let qt_version = std::env::var("DEP_QT_VERSION")
         .unwrap()
         .parse::<Version>()
         .expect("Parsing Qt version failed");
 
     let mut config = cpp_build::Config::new();
-    if cfg!(target_os = "macos") {
-        config.flag("-F");
-        config.flag(&qt_library_path);
-    }
-    if qt_version >= Version::new(6, 0, 0) {
-        config.flag_if_supported("-std=c++17");
-        config.flag_if_supported("/std:c++17");
-        config.flag_if_supported("/Zc:__cplusplus");
+    for f in std::env::var("DEP_QT_COMPILE_FLAGS").unwrap().split_terminator(";") {
+        config.flag(f);
     }
     config.include(&qt_include_path).build("src/lib.rs");
 

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! - `DEP_QT_INCLUDE_PATH`: The include directory to give to the `cpp_build` crate to locate the Qt headers.
 //! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
 //! - `DEP_QT_FOUND`: Set to 1 when qt was found, or 0 if qt was not found and the `mandatory` feature is not set.
+//! - `DEP_QT_COMPILE_FLAGS`: A list of flags separated by `;`
 //!
 //! ## Finding Qt
 //!
@@ -70,21 +71,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! cpp_build = "0.5"
 //! ```
 //!
-//! Note: It is importent to depend directly on `qttype`, it is not enough to rely on the
+//! Note: It is important to depend directly on `qttype`, it is not enough to rely on the
 //! dependency coming transitively from another dependencies, otherwise the `DEP_QT_*`
 //! environment variables won't be defined.
 //!
 //! Then in the `build.rs` file:
-//! ```ignore
+//! ```rust,no_run
 //! fn main() {
-//!     cpp_build::Config::new()
-//!         .include(&qt_include_path)
-//!         .include(format!("{}/QtGui", qt_include_path))
-//!         .include(format!("{}/QtCore", qt_include_path))
-//!         .flag_if_supported("-std=c++17")
-//!         .flag_if_supported("/std:c++17")
-//!         .flag_if_supported("/Zc:__cplusplus")
-//!         .build("src/main.rs");
+//!     let mut config = cpp_build::Config::new();
+//!     config.include(std::env::var("DEP_QT_INCLUDE_PATH").unwrap());
+//!     for f in std::env::var("DEP_QT_COMPILE_FLAGS").unwrap().split_terminator(";") {
+//!        config.flag(f);
+//!     }
+//!     config.build("src/main.rs");
 //! }
 //! ```
 //!
