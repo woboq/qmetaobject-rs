@@ -31,6 +31,7 @@ fn report_error(_err: &str) -> ! {
         {
             println!("cargo:rustc-cfg=no_qt");
             println!("cargo:FOUND=0");
+            println!("cargo:ERROR_MESSAGE={}", _err.escape_debug());
             std::process::exit(0)
         }
     }
@@ -53,7 +54,7 @@ fn qmake_query(var: &str) -> String {
     let output = match output {
         Ok(output) => output,
         Err(err) => report_error(&format!(
-            "Error: Failed to execute qmake. Make sure 'qmake' is in your path!\n{}",
+            "Failed to execute qmake. Make sure 'qmake' is in your path!\n{}",
             err
         )),
     };

@@ -29,8 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! - `DEP_QT_VERSION`: The Qt version as given by qmake.
 //! - `DEP_QT_INCLUDE_PATH`: The include directory to give to the `cpp_build` crate to locate the Qt headers.
 //! - `DEP_QT_LIBRARY_PATH`: The path containing the Qt libraries.
-//! - `DEP_QT_FOUND`: Set to 1 when qt was found, or 0 if qt was not found and the `mandatory` feature is not set.
 //! - `DEP_QT_COMPILE_FLAGS`: A list of flags separated by `;`
+//! - `DEP_QT_FOUND`: Set to 1 when qt was found, or 0 if qt was not found and the `required` feature is not set.
+//! - `DEP_QT_ERROR_MESSAGE`: when `DEP_QT_FOUND` is 0, contains the error that caused the build to fail
 //!
 //! ## Finding Qt
 //!
