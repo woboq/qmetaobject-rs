@@ -1,6 +1,6 @@
 [package]
 name = "qttypes"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2018"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
@@ -44,6 +44,9 @@ chrono = { version = "0.4", optional = true }
 [build-dependencies]
 cpp_build = "0.5.6"
 semver = "1"
+
+[dev-dependencies]
+cpp_build = "0.5.6"
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]
