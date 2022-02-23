@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 0.2.7 2022-02-23
+
+ - Expand the API of QStringList, QString
+ - Expand the API of QJSValue
+ - Added QVariantMap
+ - Add wrapper around qmlRegisterModule
+ - Fix compilation with Qt 6.3 and MSVC
+ - qttypes: Expose the flags through a COMPILE_FLAGS env variable
+
+
 ## 0.2.6 2021-11-19 (qttype only)
 
  - Fix build when Qt is not found and the required feature is off
