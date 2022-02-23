@@ -167,9 +167,14 @@ fn main() {
         flags.push("-F");
         flags.push(&qt_library_path);
     }
+    if cargo_target_env == "msvc" {
+        // For https://code.qt.io/cgit/qt/qtbase.git/commit/?id=0dc6cc055174a0556f2e41ca269013b3a7056c86
+        flags.push("/permissive-");
+        // Qt assume UTF-8 encoding
+        flags.push("/utf-8");
+    }
     if qt_version >= Version::new(6, 0, 0) {
         if cargo_target_env == "msvc" {
-            flags.push("/permissive-");
             flags.push("/Zc:__cplusplus");
             flags.push("/std:c++17");
         } else {
