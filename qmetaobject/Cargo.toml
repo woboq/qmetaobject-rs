@@ -1,6 +1,6 @@
 [package]
 name = "qmetaobject"
-version = "0.2.5"
+version = "0.2.7"
 edition = "2018"
 authors = ["Olivier Goffart <ogoffart@woboq.com>"]
 build = "build.rs"
@@ -17,8 +17,8 @@ chrono_qdatetime = ["qttypes/chrono"]
 webengine = ["qttypes/qtwebengine"]
 
 [dependencies]
-qttypes = { path = "../qttypes", version = "0.2.5", features = ["qtquick"] }
-qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.2.5"}
+qttypes = { path = "../qttypes", version = "0.2.7", features = ["qtquick"] }
+qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.2.7"}
 lazy_static = "1.0"
 cpp = "0.5.6"
 log = { version = "0.4", optional = true }
