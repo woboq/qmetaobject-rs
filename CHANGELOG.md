@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 0.2.8 2022-02-25 (qttype only)
+
+ - Fix qttype crate always being rebuilt (#252)
+
 ## 0.2.7 2022-02-23
 
  - Expand the API of QStringList, QString
