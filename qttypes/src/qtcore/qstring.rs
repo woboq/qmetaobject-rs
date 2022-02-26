@@ -3,6 +3,7 @@ use crate::qtcore::{QByteArray, QUrl, UnicodeVersion};
 
 use std::convert::TryFrom;
 use std::fmt::Display;
+use std::ops::{Add, AddAssign};
 use std::path::{Path, PathBuf};
 
 cpp! {{
@@ -184,6 +185,15 @@ impl QString {
             return self->normalized(mode, version);
         })
     }
+
+    /// Wrapper around [`QString QString::append(const QString &str)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qstring.html#append
+    pub fn append(&mut self, other: QString) -> QString {
+        cpp!(unsafe [self as "QString*", other as "QString"] -> QString as "QString" {
+            return self->append(other);
+        })
+    }
 }
 
 impl From<QUrl> for QString {
@@ -307,6 +317,20 @@ impl TryFrom<QString> for i16 {
     }
 }
 
+impl Add for QString {
+    type Output = QString;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self.append(rhs)
+    }
+}
+
+impl AddAssign for QString {
+    fn add_assign(&mut self, rhs: Self) {
+        self.append(rhs);
+    }
+}
+
 #[inline]
 fn flag_check<T, E>(flag: bool, ans: T, err: E) -> Result<T, E> {
     if flag {
@@ -363,5 +387,24 @@ mod tests {
         let p = PathBuf::from("/home/ayush/");
         let qstr = QString::try_from(p.as_path()).unwrap();
         assert_eq!(p, PathBuf::from(qstr));
+    }
+
+    #[test]
+    fn append() {
+        let mut str1 = QString::from("abc");
+        let str2 = QString::from("efg");
+
+        let mut s = str1.append(str2.clone());
+        assert_eq!(str1, "abcefg".into());
+        assert_eq!(s, str1);
+
+        // Check that s and str1 do not point to same underlying QString.
+        s.append("123".into());
+
+        str1 += str2;
+        assert_eq!(str1, "abcefgefg".into());
+
+        let str3 = QString::from("abcef") + QString::from("gefg");
+        assert_eq!(str1, str3);
     }
 }
