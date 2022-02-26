@@ -168,8 +168,8 @@ use internal_prelude::*;
 
 mod qtcore;
 pub use crate::qtcore::{
-    qreal, NormalizationForm, QByteArray, QListIterator, QString, QStringList, QUrl, QVariantList,
-    UnicodeVersion,
+    qreal, NormalizationForm, QByteArray, QListIterator, QStandardPathLocation, QString,
+    QStringList, QUrl, QVariantList, UnicodeVersion,
 };
 
 mod gui;
@@ -1380,34 +1380,6 @@ impl QPen {
     //    void	swap(QPen &other)
     //    int	width() const
     //    qreal	widthF() const
-}
-
-/// Bindings for [`QStandardPaths::StandardLocation`][enum] enum.
-///
-/// [enum]: https://doc.qt.io/qt-5/qstandardpaths.html#StandardLocation-enum
-#[repr(C)]
-#[derive(Clone, Copy, PartialEq, Debug)]
-#[allow(non_camel_case_types)]
-pub enum QStandardPathLocation {
-    DesktopLocation = 0,
-    DocumentsLocation = 1,
-    FontsLocation = 2,
-    ApplicationsLocation = 3,
-    MusicLocation = 4,
-    MoviesLocation = 5,
-    PicturesLocation = 6,
-    TempLocation = 7,
-    HomeLocation = 8,
-    AppLocalDataLocation = 9,
-    CacheLocation = 10,
-    GenericDataLocation = 11,
-    RuntimeLocation = 12,
-    ConfigLocation = 13,
-    DownloadLocation = 14,
-    GenericCacheLocation = 15,
-    GenericConfigLocation = 16,
-    AppDataLocation = 17,
-    AppConfigLocation = 18,
 }
 
 /// Bindings for [`Qt::BrushStyle`][enum] enum.

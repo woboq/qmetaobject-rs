@@ -184,6 +184,17 @@ impl QString {
             return self->normalized(mode, version);
         })
     }
+
+    /// A function that converts QString to Option<QString>.
+    /// Checks if the QString is null.
+    /// Note: null QString is differnt from empty QString.
+    pub fn to_option(self) -> Option<Self> {
+        if self.is_null() {
+            None
+        } else {
+            Some(self)
+        }
+    }
 }
 
 impl From<QUrl> for QString {
