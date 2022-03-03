@@ -1,3 +1,5 @@
+use std::num::Wrapping;
+
 use crate::internal_prelude::*;
 use crate::{qreal, QString};
 
@@ -6,7 +8,7 @@ cpp! {{
     #include <QtCore/QString>
 }}
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct QRgb(u32);
 
 impl QRgb {
@@ -22,6 +24,36 @@ impl QRgb {
     pub fn blue(&self) -> u8 {
         (self.0 & 0x000000ff) as u8
     }
+    pub fn grayscale(&self) -> u8 {
+        let value = self.0;
+        let ret: i32 = cpp!(unsafe [value as "QRgb"] -> i32 as "int" {
+            return qGray(value);
+        });
+        assert!(ret > 0 && ret <= 255);
+        ret as u8
+    }
+    pub fn premultiply(&self) -> Self {
+        let value = self.0;
+        cpp!(unsafe [value as "QRgb"] -> QRgb as "QRgb" {
+            return qPremultiply(value);
+        })
+    }
+    pub fn unpremultiply(&self) -> Self {
+        let value = self.0;
+        cpp!(unsafe [value as "QRgb"] -> QRgb as "QRgb" {
+            return qUnpremultiply(value);
+        })
+    }
+    pub fn rgb(r: u8, g: u8, b: u8) -> Self {
+        cpp!(unsafe [r as "quint8", g as "quint8", b as "quint8"] -> QRgb as "QRgb" {
+            return qRgb(r, g, b);
+        })
+    }
+    pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+        cpp!(unsafe [r as "quint8", g as "quint8", b as "quint8", a as "quint8"] -> QRgb as "QRgb" {
+            return qRgba(r, g, b, a);
+        })
+    }
 }
 
 impl From<u32> for QRgb {
@@ -36,32 +68,244 @@ impl Into<u32> for QRgb {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[cfg(target_endian = "little")]
+enum Shifts {
+    RedShift = 0,
+    GreenShift = 16,
+    BlueShift = 32,
+    AlphaShift = 48,
+}
+
+#[cfg(target_endian = "big")]
+enum Shifts {
+    RedShift = 48,
+    GreenShift = 32,
+    BlueShift = 16,
+    AlphaShift = 0,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct QRgba64(u64);
+
 impl QRgba64 {
+    const ALPHA_MASK: u64 = (0xffff as u64) << (Shifts::AlphaShift as u16);
+    const RED_MASK: u64 = (0xffff as u64) << (Shifts::RedShift as u16);
+    const GREEN_MASK: u64 = (0xffff as u64) << (Shifts::GreenShift as u16);
+    const BLUE_MASK: u64 = (0xffff as u64) << (Shifts::BlueShift as u16);
+
+    /* Factory Methods */
+    pub fn from_rgba(red: u16, green: u16, blue: u16, alpha: u16) -> Self {
+        QRgba64(
+            (red as u64) << Shifts::RedShift as u16
+                | (blue as u64) << Shifts::BlueShift as u16
+                | (green as u64) << Shifts::GreenShift as u16
+                | (alpha as u64) << Shifts::AlphaShift as u16,
+        )
+    }
+
+    pub fn from_rgba_u8(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
+        let mut c = Self::from_rgba(red as u16, green as u16, blue as u16, alpha as u16).0;
+        c |= c << 8;
+        QRgba64(c)
+    }
+
+    pub fn from_qrgb(qrgb: QRgb) -> Self {
+        Self::from_rgba_u8(qrgb.red(), qrgb.green(), qrgb.blue(), qrgb.alpha())
+    }
+
+    pub fn from_argb32(rgb: u32) -> Self {
+        Self::from_qrgb(rgb.into())
+    }
+
+    /* Conversion Methods */
+
+    pub fn to_argb32(&self) -> u32 {
+        let a: u32 = self.alpha8() as u32;
+        let r: u32 = self.red8() as u32;
+        let g: u32 = self.green8() as u32;
+        let b: u32 = self.blue8() as u32;
+        ((a << 24) | (r << 16) | (g << 8) | b) as u32
+    }
+
+    pub fn to_qrgb(&self) -> QRgb {
+        self.to_argb32().into()
+    }
+
+    pub fn to_rgb16(&self) -> u16 {
+        let red_comp: u16 = (self.red() as u16) & 0xf800;
+        let green_comp: u16 = (self.green() as u16) >> 10 << 5;
+        let blue_comp: u16 = (self.blue() as u16) >> 11;
+        red_comp | green_comp | blue_comp
+    }
+
+    /* Accessors */
     pub fn alpha(&self) -> u16 {
-        ((self.0 >> 48) & 0x0000ffff) as u16
+        (self.0 >> Shifts::AlphaShift as u16) as u16
     }
+
+    pub fn alpha8(&self) -> u8 {
+        Self::div_257(self.alpha())
+    }
+
     pub fn red(&self) -> u16 {
-        ((self.0 >> 32) & 0x0000ffff) as u16
+        (self.0 >> Shifts::RedShift as u16) as u16
     }
+
+    pub fn red8(&self) -> u8 {
+        Self::div_257(self.red())
+    }
+
     pub fn green(&self) -> u16 {
-        ((self.0 >> 16) & 0x0000ffff) as u16
+        (self.0 >> Shifts::GreenShift as u16) as u16
     }
+
+    pub fn green8(&self) -> u8 {
+        Self::div_257(self.green())
+    }
+
     pub fn blue(&self) -> u16 {
-        (self.0 & 0x0000ffff) as u16
+        (self.0 >> Shifts::BlueShift as u16) as u16
+    }
+
+    pub fn blue8(&self) -> u8 {
+        Self::div_257(self.blue())
+    }
+
+    /* Setters */
+
+    pub fn set_alpha(&mut self, alpha: u16) {
+        let shift_amount: u16 = Shifts::AlphaShift as u16;
+        self.0 = (self.0 & !Self::ALPHA_MASK) | ((alpha as u64) << shift_amount);
+    }
+
+    pub fn set_red(&mut self, red: u16) {
+        let shift_amount: u16 = Shifts::RedShift as u16;
+        self.0 = (self.0 & !Self::RED_MASK) | ((red as u64) << shift_amount);
+    }
+
+    pub fn set_green(&mut self, green: u16) {
+        let shift_amount: u16 = Shifts::GreenShift as u16;
+        self.0 = (self.0 & !Self::GREEN_MASK) | ((green as u64) << shift_amount);
+    }
+
+    pub fn set_blue(&mut self, blue: u16) {
+        let shift_amount: u16 = Shifts::BlueShift as u16;
+        self.0 = (self.0 & !Self::BLUE_MASK) | ((blue as u64) << shift_amount);
+    }
+
+    /* Methods */
+    pub fn is_opaque(&self) -> bool {
+        (self.0 & Self::ALPHA_MASK) == Self::ALPHA_MASK
+    }
+    pub fn is_transparent(&self) -> bool {
+        (self.0 & Self::ALPHA_MASK) == 0
+    }
+
+    pub fn premultiplied(&self) -> Self {
+        if self.is_opaque() {
+            return self.clone();
+        }
+        if self.is_transparent() {
+            return QRgba64(0);
+        }
+        let a: u32 = self.alpha() as u32;
+        let r: u16 = Self::div_65535((self.red() as u32) * a);
+        let g: u16 = Self::div_65535((self.green() as u32) * a);
+        let b: u16 = Self::div_65535((self.blue() as u32) * a);
+        return Self::from_rgba(r, g, b, a as u16);
+    }
+
+    pub fn unpremultiplied(&self) -> Self {
+        if cfg!(target_pointer_width = "64") {
+            self.unpremultiplied_64()
+        } else {
+            self.unpremultiplied_32()
+        }
+    }
+
+    /* Helpers */
+    fn div_257(x: u16) -> u8 {
+        let x: Wrapping<u32> = Wrapping(x as u32);
+        let x: Wrapping<u32> = Wrapping((x + Wrapping(128)).0 as u32);
+        println!("{:?}", x);
+        ((x - (x >> 8)) >> 8).0 as u8
+    }
+
+    fn div_65535(x: u32) -> u16 {
+        let x = Wrapping(x);
+        ((x + (x >> 16) + Wrapping(0x8000 as u32)) >> 16).0 as u16
+    }
+
+    fn unpremultiplied_32(&self) -> Self {
+        if self.is_opaque() || self.is_transparent() {
+            return self.clone();
+        }
+        let a: u32 = self.alpha() as u32;
+        let r: u16 = (((self.red() * 0xffff) as u32 + a / 2) / a) as u16;
+        let g: u16 = (((self.green() * 0xffff) as u32 + a / 2) / a) as u16;
+        let b: u16 = (((self.blue() * 0xffff) as u32 + a / 2) / a) as u16;
+        return Self::from_rgba(r, g, b, a as u16);
+    }
+
+    fn unpremultiplied_64(&self) -> Self {
+        if self.is_opaque() || self.is_transparent() {
+            return self.clone();
+        }
+
+        let a: u64 = self.alpha() as u64;
+        let fa: u64 = ((0xffff00008000 as u64) + a / 2) / a;
+        let r: u16 = ((self.red() as u64 * fa + 0x80000000) >> 32) as u16;
+        let g: u16 = ((self.green() as u64 * fa + 0x80000000) >> 32) as u16;
+        let b: u16 = ((self.blue() as u64 * fa + 0x80000000) >> 32) as u16;
+        return Self::from_rgba(r, g, b, a as u16);
     }
 }
 
 impl From<u64> for QRgba64 {
-    fn from(val: u64) -> QRgba64 {
+    /// The representation always has the order red green blue alpha regardless of endian-ness, so the format of c (the input value color)
+    /// can be confusing since it has the same in-memory representation regardless of endian ordering but how one uses
+    /// the interface changes. It is recommended to use from_rgba64 for most circumstances.
+    fn from(val: u64) -> Self {
         QRgba64(val)
     }
 }
 
 impl Into<u64> for QRgba64 {
+    /// The representation always has the order red green blue alpha regardless of endian-ness, so the format of c (the input value color)
+    /// can be confusing since it has the same in-memory representation regardless of endian ordering but how one uses
+    /// the interface changes. It is recommended to use from_rgba64 for most circumstances.
     fn into(self) -> u64 {
         self.0
+    }
+}
+
+impl From<QRgb> for QRgba64 {
+    fn from(val: QRgb) -> Self {
+        QRgba64::from_qrgb(val)
+    }
+}
+
+impl Into<QRgb> for QRgba64 {
+    fn into(self) -> QRgb {
+        self.to_qrgb()
+    }
+}
+
+impl From<u32> for QRgba64 {
+    fn from(val: u32) -> Self {
+        QRgba64::from_qrgb(val.into())
+    }
+}
+
+impl Into<u32> for QRgba64 {
+    fn into(self) -> u32 {
+        self.to_argb32()
+    }
+}
+
+impl Into<u16> for QRgba64 {
+    fn into(self) -> u16 {
+        self.to_rgb16()
     }
 }
 
@@ -230,14 +474,13 @@ impl QColor {
     }
 
     pub fn from_qrgba64(rgba64: QRgba64) -> QColor {
-        let rgba64: u64 = rgba64.0;
         cpp!(unsafe [rgba64 as "QRgba64"] -> QColor as "QColor" {
             return QColor::fromRgba64(rgba64);
         })
     }
 
     pub fn from_qrgb(rgb: QRgb) -> QColor {
-        let rgb: u32 = rgb.0;
+        let rgb: u32 = rgb.into();
         cpp!(unsafe [rgb as "QRgb"] -> QColor as "QColor" {
             return QColor::fromRgb(rgb);
         })
@@ -580,9 +823,9 @@ impl QColor {
     }
 
     pub fn rgba64(&self) -> QRgba64 {
-        QRgba64::from(cpp!(unsafe [self as "const QColor*"] -> u64 as "QRgba64" {
-            return self->rgba64();
-        }))
+        cpp!(unsafe [self as "const QColor*"] -> QRgba64 as "QRgba64" {
+            return QRgba64::fromRgba64(self->rgba64());
+        })
     }
 
     pub fn rgba(&self) -> QRgb {
@@ -866,5 +1109,65 @@ mod tests {
         assert_eq!(100, color.value());
         assert_eq!(213, color.alpha());
         assert_eq!((255, 200, 100, 213), color.get_hsva());
+    }
+
+    #[test]
+    fn test_three_way_equivalence() {
+        // Test three-way equivalence
+        let hex = 0xffeeddcc;
+        let rgb: QRgb = hex.into();
+        assert_eq!(hex, rgb.into());
+
+        let rgb64: QRgba64 = hex.into();
+        assert_eq!(hex, rgb64.into());
+
+        assert_eq!(rgb, rgb64.into());
+        assert_eq!(rgb64, rgb.into());
+    }
+
+    #[test]
+    fn test_grayscale() {
+        let rgb: QRgb = QRgb::rgba(0xee, 0xdd, 0xcc, 0xff);
+        let a = rgb.alpha();
+        let r = rgb.red();
+        let g = rgb.green();
+        let b = rgb.blue();
+
+        assert_eq!((0xff, 0xee, 0xdd, 0xcc), (a, r, g, b));
+        let gray: i32 = ((r as i32) * 11 + (g as i32) * 16 + (b as i32) * 5) / 32;
+        assert_eq!(gray as u8, rgb.grayscale());
+    }
+
+    #[test]
+    fn test_qrgba64_getters() {
+        let rgb = QRgba64::from_rgba(0xffff, 0xeeee, 0xdddd, 0xcccc);
+        let a = rgb.alpha();
+        let r = rgb.red();
+        let g = rgb.green();
+        let b = rgb.blue();
+
+        assert_eq!((0xffff, 0xeeee, 0xdddd, 0xcccc), (r, g, b, a));
+
+        let a = rgb.alpha8();
+        let r = rgb.red8();
+        let g = rgb.green8();
+        let b = rgb.blue8();
+        assert_eq!((0xff, 0xee, 0xdd, 0xcc), (r, g, b, a));
+    }
+
+    #[test]
+    fn test_conversions() {
+        let rgb = QRgba64::from_rgba(0xffff, 0xeeee, 0xdddd, 0xcccc);
+        let r = rgb.red();
+        let g = rgb.green();
+        let b = rgb.blue();
+
+        // u32 conversion
+        let hex32 = rgb.into();
+        assert_eq!(0xccffeedd as u32, hex32);
+
+        // // u16 conversion (this is the method Qt uses to calculate it)
+        let rgb16 = (r & 0xf800) | ((g >> 10) << 5) | (b >> 11);
+        assert_eq!(rgb16, rgb.into());
     }
 }
