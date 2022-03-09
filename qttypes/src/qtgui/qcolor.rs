@@ -93,6 +93,34 @@ pub enum QColorSpec {
     ExtendedRgb = 5,
 }
 
+/// Bindings for [`Qt::GlobalColor`][class] enum.
+///
+/// [class]: https://doc.qt.io/qt-5/qt.html#GlobalColor-enum
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum QGlobalColor {
+    Color0 = 0,
+    Color1 = 1,
+    Black = 2,
+    White = 3,
+    DarkGray = 4,
+    Gray = 5,
+    LightGray = 6,
+    Red = 7,
+    Green = 8,
+    Blue = 9,
+    Cyan = 10,
+    Magenta = 11,
+    Yellow = 12,
+    DarkRed = 13,
+    DarkGreen = 14,
+    DarkBlue = 15,
+    DarkCyan = 16,
+    DarkMagenta = 17,
+    Darkyellow = 18,
+    Transparent = 19,
+}
+
 cpp_class!(
     /// Wrapper around [`QColor`][class] class.
     ///
@@ -110,6 +138,15 @@ impl QColor {
         let ptr = name.as_ptr();
         cpp!(unsafe [len as "size_t", ptr as "char*"] -> QColor as "QColor" {
             return QColor(QLatin1String(ptr, len));
+        })
+    }
+
+    /// Wrapper around [`QColor(Qt::GlobalColor)`][ctor] constructor.
+    ///
+    /// [ctor]: https://doc.qt.io/qt-5/qcolor.html#QColor-1
+    pub fn from_global_color(color: QGlobalColor) -> Self {
+        cpp!(unsafe [color as "Qt::GlobalColor"] -> QColor as "QColor" {
+            return QColor(color);
         })
     }
 
@@ -866,5 +903,15 @@ mod tests {
         assert_eq!(100, color.value());
         assert_eq!(213, color.alpha());
         assert_eq!((255, 200, 100, 213), color.get_hsva());
+    }
+
+    #[test]
+    fn test_global_color() {
+        let red1 = QColor::from_global_color(QGlobalColor::Red);
+        let red2 = QColor::from_name("red");
+
+        assert_eq!(red1.get_rgba_f().0, 1.);
+        assert_eq!(red1.get_rgba_f().2, 0.);
+        assert!(red1 == red2);
     }
 }

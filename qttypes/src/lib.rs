@@ -172,8 +172,8 @@ pub use crate::qtcore::{
     UnicodeVersion,
 };
 
-mod gui;
-pub use crate::gui::{QColor, QColorNameFormat, QColorSpec, QRgb, QRgba64};
+mod qtgui;
+pub use crate::qtgui::{QColor, QColorNameFormat, QColorSpec, QRgb, QRgba64};
 
 cpp! {{
     #include <QtCore/QByteArray>
