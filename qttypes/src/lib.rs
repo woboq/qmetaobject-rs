@@ -636,6 +636,18 @@ impl From<QVariantList> for QVariant {
         })
     }
 }
+
+impl From<QStringList> for QVariant {
+    /// Wrapper around [`QVariant(const QStringList &)`][ctor] constructor.
+    ///
+    /// [ctor]: https://doc.qt.io/qt-5/qvariant.html#QVariant-16
+    fn from(a: QStringList) -> Self {
+        cpp!(unsafe [a as "QStringList"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
+    }
+}
+
 impl From<i32> for QVariant {
     /// Wrapper around [`QVariant(int)`][ctor] constructor.
     ///
