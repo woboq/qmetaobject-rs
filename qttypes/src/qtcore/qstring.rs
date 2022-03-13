@@ -407,4 +407,13 @@ mod tests {
         let str3 = QString::from("abcef") + QString::from("gefg");
         assert_eq!(str1, str3);
     }
+
+    #[test]
+    fn cstring() {
+        use std::ffi::CString;
+
+        let s = "abc";
+        let qstr = QString::from(s);
+        // assert_eq!(CString::new(qstr), CString::new(s));
+    }
 }
