@@ -48,6 +48,15 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`isNull()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#isNull
+    pub fn is_null(&self) -> bool {
+        cpp!(unsafe [self as "const QVariant*"] -> bool as "bool" {
+            return self->isNull();
+        })
+    }
+
     // FIXME: do more wrappers
 }
 
