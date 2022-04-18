@@ -18,7 +18,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use std::collections::HashMap;
 use std::iter::FromIterator;
-use std::ops::Index;
+use std::ops::{ Index, IndexMut };
 
 use cpp::cpp;
 
@@ -245,17 +245,24 @@ impl<T: SimpleListItem> SimpleListModel<T> {
     }
     pub fn change_line(&mut self, index: usize, value: T) {
         self.values[index] = value;
-        let idx = (self as &mut dyn QAbstractListModel).row_index(index as i32);
-        (self as &mut dyn QAbstractListModel).data_changed(idx, idx);
+        self.data_changed(index);
     }
     pub fn reset_data(&mut self, data: Vec<T>) {
         (self as &mut dyn QAbstractListModel).begin_reset_model();
         self.values = data;
         (self as &mut dyn QAbstractListModel).end_reset_model();
     }
+    pub fn data_changed(&mut self, index: usize) {
+        let idx = (self as &mut dyn QAbstractListModel).row_index(index as i32);
+        (self as &mut dyn QAbstractListModel).data_changed(idx, idx);
+    }
     /// Returns an iterator over the items in the model
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.values.iter()
+    }
+    /// Returns mutable iterator over the items in the model
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.values.iter_mut()
     }
 }
 
@@ -288,5 +295,14 @@ where
 
     fn index(&self, index: usize) -> &T {
         &self.values[index]
+    }
+}
+
+impl<T> IndexMut<usize> for SimpleListModel<T>
+where
+    T: SimpleListItem,
+{
+    fn index_mut(&mut self, index: usize) -> &mut T {
+        &mut self.values[index]
     }
 }
