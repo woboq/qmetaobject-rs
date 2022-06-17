@@ -108,6 +108,33 @@ pub trait QAbstractListModel: QObject {
         }
     }
 
+    /// Refer to the Qt documentation of QAbstractListModel::beginMoveRows
+    fn begin_move_rows(
+        &mut self,
+        source_parent: QModelIndex,
+        source_first: i32,
+        source_last: i32,
+        destination_parent: QModelIndex,
+        destination_child: i32,
+    ) {
+        let obj = self.get_cpp_object();
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*", source_parent as "QModelIndex", source_first as "int", source_last as "int", destination_parent as "QModelIndex", destination_child as "int"]{
+                if(obj) obj->beginMoveRows(source_parent, source_first, source_last, destination_parent, destination_child);
+            })
+        }
+    }
+
+    /// Refer to the Qt documentation of QAbstractListModel::endMoveRows
+    fn end_move_rows(&mut self) {
+        let obj = self.get_cpp_object();
+        unsafe {
+            cpp!([obj as "Rust_QAbstractListModel*"]{
+                if(obj) obj->endMoveRows();
+            })
+        }
+    }
+
     /// Refer to the Qt documentation of QAbstractListModel::dataChanged
     fn data_changed(&mut self, top_left: QModelIndex, bottom_right: QModelIndex) {
         let obj = self.get_cpp_object();
@@ -141,6 +168,8 @@ cpp! {{
         using QAbstractListModel::endRemoveRows;
         using QAbstractListModel::beginResetModel;
         using QAbstractListModel::endResetModel;
+        using QAbstractListModel::beginMoveRows;
+        using QAbstractListModel::endMoveRows;
 
         int rowCount(const QModelIndex & = QModelIndex()) const override {
             return rust!(Rust_QAbstractListModel_rowCount[rust_object : QObjectPinned<dyn QAbstractListModel> as "TraitObject"]
