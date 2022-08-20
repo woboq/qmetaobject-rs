@@ -162,6 +162,10 @@ fn main() {
     detect_qreal_size(&qt_include_path, &qt_library_path);
     let qt_version = qt_version.parse::<Version>().expect("Parsing Qt version failed");
 
+    if qt_version < Version::new(5, 6, 0) {
+        report_error(&format!("Qt too old. Found version {}, but Qt 5.6 is required.\nIf several versions of Qt are installed, set the PATH or QMAKE environment variable so it finds the correct version", qt_version));
+    }
+
     let mut flags = vec![];
     if cargo_target_os == "macos" {
         flags.push("-F");
