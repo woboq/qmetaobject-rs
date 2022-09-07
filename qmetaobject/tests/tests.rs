@@ -78,6 +78,7 @@ struct MyObject {
 
     prop_color: qt_property!(QColor),
     prop_jsvalue: qt_property!(QJSValue),
+    prop_variantmap: qt_property!(QVariantMap),
 }
 
 impl MyObject {
