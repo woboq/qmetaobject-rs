@@ -464,6 +464,7 @@ qdeclare_builtin_metatype! {u16  => 36}
 qdeclare_builtin_metatype! {u8   => 37}
 qdeclare_builtin_metatype! {f32  => 38}
 //qdeclare_builtin_metatype!{"*c_void" => 31}
+qdeclare_builtin_metatype! {QVariantMap => 8}
 qdeclare_builtin_metatype! {QVariantList  => 9}
 qdeclare_builtin_metatype! {QString => 10}
 qdeclare_builtin_metatype! {QByteArray => 12}
