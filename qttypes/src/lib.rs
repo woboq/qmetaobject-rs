@@ -1770,6 +1770,20 @@ fn test_qjsonobject() {
     assert_eq!(object.keys(), vec!["key".to_owned(), "test".to_owned()]);
 }
 
+#[test]
+fn test_qjsonobject_utf8() {
+    let emoji = String::from("🦀");
+    let expected = String::from("{\"🦀\":1}");
+
+    let mut qmap: QJsonObject = QJsonObject::default();
+    qmap.insert(&emoji, QVariant::from(1).into());
+
+    let actual = qmap.to_json();
+    let actual = actual.to_str().unwrap();
+
+    assert_eq!(actual, expected);
+}
+
 cpp_class!(
     /// Wrapper around [`QJsonArray`][class] class.
     ///
