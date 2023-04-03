@@ -211,14 +211,22 @@ impl QmlEngine {
                 return {};
             }
             QVariant ret;
-            QGenericArgument args[9] = {};
+            #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
+                QMetaMethodArgument args[9] = {};
+            #else
+                QGenericArgument args[9] = {};
+            #endif
             for (uint i = 0; i < args_size; ++i) {
                 args[i] = Q_ARG(QVariant, args_ptr[i]);
             }
             QMetaObject::invokeMethod(
                 robjs.first(),
                 name,
-                Q_RETURN_ARG(QVariant, ret),
+                #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
+                    qReturnArg(ret),
+                #else
+                    Q_RETURN_ARG(QVariant, ret),
+                #endif
                 args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]
             );
             return ret;
