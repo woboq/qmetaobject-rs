@@ -1655,22 +1655,22 @@ impl QJsonObject {
     pub fn insert(&mut self, key: &str, value: QJsonValue) {
         let len = key.len();
         let ptr = key.as_ptr();
-        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*", value as "QJsonValue"] { self->insert(QLatin1String(ptr, len), std::move(value)); })
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*", value as "QJsonValue"] { self->insert(QString::fromUtf8(ptr, len), std::move(value)); })
     }
     pub fn value(&self, key: &str) -> QJsonValue {
         let len = key.len();
         let ptr = key.as_ptr();
-        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> QJsonValue as "QJsonValue" { return self->value(QLatin1String(ptr, len)); })
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> QJsonValue as "QJsonValue" { return self->value(QString::fromUtf8(ptr, len)); })
     }
     pub fn take(&mut self, key: &str) -> QJsonValue {
         let len = key.len();
         let ptr = key.as_ptr();
-        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> QJsonValue as "QJsonValue" { return self->take(QLatin1String(ptr, len)); })
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> QJsonValue as "QJsonValue" { return self->take(QString::fromUtf8(ptr, len)); })
     }
     pub fn remove(&mut self, key: &str) {
         let len = key.len();
         let ptr = key.as_ptr();
-        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] { return self->remove(QLatin1String(ptr, len)); })
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] { return self->remove(QString::fromUtf8(ptr, len)); })
     }
     pub fn len(&self) -> usize {
         cpp!(unsafe [self as "QJsonObject*"] -> usize as "size_t" { return self->size(); })
@@ -1681,7 +1681,7 @@ impl QJsonObject {
     pub fn contains(&self, key: &str) -> bool {
         let len = key.len();
         let ptr = key.as_ptr();
-        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> bool as "bool" { return self->contains(QLatin1String(ptr, len)); })
+        cpp!(unsafe [self as "QJsonObject*", len as "size_t", ptr as "char*"] -> bool as "bool" { return self->contains(QString::fromUtf8(ptr, len)); })
     }
     pub fn keys(&self) -> Vec<String> {
         let len = self.len();
@@ -1769,6 +1769,20 @@ fn test_qjsonobject() {
     assert_eq!(object.to_json().to_string(), "{\"key\":\"value\",\"test\":\"hello\"}");
 
     assert_eq!(object.keys(), vec!["key".to_owned(), "test".to_owned()]);
+}
+
+#[test]
+fn test_qjsonobject_utf8() {
+    let emoji = String::from("🦀");
+    let expected = String::from("{\"🦀\":1}");
+
+    let mut qmap: QJsonObject = QJsonObject::default();
+    qmap.insert(&emoji, QVariant::from(1).into());
+
+    let actual = qmap.to_json();
+    let actual = actual.to_str().unwrap();
+
+    assert_eq!(actual, expected);
 }
 
 cpp_class!(

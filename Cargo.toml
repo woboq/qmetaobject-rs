@@ -9,4 +9,5 @@ members = [
     'examples/todos',
     'examples/webengine',
     'examples/qenum',
+    'examples/nested_qobjects',
 ]
