@@ -45,6 +45,7 @@ semver = "1"
 
 [dev-dependencies]
 cpp_build = "0.5.6"
+tempfile = { version = "3.4.0", default-features = false }
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]
