@@ -60,6 +60,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+        ver: [6.2.0, 6.5.0]
     env:
       QT_QPA_PLATFORM: offscreen
     runs-on: ${{ matrix.os }}
@@ -80,11 +81,11 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ../Qt
-        key: QtCache-${{ runner.os }}-6.2
+        key: QtCache-${{ runner.os }}-${{ matrix.ver }}
     - name: Install Qt
       uses: jurplel/install-qt-action@v2
       with:
-        version: 6.2.0
+        version: ${{ matrix.ver }}
         cached: ${{ steps.cache-qt6.outputs.cache-hit }}
     - name: Test
       run: |
