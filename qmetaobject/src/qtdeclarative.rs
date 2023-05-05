@@ -213,22 +213,18 @@ impl QmlEngine {
                 return {};
             }
             QVariant ret;
-            #if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
-                #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name, qReturnArg(ret), __VA_ARGS__);
-            #else
-                #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name, Q_RETURN_ARG(QVariant, ret), __VA_ARGS__);
-            #endif
+            #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name, Q_RETURN_ARG(QVariant, ret) __VA_ARGS__);
             switch (args_size) {
-                case 0: INVOKE_METHOD() break;
-                case 1: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0])); break;
-                case 2: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1])); break;
-                case 3: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2])); break;
-                case 4: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3])); break;
-                case 5: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4])); break;
-                case 6: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5])); break;
-                case 7: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6])); break;
-                case 8: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7])); break;
-                case 9: INVOKE_METHOD(Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
+                case 0: INVOKE_METHOD(); break;
+                case 1: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0])); break;
+                case 2: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1])); break;
+                case 3: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2])); break;
+                case 4: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3])); break;
+                case 5: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4])); break;
+                case 6: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5])); break;
+                case 7: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6])); break;
+                case 8: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7])); break;
+                case 9: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
             }
             #undef INVOKE_METHOD
             return ret;
