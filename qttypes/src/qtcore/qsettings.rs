@@ -17,13 +17,16 @@ cpp_class!(
 impl QSettings {
     /// Wrapper around [`QSettings(const QString &organization, const QString &application = QString(), QObject *parent = nullptr)`][ctor] constructor.
     ///
+    /// Note: Under the hood it uses `QSettings(format, scope, org, app)` (like Qt does internally already),
+    /// with setting `format` set to `IniFormat` and `scope` to (default) `UserScope`
+    ///
     /// [ctor]: https://doc.qt.io/qt-5/qsettings.html#QSettings-3
     pub fn new(organization: &str, application: &str) -> *mut Self {
         let organization = QString::from(organization);
         let application = QString::from(application);
         cpp!(
             unsafe [organization as "QString", application as "QString"] -> *mut QSettings as "QSettings*" {
-                QSettings* settings = new QSettings(organization, application);
+                QSettings* settings = new QSettings(QSettings::IniFormat, QSettings::UserScope, organization, application);
                 return settings;
             }
         )
@@ -36,7 +39,7 @@ impl QSettings {
         let file_name = QString::from(file_name);
         cpp!(
             unsafe [file_name as "QString"] -> *mut QSettings as "QSettings*" {
-                QSettings* settings = new QSettings(file_name, QSettings::NativeFormat);
+                QSettings* settings = new QSettings(file_name, QSettings::IniFormat);
                 return settings;
             }
         )
@@ -111,7 +114,12 @@ impl QSettings {
 fn test_qsettings_filename() {
     let inner = QSettings::new("qmetaobject", "qsettings");
     let qsettings = unsafe { inner.as_ref().unwrap() };
-    assert!(qsettings.filename().ends_with("qmetaobject/qsettings.conf"));
+
+    assert!(
+        qsettings.filename().ends_with("/qmetaobject/qsettings.ini"),
+        "'{}' does not end with '/qmetaobject/qsettings.ini'",
+        qsettings.filename()
+    );
 
     drop(qsettings);
     drop(inner);
@@ -122,7 +130,11 @@ fn test_qsettings_new_from_path() {
     let inner = QSettings::from_path("/tmp/my_settings.conf");
     let qsettings = unsafe { inner.as_ref().unwrap() };
 
-    assert_eq!(qsettings.filename(), "/tmp/my_settings.conf");
+    assert!(
+        qsettings.filename().ends_with("/tmp/my_settings.conf"),
+        "'{}' does not end with '/tmp/my_settings.conf'",
+        qsettings.filename()
+    );
 
     drop(qsettings);
     drop(inner);
