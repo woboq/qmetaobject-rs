@@ -4,6 +4,7 @@ use crate::QString;
 cpp! {{
     #include <QtCore/QSettings>
     #include <QtCore/QString>
+    #include <memory>
 }}
 
 cpp_class!(
@@ -11,7 +12,7 @@ cpp_class!(
     ///
     /// [class]: https://doc.qt.io/qt-5/qsettings.html
     #[derive(Default)]
-    pub unsafe struct QSettings as "QSettings"
+    pub unsafe struct QSettings as "std::unique_ptr<QSettings>"
 );
 
 impl QSettings {
