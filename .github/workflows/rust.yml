@@ -25,35 +25,24 @@ jobs:
             qt: 5.15.2
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
       with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
-          components: rustfmt, clippy
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
       with:
         key: rust_cache
 
-    - name: Cache Qt
-      id: cache-qt
-      uses: actions/cache@v1
-      with:
-        path: ../Qt
-        key: QtCache-${{ runner.os }}-${{ matrix.qt }}
     - name: Install Qt
-      uses: jurplel/install-qt-action@v2
+      uses: jurplel/install-qt-action@v3
       with:
         version: ${{ matrix.qt }}
-        cached: ${{ steps.cache-qt.outputs.cache-hit }}
+        cache: true
         modules: 'qtwebengine'
     - name: Build
       run: cargo build --all-features
     - name: Run tests
-      # I'm getting error i don't know how to solve 'dyld: Library not loaded: @rpath/QtCore.framework/Versions/5/QtCore
-      if: matrix.os != 'macos-latest'
-      run: cargo test --all-features
+      run: DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --all-features
 
   # Qt6 is in a different job right now because it does not have many modules and most example don't compile
   qt6:
@@ -65,28 +54,17 @@ jobs:
       QT_QPA_PLATFORM: offscreen
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-    - uses: Swatinem/rust-cache@v1
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
       with:
         key: rust_cache6
 
-    - name: Cache Qt
-      id: cache-qt6
-      uses: actions/cache@v1
-      with:
-        path: ../Qt
-        key: QtCache-${{ runner.os }}-${{ matrix.ver }}
     - name: Install Qt
-      uses: jurplel/install-qt-action@v2
+      uses: jurplel/install-qt-action@v3
       with:
         version: ${{ matrix.ver }}
-        cached: ${{ steps.cache-qt6.outputs.cache-hit }}
+        cache: true
     - name: Test
       run: |
         cargo test --manifest-path qttypes/Cargo.toml
@@ -100,13 +78,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-          profile: minimal
-          toolchain: stable
-          override: true
-    - uses: Swatinem/rust-cache@v1
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
       with:
         key: rust_cache
     - name: Build qttypes without qt
