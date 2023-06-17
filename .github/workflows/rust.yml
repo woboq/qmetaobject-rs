@@ -43,6 +43,8 @@ jobs:
       run: cargo build --all-features
     - name: Run tests
       run: DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --all-features
+      shell: bash
+ 
 
   # Qt6 is in a different job right now because it does not have many modules and most example don't compile
   qt6:
