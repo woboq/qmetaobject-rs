@@ -28,6 +28,15 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`toMap()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toByteArray
+    pub fn to_map(&self) -> QVariantMap {
+        cpp!(unsafe [self as "const QVariant*"] -> QVariantMap as "QVariantMap" {
+            return self->toMap();
+        })
+    }
+
     /// Wrapper around [`userType()`][method] method.
     ///
     /// [method]: https://doc.qt.io/qt-5/qvariant.html#userType
