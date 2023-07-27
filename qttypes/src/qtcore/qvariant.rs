@@ -28,9 +28,18 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`toDouble()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toDouble
+    pub fn to_double(&self) -> f64 {
+        cpp!(unsafe [self as "const QVariant*"] -> f64 as "double" {
+            return self->toDouble();
+        })
+    }
+
     /// Wrapper around [`toMap()`][method] method.
     ///
-    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toByteArray
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toMap
     pub fn to_map(&self) -> QVariantMap {
         cpp!(unsafe [self as "const QVariant*"] -> QVariantMap as "QVariantMap" {
             return self->toMap();
