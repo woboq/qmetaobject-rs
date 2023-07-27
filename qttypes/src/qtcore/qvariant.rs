@@ -46,6 +46,15 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`toList()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toList
+    pub fn to_list(&self) -> QVariantList {
+        cpp!(unsafe [self as "const QVariant*"] -> QVariantList as "QVariantList" {
+            return self->toList();
+        })
+    }
+
     /// Wrapper around [`toString()`][method] method.
     ///
     /// [method]: https://doc.qt.io/qt-5/qvariant.html#toString
