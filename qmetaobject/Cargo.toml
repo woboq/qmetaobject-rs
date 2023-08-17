@@ -12,9 +12,10 @@ keywords = ["Qt", "QML", "QMetaObject",]
 repository = "https://github.com/woboq/qmetaobject-rs"
 
 [features]
-default = ["log"]
+default = ["log", "qtwidgets"]
 chrono_qdatetime = ["qttypes/chrono"]
 webengine = ["qttypes/qtwebengine"]
+qtwidgets = ["qttypes/qtwidgets"]
 
 [dependencies]
 qttypes = { path = "../qttypes", version = "0.2.0", features = ["qtquick"] }
