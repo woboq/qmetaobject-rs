@@ -16,8 +16,47 @@ OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 use cpp::cpp;
+use std::{
+    any::TypeId,
+    hash::{Hash, Hasher},
+};
 
 use super::*;
+
+/// Since Rust 1.72, TypeId.t is now u128, so Qt/C++ doesn't accept it.
+/// The field is private, so it can't be simply casted. To prevent unsafe code,
+/// the next best thing is "copy-hasher" which uses TypeId.hash() function,
+/// which does the cast for us. Think of all this as "type_id.t as u64".
+struct TypeIdHasher(u64);
+
+impl Hasher for TypeIdHasher {
+    fn write(&mut self, _: &[u8]) {
+        panic!();
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        self.0 = value;
+    }
+
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
+
+#[test]
+fn type_id_hasher() {
+    let mut hasher = TypeIdHasher(0);
+    let type_u128 = std::any::TypeId::of::<u128>();
+    type_u128.hash(&mut hasher);
+    let hash_u128: u64 = hasher.finish();
+
+    let mut hasher = TypeIdHasher(0);
+    let type_u64 = std::any::TypeId::of::<u64>();
+    type_u64.hash(&mut hasher);
+    let hash_u64: u64 = hasher.finish();
+
+    assert_ne!(hash_u128, hash_u64);
+}
 
 /// A typed node in the scene graph
 ///
@@ -243,12 +282,12 @@ impl SGNode<ContainerNode> {
     }
 
     // Since Rust 1.72 TypeId is internally u128,
-    // so we'll have to (very unsafely) chop it down to u64
+    // so we'll have to turn (hash) it into a u64
     // in order to make Qt/C++ happy with it.
-    fn type_id_to_u64(&self, type_id: std::any::TypeId) -> u64 {
-        unsafe {
-            (std::mem::transmute::<std::any::TypeId, u128>(type_id) & 0x00000000FFFFFFFF) as u64
-        }
+    fn type_id_to_u64(&self, t: TypeId) -> u64 {
+        let mut s: TypeIdHasher = TypeIdHasher(0);
+        t.hash(&mut s);
+        s.finish()
     }
 
     // returns the new before_iter
