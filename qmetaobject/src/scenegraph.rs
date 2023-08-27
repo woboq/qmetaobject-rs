@@ -150,7 +150,7 @@ impl SGNode<ContainerNode> {
         F: FnMut(<Iter as Iterator>::Item, SGNode<T>) -> SGNode<T>,
     {
         let mut raw = self.raw;
-        let type_id = std::any::TypeId::of::<T>();
+        let type_id = self.type_id_to_u64(std::any::TypeId::of::<T>());
         let len = iter.len();
         assert!(len <= 64, "There is a limit of 64 child nodes");
         let mut mask = 0u64;
@@ -214,6 +214,7 @@ impl SGNode<ContainerNode> {
     ///  ```
     pub fn update_static<A: 'static, T: UpdateNodeFnTuple<A>>(&mut self, info: T) {
         let type_id = std::any::TypeId::of::<A>();
+        let type_id = self.type_id_to_u64(type_id);
         let mut mask = 0u64;
         if self.raw.is_null() {
             self.raw = cpp!(unsafe [type_id as "quint64"] -> *mut c_void as "QSGNode*" {
@@ -239,6 +240,15 @@ impl SGNode<ContainerNode> {
         cpp!(unsafe [raw_ as "ContainerNode*", mask as "quint64"] {
             raw_->mask = mask;
         });
+    }
+
+    // Since Rust 1.72 TypeId is internally u128,
+    // so we'll have to (very unsafely) chop it down to u64
+    // in order to make Qt/C++ happy with it.
+    fn type_id_to_u64(&self, type_id: std::any::TypeId) -> u64 {
+        unsafe {
+            (std::mem::transmute::<std::any::TypeId, u128>(type_id) & 0x00000000FFFFFFFF) as u64
+        }
     }
 
     // returns the new before_iter
