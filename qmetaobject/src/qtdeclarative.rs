@@ -231,7 +231,8 @@ impl QmlEngine {
         })
     }
 
-    pub fn invoke_method_noreturn(&mut self, name: QByteArray, args: &[QVariant]) -> QVariant {
+    /// This method is the same as [invoke_method] but does not capture or return function's return value
+    pub fn invoke_method_noreturn(&mut self, name: QByteArray, args: &[QVariant]) {
         let args_size = args.len();
         let args_ptr = args.as_ptr();
 
@@ -242,13 +243,12 @@ impl QmlEngine {
             name as "QByteArray",
             args_size as "size_t",
             args_ptr as "QVariant *"
-        ] -> QVariant as "QVariant"
-        {
+        ] {
             auto robjs = self->engine->rootObjects();
             if (robjs.isEmpty()) {
-                return {};
+                return;
             }
-            QVariant ret;
+            
             #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name __VA_ARGS__);
             switch (args_size) {
                 case 0: INVOKE_METHOD(); break;
@@ -263,7 +263,6 @@ impl QmlEngine {
                 case 9: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
             }
             #undef INVOKE_METHOD
-            return ret;
         })
     }
 
