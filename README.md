@@ -312,3 +312,11 @@ This crates is the best achieving this.
   implemented in Rust.
   It has the same goal as providing a new to add a UI to a Rust project with idiomatic Rust API,
   but instead of using QML for the UI, it uses its own language.
+
+## Applications built with this crate
+
+ * https://github.com/gyroflow/gyroflow
+   ![Gyroflow screenshot](https://github.com/gyroflow/gyroflow/blob/master/resources/screenshot.jpg)
+
+* https://github.com/kalaksi/lightkeeper
+  ![LightKeeper screenshot](https://github.com/kalaksi/lightkeeper/blob/master/doc/images/LightkeeperRM-overview.png)
