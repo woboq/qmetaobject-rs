@@ -11,3 +11,5 @@ members = [
     'examples/qenum',
     'examples/nested_qobjects',
 ]
+
+resolver = "2"
