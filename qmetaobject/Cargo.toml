@@ -1,6 +1,6 @@
 [package]
 name = "qmetaobject"
-version = "0.2.9"
+version = "0.2.10"
 edition = "2018"
 authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 build = "build.rs"
@@ -18,7 +18,7 @@ webengine = ["qttypes/qtwebengine"]
 
 [dependencies]
 qttypes = { path = "../qttypes", version = "0.2.0", features = ["qtquick"] }
-qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.2.9"}
+qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.2.10"}
 lazy_static = "1.0"
 cpp = "0.5.6"
 log = { version = "0.4", optional = true }
