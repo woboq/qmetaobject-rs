@@ -2,7 +2,7 @@
 name = "qmetaobject"
 version = "0.2.9"
 edition = "2018"
-authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 build = "build.rs"
 description = "Expose rust object to Qt and QML."
 readme = "../README.md"
