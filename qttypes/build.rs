@@ -220,10 +220,9 @@ fn main() {
             report_error(&format!("Rust target '{}' is not compatible with Qt mkspec '{spec}'. Mixing MinGW and MSVC is not allowed.", std::env::var_os("TARGET").unwrap_or_default().to_string_lossy()));
         }
     }
-    /* https://github.com/rust-lang/cargo/issues/9562
     if std::env::var("CARGO_CFG_TARGET_FAMILY").as_ref().map(|s| s.as_ref()) == Ok("unix") {
         println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", &qt_library_path);
-    } */
+    }
 
     println!("cargo:rustc-link-search{}={}", macos_lib_search, &qt_library_path);
 

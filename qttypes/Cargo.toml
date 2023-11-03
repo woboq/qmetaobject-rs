@@ -1,6 +1,6 @@
 [package]
 name = "qttypes"
-version = "0.2.10"
+version = "0.2.11"
 edition = "2018"
 authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 build = "build.rs"
