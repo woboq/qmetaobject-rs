@@ -211,6 +211,15 @@ fn main() {
             ""
         };
 
+    // MinGW and MSVC are not compatible
+    if cargo_target_os == "windows" {
+        let spec = qmake_query("QMAKE_SPEC");
+        if (spec.contains("msvc") && cargo_target_env == "gnu")
+            || (spec.contains("g++") && cargo_target_env == "msvc")
+        {
+            report_error(&format!("Rust target '{}' is not compatible with Qt mkspec '{spec}'. Mixing MinGW and MSVC is not allowed.", std::env::var_os("TARGET").unwrap_or_default().to_string_lossy()));
+        }
+    }
     if std::env::var("CARGO_CFG_TARGET_FAMILY").as_ref().map(|s| s.as_ref()) == Ok("unix") {
         println!("cargo:rustc-cdylib-link-arg=-Wl,-rpath,{}", &qt_library_path);
     }

@@ -169,8 +169,8 @@ use internal_prelude::*;
 
 mod qtcore;
 pub use crate::qtcore::{
-    qreal, NormalizationForm, QByteArray, QListIterator, QString, QStringList, QUrl, QVariant,
-    QVariantList, UnicodeVersion,
+    qreal, NormalizationForm, QByteArray, QListIterator, QSettings, QString, QStringList, QUrl,
+    QVariant, QVariantList, UnicodeVersion,
 };
 
 mod qtgui;

@@ -1,8 +1,8 @@
 [package]
 name = "qmetaobject_impl"
-version = "0.2.9"
+version = "0.2.10"
 edition = "2018"
-authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 description = "Custom derive for the qmetaobject crate."
 readme = "../README.md"
 license = "MIT"

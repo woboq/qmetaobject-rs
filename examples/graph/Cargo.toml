@@ -2,7 +2,7 @@
 name = "graph"
 version = "0.1.0"
 edition = "2018"
-authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 build = "build.rs"
 
 [dependencies]

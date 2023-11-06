@@ -238,6 +238,53 @@ impl QmlEngine {
         })
     }
 
+    /// This method is the same as [invoke_method] but does not capture or return function's return value
+    pub fn invoke_method_noreturn(&mut self, name: QByteArray, args: &[QVariant]) {
+        let args_size = args.len();
+        let args_ptr = args.as_ptr();
+
+        assert!(args_size <= 9);
+
+        cpp!(unsafe [
+            self as "QmlEngineHolder *",
+            name as "QByteArray",
+            args_size as "size_t",
+            args_ptr as "QVariant *"
+        ] {
+            auto robjs = self->engine->rootObjects();
+            if (robjs.isEmpty()) {
+                return;
+            }
+            
+            #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name __VA_ARGS__);
+            switch (args_size) {
+                case 0: INVOKE_METHOD(); break;
+                case 1: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0])); break;
+                case 2: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1])); break;
+                case 3: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2])); break;
+                case 4: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3])); break;
+                case 5: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4])); break;
+                case 6: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5])); break;
+                case 7: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6])); break;
+                case 8: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7])); break;
+                case 9: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
+            }
+            #undef INVOKE_METHOD
+        })
+    }
+
+    pub fn trim_component_cache(&self) {
+        cpp!(unsafe [self as "QmlEngineHolder *"] {
+            self->engine->trimComponentCache();
+        })
+    }
+
+    pub fn clear_component_cache(&self) {
+        cpp!(unsafe [self as "QmlEngineHolder *"] {
+            self->engine->clearComponentCache();
+        })
+    }
+    
     /// Give a QObject to the engine by wrapping it in a QJSValue
     ///
     /// This will create the C++ object.

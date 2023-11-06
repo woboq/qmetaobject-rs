@@ -1,8 +1,8 @@
 [package]
 name = "qttypes"
-version = "0.2.9"
+version = "0.2.11"
 edition = "2018"
-authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 build = "build.rs"
 description = "Manually maintained buildings for Qt value types"
 readme = "README.md"
@@ -47,6 +47,7 @@ semver = "1"
 
 [dev-dependencies]
 cpp_build = "0.5.6"
+tempfile = { version = "3.4.0", default-features = false }
 
 [package.metadata.docs.rs]
 dependencies = [ "qtbase5-dev", "qtdeclarative5-dev" ]

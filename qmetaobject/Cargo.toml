@@ -1,8 +1,8 @@
 [package]
 name = "qmetaobject"
-version = "0.2.9"
+version = "0.2.10"
 edition = "2018"
-authors = ["Olivier Goffart <ogoffart@woboq.com>"]
+authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 build = "build.rs"
 description = "Expose rust object to Qt and QML."
 readme = "../README.md"
@@ -19,7 +19,7 @@ widgets = ["qttypes/qtwidgets"]
 
 [dependencies]
 qttypes = { path = "../qttypes", version = "0.2.0", features = ["qtquick"] }
-qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.2.9"}
+qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.2.10"}
 lazy_static = "1.0"
 cpp = "0.5.6"
 log = { version = "0.4", optional = true }

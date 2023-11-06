@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 0.2.11  2023-11-03 (qttype only)
+
+ - reenable `cargo:rustc-cdylib-link-arg=-Wl,-rpath,` command even if it is depracated as it broke people's build
+
+## 0.2.10 2023-11-03
+
+ - qttypes: detect MSVC and MinGW incompatibilities
+ - qttypes: Added wrapper around QSettings
+ - Added QmlEngine::invoke_method_noreturn
+ - Added QmlEngine::trim_component_cache and QmlEngine::clear_component_cache
+
 ## 0.2.9 2023-06-15
 
  - Implement QMetaType for QStringList and QVariantMap
