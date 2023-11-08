@@ -248,7 +248,7 @@ impl QmlEngine {
             if (robjs.isEmpty()) {
                 return;
             }
-            
+
             #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name __VA_ARGS__);
             switch (args_size) {
                 case 0: INVOKE_METHOD(); break;
@@ -277,7 +277,7 @@ impl QmlEngine {
             self->engine->clearComponentCache();
         })
     }
-    
+
     /// Give a QObject to the engine by wrapping it in a QJSValue
     ///
     /// This will create the C++ object.
@@ -779,6 +779,29 @@ pub fn qml_register_enum<T: QEnum>(
         })
 }
 
+cpp! {{
+    #include <QtQuick/QQuickWindow>
+}}
+
+#[repr(transparent)]
+pub struct QQuickWindow(*mut c_void);
+
+impl QQuickWindow {
+    /// # Safety
+    ///
+    /// - The pointer must be a valid `QQuickWindow` pointer.
+    /// - The window must be valid for the specified lifetime `'a`.
+    pub unsafe fn from_raw<'a>(ptr: *mut c_void) -> &'a Self {
+        std::mem::transmute(ptr)
+    }
+
+    pub fn set_color(&self, color: QColor) {
+        cpp!(unsafe [self as "QQuickWindow *", color as "QColor"] {
+            self->setColor(color);
+        })
+    }
+}
+
 /// A QObject-like trait to inherit from QQuickItem.
 ///
 /// Work in progress
@@ -799,6 +822,15 @@ pub trait QQuickItem: QObject {
     fn component_complete(&mut self) {}
 
     fn release_resources(&mut self) {}
+
+    /// Window was changed.
+    ///
+    /// If the `window` is [`None`], then this item was removed from the window.
+    ///
+    /// The current window can be queried using [`QQuickItem::window`](trait.QQuickItem.html#method.window).
+    fn window_changed(&mut self, window: Option<&QQuickWindow>) {
+        let _ = window;
+    }
 
     /// Handle mouse press, release, or move events. Returns true if the event was accepted.
     fn mouse_event(&mut self, _event: QMouseEvent) -> bool {
@@ -833,6 +865,9 @@ cpp! {{
         virtual void itemChange(ItemChange, const ItemChangeData &);*/
         void classBegin() override {
             QQuickItem::classBegin();
+
+            connect(this, &QQuickItem::windowChanged, this, &Rust_QQuickItem::handleWindowChanged);
+
             rust!(Rust_QQuickItem_classBegin[
                 rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject"
             ] {
@@ -916,6 +951,21 @@ cpp! {{
         /*
         virtual void updatePolish();
         */
+
+        void handleWindowChanged(QQuickWindow* window) {
+            return rust!(Rust_QQuickItem_handleWindowChanged[
+                rust_object: QObjectPinned<dyn QQuickItem> as "TraitObject",
+                window: *mut c_void as "QQuickWindow *"
+            ] {
+                rust_object.borrow_mut().window_changed(unsafe {
+                    if window.is_null() {
+                        None
+                    } else {
+                        Some(QQuickWindow::from_raw(window))
+                    }
+                })
+            });
+        }
     };
 }}
 
@@ -932,6 +982,13 @@ impl<'a> dyn QQuickItem + 'a {
         cpp!(unsafe [obj as "Rust_QQuickItem *"] {
             if (obj) obj->update();
         });
+    }
+
+    pub fn window(&self) -> Option<&QQuickWindow> {
+        let obj = self.get_cpp_object();
+        cpp!(unsafe [obj as "Rust_QQuickItem *"] -> Option<&QQuickWindow> as "QQuickWindow *" {
+            return obj->window();
+        })
     }
 }
 
