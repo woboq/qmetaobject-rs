@@ -89,7 +89,13 @@ impl QVariant {
 
 impl fmt::Debug for QVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.to_qbytearray().to_string().as_str())
+        let data = self.to_qstring().to_string();
+        let qtype = self.type_name().to_string();
+        if data.len() == 0 {
+            f.write_fmt(format_args!("QVariant({})", qtype.as_str()))
+        } else {
+            f.write_fmt(format_args!("QVariant({}: \"{}\")", qtype.as_str(), data.as_str()))
+        }
     }
 }
 
@@ -252,4 +258,19 @@ where
     fn from(a: &'a T) -> QVariant {
         (*a).clone().into()
     }
+}
+
+
+#[test]
+fn qvariant_debug_qstring() {
+    let qv: QVariant = QString::from("Hello, QVariant!").into();
+    assert_eq!(qv.to_qstring().to_string(), "Hello, QVariant!");
+    assert_eq!(format!("{:?}", qv), "QVariant(QString: \"Hello, QVariant!\")");
+}
+
+#[test]
+fn qvariant_debug_bool() {
+    let qv = QVariant::from(false);
+    assert_eq!(qv.to_qstring().to_string(), String::from("false"));
+    assert_eq!(format!("{:?}", qv), "QVariant(bool: \"false\")");
 }
