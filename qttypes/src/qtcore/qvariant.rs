@@ -66,6 +66,15 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`toString()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toString
+    pub fn to_qstring(&self) -> QString {
+        cpp!(unsafe [self as "const QVariant*"] -> QString as "QString" {
+            return self->toString();
+        })
+    }
+
     // FIXME: do more wrappers
 }
 
