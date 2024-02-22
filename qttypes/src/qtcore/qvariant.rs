@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::{
-    cpp, cpp_class, QByteArray, QDate, QDateTime, QString, QStringList, QTime, QUrl, QVariantList,
+    cpp, cpp_class, QByteArray, QDate, QDateTime, QString, QStringList, QTime, QUrl, QVariantList, QVariantMap
 };
 
 cpp_class!(
@@ -54,6 +54,15 @@ impl QVariant {
     pub fn is_null(&self) -> bool {
         cpp!(unsafe [self as "const QVariant*"] -> bool as "bool" {
             return self->isNull();
+        })
+    }
+
+    /// Wrapper around [`toMap()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toMap
+    pub fn to_qvariantmap(&self) -> QVariantMap {
+        cpp!(unsafe [self as "const QVariant*"] -> QVariantMap as "QVariantMap" {
+            return self->toMap();
         })
     }
 
