@@ -75,6 +75,15 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around ['typeName()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#typeName
+    pub fn type_name(&self) -> QString {
+        cpp!(unsafe [self as "const QVariant*"] -> QString as "QString" {
+            return self->typeName();
+        })
+    }
+
     // FIXME: do more wrappers
 }
 
