@@ -260,17 +260,21 @@ where
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn qvariant_debug_qstring() {
-    let qv: QVariant = QString::from("Hello, QVariant!").into();
-    assert_eq!(qv.to_qstring().to_string(), "Hello, QVariant!");
-    assert_eq!(format!("{:?}", qv), "QVariant(QString: \"Hello, QVariant!\")");
-}
+    #[test]
+    fn qvariant_debug_qstring() {
+        let qv: QVariant = QString::from("Hello, QVariant!").into();
+        assert_eq!(qv.to_qstring().to_string(), "Hello, QVariant!");
+        assert_eq!(format!("{:?}", qv), "QVariant(QString: \"Hello, QVariant!\")");
+    }
 
-#[test]
-fn qvariant_debug_bool() {
-    let qv = QVariant::from(false);
-    assert_eq!(qv.to_qstring().to_string(), String::from("false"));
-    assert_eq!(format!("{:?}", qv), "QVariant(bool: \"false\")");
+    #[test]
+    fn qvariant_debug_bool() {
+        let qv = QVariant::from(false);
+        assert_eq!(qv.to_qstring().to_string(), String::from("false"));
+        assert_eq!(format!("{:?}", qv), "QVariant(bool: \"false\")");
+    }
 }
