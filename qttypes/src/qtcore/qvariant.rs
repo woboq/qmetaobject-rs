@@ -92,9 +92,9 @@ impl fmt::Debug for QVariant {
         let data = self.to_qstring().to_string();
         let qtype = self.type_name().to_string();
         if data.len() == 0 {
-            f.write_fmt(format_args!("QVariant({})", qtype.as_str()))
+            write!(f, "QVariant({})", qtype.as_str())
         } else {
-            f.write_fmt(format_args!("QVariant({}: \"{}\")", qtype.as_str(), data.as_str()))
+            write!(f, "QVariant({}: \"{}\")", qtype.as_str(), data.as_str())
         }
     }
 }
