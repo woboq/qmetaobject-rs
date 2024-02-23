@@ -75,6 +75,15 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`toInt()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toInt
+    pub fn to_int(&self) -> u32 {
+        cpp!(unsafe [self as "const QVariant*"] -> u32 as "int" {
+            return self->toInt();
+        })
+    }
+
     /// Wrapper around ['typeName()`][method] method.
     ///
     /// [method]: https://doc.qt.io/qt-5/qvariant.html#typeName
@@ -276,5 +285,12 @@ mod tests {
         let qv = QVariant::from(false);
         assert_eq!(qv.to_qstring().to_string(), String::from("false"));
         assert_eq!(format!("{:?}", qv), "QVariant(bool: \"false\")");
+    }
+
+    #[test]
+    fn qvariant_debug_int() {
+        let qv = QVariant::from(313);
+        assert_eq!(qv.to_int(), 313);
+        assert_eq!(format!("{:?}", qv), "QVariant(int: \"313\")");
     }
 }
