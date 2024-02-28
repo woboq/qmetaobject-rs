@@ -151,8 +151,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #![recursion_limit = "10240"]
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))] // Too many of that for qt types. (FIXME)
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
+#![allow(clippy::needless_pass_by_value)] // Too many of that for qt types. (FIXME)
+#![allow(clippy::cognitive_complexity)]
 
 #[doc(hidden)]
 pub use qmetaobject_impl::{qrc_internal, SimpleListItem};
@@ -511,7 +511,7 @@ impl<'pin, T: QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
     /// Borrow the object
     // FIXME: there are too many cases for which we want reentrance after borrowing
     //pub fn borrow(&self) -> std::cell::Ref<T> { self.0.borrow() }
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::should_implement_trait))]
+    #[allow(clippy::should_implement_trait)]
     pub fn borrow(&self) -> &T {
         unsafe { &*self.0.as_ptr() }
     }
