@@ -177,8 +177,8 @@ fn call_method() {
 struct RegisteredObj {
     base: qt_base_class!(trait QObject),
     value: qt_property!(u32),
-    square: qt_method!(
-        fn square(&self, v: u32) -> u32 {
+    multiply_values: qt_method!(
+        fn multiply_values(&self, v: u32) -> u32 {
             self.value * v
         }
     ),
@@ -205,7 +205,57 @@ fn register_type() {
                 value: 55
             }
             function doTest() {
-                return test.square(66) === 55 * 66;
+                return test.multiply_values(66) === 55 * 66;
+            }
+        }
+        "
+    ));
+}
+
+#[derive(QObject)]
+struct RegisteredObjWithNoDefault {
+    base: qt_base_class!(trait QObject),
+    value: qt_property!(u32),
+    multiply_values: qt_method!(
+        fn multiply_values(&self, v: u32) -> u32 {
+            self.value * self.internal_value * v
+        }
+    ),
+    internal_value: u32,
+}
+
+impl RegisteredObjWithNoDefault {
+    fn new(internal_value: u32) -> RegisteredObjWithNoDefault {
+        RegisteredObjWithNoDefault {
+            internal_value,
+            base: Default::default(),
+            value: Default::default(),
+            multiply_values: Default::default(),
+        }
+    }
+}
+
+#[test]
+fn register_uncreatable_type() {
+    qml_register_uncreatable_type::<RegisteredObjWithNoDefault>(
+        CStr::from_bytes_with_nul(b"TestRegisterUncreatable\0").unwrap(),
+        1,
+        0,
+        CStr::from_bytes_with_nul(b"RegisteredObjUncreatable\0").unwrap(),
+        QString::from("Type has no default"),
+    );
+
+    let mut obj = RegisteredObjWithNoDefault::new(44);
+    obj.value = 55;
+
+    assert!(do_test(
+        obj,
+        r"
+        import TestRegister 1.0
+
+        Item {
+            function doTest() {
+                return _obj.multiply_values(66) === 44 * 55 * 66;
             }
         }
         "

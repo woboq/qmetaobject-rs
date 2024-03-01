@@ -450,9 +450,9 @@ impl QmlComponent {
     }
 }
 
-/// Register the given type as a QML type
+/// Wrapper around [`template <typename T> int qmlRegisterType(const char *uri, int versionMajor, int versionMinor, const char *qmlName)`][qt] function.
 ///
-/// Refer to the Qt documentation for qmlRegisterType.
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterType
 pub fn qml_register_type<T: QObject + Default + Sized>(
     uri: &CStr,
     version_major: u32,
@@ -543,6 +543,89 @@ pub fn qml_register_type<T: QObject + Default + Sized>(
             /*attachedPropertiesMetaObject*/ nullptr,
 
             /*parserStatusCast*/ parserStatusCast,
+            /*valueSourceCast*/ -1,
+            /*valueInterceptorCast*/ -1,
+
+            /*extensionObjectCreate*/ nullptr,
+            /*extensionMetaObject*/ nullptr,
+            /*customParser*/ nullptr,
+            /*revision*/ {}  // FIXME: support revisions?
+        };
+        QQmlPrivate::qmlregister(QQmlPrivate::TypeRegistration, &api);
+    })
+}
+
+/// Wrapper around [`template <typename T> int qmlRegisterUncreatableType(const char *uri, int versionMajor, int versionMinor, const char *qmlName, const QString &message)`][qt] function.
+///
+/// [qt]: https://doc.qt.io/qt-5/qqmlengine.html#qmlRegisterUncreatableType
+pub fn qml_register_uncreatable_type<T: QObject + Sized>(
+    uri: &CStr,
+    version_major: u32,
+    version_minor: u32,
+    qml_name: &CStr,
+    no_creation_reason: QString,
+) {
+    let uri_ptr = uri.as_ptr();
+    let qml_name_ptr = qml_name.as_ptr();
+    let meta_object = T::static_meta_object();
+
+    let size = T::cpp_size();
+
+    let type_id = <RefCell<T> as PropertyType>::register_type(Default::default());
+
+    cpp!(unsafe [
+        qml_name_ptr as "char *",
+        uri_ptr as "char *",
+        version_major as "int",
+        version_minor as "int",
+        meta_object as "const QMetaObject *",
+        size as "size_t",
+        type_id as "int",
+        no_creation_reason as "QString"
+    ] {
+        // BEGIN: From QML_GETTYPENAMES
+        // FIXME: list type?
+        /*const int listLen = int(strlen("QQmlListProperty<"));
+        QVarLengthArray<char,64> listName(listLen + nameLen + 2);
+        memcpy(listName.data(), "QQmlListProperty<", size_t(listLen));
+        memcpy(listName.data()+listLen, className, size_t(nameLen));
+        listName[listLen+nameLen] = '>';
+        listName[listLen+nameLen+1] = '\0';*/
+        // END
+
+        QQmlPrivate::RegisterType api = {
+            /*version*/ 0,
+
+        #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+            /*typeId*/ type_id,
+        #else
+            /*typeId*/ QMetaType(type_id),
+        #endif
+            /*listId*/ {},  // FIXME: list type?
+            /*objectSize*/ int(size),
+            /*create*/ nullptr,
+        #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+            /* userdata */ nullptr,
+        #endif
+            /*noCreationReason*/ no_creation_reason,
+        #if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+            /* createValueType */ nullptr,
+        #endif
+
+            /*uri*/ uri_ptr,
+        #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+            /*versionMajor*/ version_major,
+            /*versionMinor*/ version_minor,
+        #else
+            /*version*/ QTypeRevision::fromVersion(version_major, version_minor),
+        #endif
+            /*elementName*/ qml_name_ptr,
+            /*metaObject*/ meta_object,
+
+            /*attachedPropertiesFunction*/ nullptr,
+            /*attachedPropertiesMetaObject*/ nullptr,
+
+            /*parserStatusCast*/ -1,
             /*valueSourceCast*/ -1,
             /*valueInterceptorCast*/ -1,
 
