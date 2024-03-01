@@ -1,5 +1,6 @@
 use crate::internal_prelude::*;
 use crate::QString;
+use std::ffi::CStr;
 use std::fmt::Display;
 use std::os::raw::c_char;
 use std::str::Utf8Error;
@@ -31,6 +32,7 @@ impl QByteArray {
         std::str::from_utf8(self.to_slice())
     }
 }
+
 impl<'a> From<&'a [u8]> for QByteArray {
     /// Constructs a `QByteArray` from a slice. (Copy the slice.)
     fn from(s: &'a [u8]) -> QByteArray {
@@ -41,18 +43,32 @@ impl<'a> From<&'a [u8]> for QByteArray {
         })
     }
 }
+
 impl<'a> From<&'a str> for QByteArray {
     /// Constructs a `QByteArray` from a `&str`. (Copy the string.)
     fn from(s: &'a str) -> QByteArray {
         s.as_bytes().into()
     }
 }
+
 impl From<String> for QByteArray {
     /// Constructs a `QByteArray` from a `String`. (Copy the string.)
     fn from(s: String) -> QByteArray {
         QByteArray::from(&*s)
     }
 }
+
+impl AsRef<CStr> for QByteArray {
+    fn as_ref(&self) -> &CStr {
+        unsafe {
+            let s = cpp!([self as "const QByteArray*"] -> *const c_char as "const char*" {
+                return self->constData();
+            });
+            &CStr::from_ptr(s)
+        }
+    }
+}
+
 impl From<QString> for QByteArray {
     /// Converts a `QString` to a `QByteArray`
     fn from(s: QString) -> QByteArray {
@@ -61,6 +77,7 @@ impl From<QString> for QByteArray {
         })
     }
 }
+
 impl Display for QByteArray {
     /// Prints the contents of the `QByteArray` if it contains UTF-8, do nothing otherwise.
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -72,6 +89,7 @@ impl Display for QByteArray {
         }
     }
 }
+
 impl std::fmt::Debug for QByteArray {
     /// Prints the contents of the `QByteArray` if it contains UTF-8,  nothing otherwise
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

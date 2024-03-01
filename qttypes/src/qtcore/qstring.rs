@@ -317,6 +317,14 @@ impl TryFrom<QString> for i16 {
     }
 }
 
+impl From<QString> for Vec<u8> {
+    fn from(s: QString) -> Self {
+        std::char::decode_utf16(s.to_slice().into_iter().cloned())
+            .map(|x| (x.expect("QString contains invalid character") as u8))
+            .collect()
+    }
+}
+
 impl Add for QString {
     type Output = QString;
 
@@ -406,5 +414,14 @@ mod tests {
 
         let str3 = QString::from("abcef") + QString::from("gefg");
         assert_eq!(str1, str3);
+    }
+
+    #[test]
+    fn cstring() {
+        use std::ffi::CString;
+
+        let s = "abc";
+        let qstr = QString::from(s);
+        assert_eq!(CString::new(qstr), CString::new(s));
     }
 }
