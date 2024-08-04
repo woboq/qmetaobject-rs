@@ -1,7 +1,8 @@
 use std::fmt;
 
 use crate::{
-    cpp, cpp_class, QByteArray, QDate, QDateTime, QString, QStringList, QTime, QUrl, QVariantList, QVariantMap
+    cpp, cpp_class, QByteArray, QDate, QDateTime, QString, QStringList, QTime, QUrl, QVariantList,
+    QVariantMap,
 };
 
 cpp_class!(
@@ -114,6 +115,16 @@ impl From<QString> for QVariant {
     /// [ctor]: https://doc.qt.io/qt-5/qvariant.html#QVariant-14
     fn from(a: QString) -> QVariant {
         cpp!(unsafe [a as "QString"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
+    }
+}
+impl From<QVariantMap> for QVariant {
+    /// Wrapper around [`QVariant(const QMap<QString, QVariant> &)`][ctor] constructor.
+    ///
+    /// [ctor]: https://doc.qt.io/qt-5/qvariant.html#QVariant-22
+    fn from(a: QVariantMap) -> QVariant {
+        cpp!(unsafe [a as "QVariantMap"] -> QVariant as "QVariant" {
             return QVariant(a);
         })
     }
