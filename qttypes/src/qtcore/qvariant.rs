@@ -93,6 +93,13 @@ impl QVariant {
         })
     }
 
+    /// Return a `null` QVariant, in contrast to `default()` which returns an `undefined` QVariant.
+    pub fn null() -> QVariant {
+        cpp!(unsafe [] -> QVariant as "QVariant" {
+            return QJsonValue().toVariant();
+        })
+    }
+
     // FIXME: do more wrappers
 }
 
@@ -292,5 +299,16 @@ mod tests {
         let qv = QVariant::from(313);
         assert_eq!(qv.to_int(), 313);
         assert_eq!(format!("{:?}", qv), "QVariant(int: \"313\")");
+    }
+
+    #[test]
+    fn qvariant_null() {
+        let qv_undefined = QVariant::default();
+        assert!(qv_undefined.is_null());
+        assert!(!qv_undefined.is_valid());
+
+        let qv_null = QVariant::null();
+        assert!(qv_null.is_null());
+        assert!(qv_null.is_valid());
     }
 }
