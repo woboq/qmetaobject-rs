@@ -2,6 +2,7 @@ use std::fmt;
 
 use crate::{
     cpp, cpp_class, QByteArray, QDate, QDateTime, QString, QStringList, QTime, QUrl, QVariantList,
+    QVariantMap,
 };
 
 cpp_class!(
@@ -57,12 +58,54 @@ impl QVariant {
         })
     }
 
+    /// Wrapper around [`toMap()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toMap
+    pub fn to_qvariantmap(&self) -> QVariantMap {
+        cpp!(unsafe [self as "const QVariant*"] -> QVariantMap as "QVariantMap" {
+            return self->toMap();
+        })
+    }
+
+    /// Wrapper around [`toString()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toString
+    pub fn to_qstring(&self) -> QString {
+        cpp!(unsafe [self as "const QVariant*"] -> QString as "QString" {
+            return self->toString();
+        })
+    }
+
+    /// Wrapper around [`toInt()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#toInt
+    pub fn to_int(&self) -> u32 {
+        cpp!(unsafe [self as "const QVariant*"] -> u32 as "int" {
+            return self->toInt();
+        })
+    }
+
+    /// Wrapper around ['typeName()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qvariant.html#typeName
+    pub fn type_name(&self) -> QString {
+        cpp!(unsafe [self as "const QVariant*"] -> QString as "QString" {
+            return self->typeName();
+        })
+    }
+
     // FIXME: do more wrappers
 }
 
 impl fmt::Debug for QVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.to_qbytearray().to_string().as_str())
+        let data = self.to_qstring().to_string();
+        let qtype = self.type_name().to_string();
+        if data.len() == 0 {
+            write!(f, "QVariant({})", qtype.as_str())
+        } else {
+            write!(f, "QVariant({}: \"{}\")", qtype.as_str(), data.as_str())
+        }
     }
 }
 
@@ -72,6 +115,16 @@ impl From<QString> for QVariant {
     /// [ctor]: https://doc.qt.io/qt-5/qvariant.html#QVariant-14
     fn from(a: QString) -> QVariant {
         cpp!(unsafe [a as "QString"] -> QVariant as "QVariant" {
+            return QVariant(a);
+        })
+    }
+}
+impl From<QVariantMap> for QVariant {
+    /// Wrapper around [`QVariant(const QMap<QString, QVariant> &)`][ctor] constructor.
+    ///
+    /// [ctor]: https://doc.qt.io/qt-5/qvariant.html#QVariant-22
+    fn from(a: QVariantMap) -> QVariant {
+        cpp!(unsafe [a as "QVariantMap"] -> QVariant as "QVariant" {
             return QVariant(a);
         })
     }
@@ -224,5 +277,31 @@ where
 {
     fn from(a: &'a T) -> QVariant {
         (*a).clone().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn qvariant_debug_qstring() {
+        let qv: QVariant = QString::from("Hello, QVariant!").into();
+        assert_eq!(qv.to_qstring().to_string(), "Hello, QVariant!");
+        assert_eq!(format!("{:?}", qv), "QVariant(QString: \"Hello, QVariant!\")");
+    }
+
+    #[test]
+    fn qvariant_debug_bool() {
+        let qv = QVariant::from(false);
+        assert_eq!(qv.to_qstring().to_string(), String::from("false"));
+        assert_eq!(format!("{:?}", qv), "QVariant(bool: \"false\")");
+    }
+
+    #[test]
+    fn qvariant_debug_int() {
+        let qv = QVariant::from(313);
+        assert_eq!(qv.to_int(), 313);
+        assert_eq!(format!("{:?}", qv), "QVariant(int: \"313\")");
     }
 }

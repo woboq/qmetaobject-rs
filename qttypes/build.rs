@@ -197,9 +197,12 @@ fn main() {
     println!("cargo:FOUND=1");
     println!("cargo:COMPILE_FLAGS={}", flags.join(";"));
 
-    let macos_lib_search = if cargo_target_os == "macos" { "=framework" } else { "" };
+    let use_macos_frameworks =
+        cargo_target_os == "macos" && Path::new(&qt_library_path).join("QtCore.framework").exists();
+
+    let macos_lib_search = if use_macos_frameworks { "=framework" } else { "" };
     let vers_suffix =
-        if cargo_target_os == "macos" { "".to_string() } else { qt_version.major.to_string() };
+        if use_macos_frameworks { "".to_string() } else { qt_version.major.to_string() };
 
     // Windows debug suffix exclusively from MSVC land
     let debug = std::env::var("DEBUG").ok().map_or(false, |s| s == "true");

@@ -91,6 +91,12 @@ impl IndexMut<usize> for QVariantList {
     }
 }
 
+impl std::fmt::Debug for QVariantList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map().entries(self.into_iter().enumerate()).finish()
+    }
+}
+
 impl<'a> IntoIterator for &'a QVariantList {
     type Item = &'a QVariant;
     type IntoIter = QListIterator<'a, QVariantList, QVariant>;
@@ -159,5 +165,17 @@ mod tests {
         assert_eq!(qs1.to_string(), "hello");
         assert_eq!(qs2.to_string(), "hello");
         assert_eq!(qba4.to_string(), "hello");
+    }
+
+    #[test]
+    fn qvariantlist_debug() {
+        let mut list = QVariantList::default();
+        list.push(42.into());
+        list.push(QString::from("String!").into());
+        list.push(QByteArray::from("Bytearray!").into());
+        assert_eq!(
+            format!("{:?}", list),
+            "{0: QVariant(int: \"42\"), 1: QVariant(QString: \"String!\"), 2: QVariant(QByteArray: \"Bytearray!\")}"
+        );
     }
 }
