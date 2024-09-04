@@ -20,6 +20,8 @@ required = []
 
 # Link against QtQuick
 qtquick = []
+# Link against QtWidgets
+qtwidgets = []
 # Link against QtWebEngine
 qtwebengine = []
 # Link against QtQuickControls2

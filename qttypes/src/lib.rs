@@ -112,6 +112,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //! | **`qtmultimedia`**        | Qt Multimedia         |
 //! | **`qtmultimediawidgets`** | Qt Multimedia Widgets |
 //! | **`qtquick`**             | Qt Quick              |
+//! | **`qtwidgets`**           | Qt Widgets            |
 //! | **`qtquickcontrols2`**    | Qt Quick Controls     |
 //! | **`qtsql`**               | Qt SQL                |
 //! | **`qttest`**              | Qt Test               |
