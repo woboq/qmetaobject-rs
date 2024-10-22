@@ -65,9 +65,9 @@ jobs:
         cache: true
     - name: Test
       run: |
-        cargo test --manifest-path qttypes/Cargo.toml
-        cargo test --manifest-path qmetaobject_impl/Cargo.toml
-        cargo test --manifest-path qmetaobject/Cargo.toml
+        DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --manifest-path qttypes/Cargo.toml
+        DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --manifest-path qmetaobject_impl/Cargo.toml
+        DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --manifest-path qmetaobject/Cargo.toml
 
 
   no_qt:
