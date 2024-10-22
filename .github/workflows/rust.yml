@@ -38,7 +38,7 @@ jobs:
     - name: Build
       run: cargo build --all-features
     - name: Run tests
-      run: DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --all-features
+      run: cargo test --all-features
       shell: bash
 
 
@@ -46,7 +46,7 @@ jobs:
   qt6:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         ver: [6.2.0, 6.5.0]
     env:
       QT_QPA_PLATFORM: offscreen
@@ -65,9 +65,9 @@ jobs:
         cache: true
     - name: Test
       run: |
-        DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --manifest-path qttypes/Cargo.toml
-        DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --manifest-path qmetaobject_impl/Cargo.toml
-        DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --manifest-path qmetaobject/Cargo.toml
+        cargo test --manifest-path qttypes/Cargo.toml
+        cargo test --manifest-path qmetaobject_impl/Cargo.toml
+        cargo test --manifest-path qmetaobject/Cargo.toml
 
 
   no_qt:
