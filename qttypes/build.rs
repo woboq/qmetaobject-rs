@@ -133,6 +133,9 @@ fn detect_version_from_header(qt_include_path: &str, qt_library_path: &str) -> S
 }
 
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(no_qt)");
+    println!("cargo:rustc-check-cfg=cfg(qt_5_11,qt_5_12,qt_5_15,qreal_is_float)");
+
     // Simple cfg!(target_* = "...") doesn't work in build scripts the way it does in crate's code.
     // https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
     let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
