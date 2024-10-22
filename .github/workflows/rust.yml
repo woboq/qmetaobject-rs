@@ -19,13 +19,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         qt: [5.15.2, 5.9.9, 5.12.9]
         rust: [stable, nightly]
-        include:
-          - os: macos-latest
-            rust: stable
-            qt: 5.15.2
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
       with:
           toolchain: ${{ matrix.rust }}
@@ -34,7 +30,7 @@ jobs:
         key: rust_cache
 
     - name: Install Qt
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
         version: ${{ matrix.qt }}
         cache: true
@@ -44,26 +40,26 @@ jobs:
     - name: Run tests
       run: DYLD_FRAMEWORK_PATH=$Qt5_DIR/lib cargo test --all-features
       shell: bash
- 
+
 
   # Qt6 is in a different job right now because it does not have many modules and most example don't compile
   qt6:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         ver: [6.2.0, 6.5.0]
     env:
       QT_QPA_PLATFORM: offscreen
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
       with:
         key: rust_cache6
 
     - name: Install Qt
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
         version: ${{ matrix.ver }}
         cache: true
@@ -80,7 +76,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
       with:
