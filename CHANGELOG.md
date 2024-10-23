@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 0.2.12 2024-10-22 (qttype only)
+
+ - Prefer Qt6 over Qt5 if there is a `qmake6` binary in PATH
+ - `impl From<QVariantMap> for QVariant`
+ - Add QVariant::to_qvariantmap wrapper
+ - Add QVariant::to_qstring wrapper
+ - Add QVariant::type_name wrapper
+ - Add Debug for QVariantList
+ - Add QVariant::toInt wrapper
+ - Fix Qt linkage on macOS when Qt was configured with -no-framework
+
 ## 0.2.11  2023-11-03 (qttype only)
 
  - reenable `cargo:rustc-cdylib-link-arg=-Wl,-rpath,` command even if it is depracated as it broke people's build

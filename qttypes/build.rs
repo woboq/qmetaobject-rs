@@ -43,8 +43,8 @@ fn qmake_query(var: &str) -> String {
         Err(_env_var_err) => {
             (|| {
                 // Some Linux distributions (Fedora, Arch) rename qmake to qmake-qt5.
-                // qmake6 is somehow an official alias
-                for qmake in &["qmake", "qmake6", "qmake-qt5"] {
+                // qmake6 is an official alias that generally always points to the Qt6 version.
+                for qmake in &["qmake6", "qmake", "qmake-qt5"] {
                     match Command::new(qmake).args(&["-query", var]).output() {
                         Err(err) if err.kind() == std::io::ErrorKind::NotFound => continue,
                         x => return x,
@@ -133,6 +133,9 @@ fn detect_version_from_header(qt_include_path: &str, qt_library_path: &str) -> S
 }
 
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(no_qt)");
+    println!("cargo:rustc-check-cfg=cfg(qt_5_11,qt_5_12,qt_5_15,qreal_is_float)");
+
     // Simple cfg!(target_* = "...") doesn't work in build scripts the way it does in crate's code.
     // https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
     let cargo_target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();

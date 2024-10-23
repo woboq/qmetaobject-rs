@@ -41,7 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //!   directory where the Qt headers and Qt libraries are installed.
 //! - Otherwise you can specify a `QMAKE` environment variable with the absolute path of the
 //!   `qmake` executable which will be used to query these paths.
-//! - If none of these environment variable is set, the `qmake` executable found in `$PATH`.
+//! - If none of these environment variable is set, the `qmake6` or `qmake` executable found in `$PATH`.
 //!
 //! ## Philosophy
 //!
