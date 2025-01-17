@@ -1124,6 +1124,18 @@ impl From<QImage> for QPixmap {
     }
 }
 
+/// Bindings for [`Qt::PenCapStyle`][enum] enum.
+///
+/// [enum]: https://doc.qt.io/qt-5/qt.html#PenCapStyle-enum
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[allow(non_camel_case_types)]
+pub enum PenCapStyle {
+    FlatCap = 0x00,
+    SquareCap = 0x10,
+    RoundCap = 0x20,
+}
+
 /// Bindings for [`Qt::PenStyle`][enum] enum.
 ///
 /// [enum]: https://doc.qt.io/qt-5/qt.html#PenStyle-enum
@@ -1166,6 +1178,9 @@ impl QPen {
     pub fn set_width_f(&mut self, width: qreal) {
         cpp!(unsafe [self as "QPen*", width as "qreal"] { return self->setWidthF(width); });
     }
+    pub fn set_cap_style(&mut self, style: PenCapStyle) {
+        cpp!(unsafe [self as "QPen*", style as "Qt::PenCapStyle"] { return self->setCapStyle(style); });
+    }
 
     //    QBrush	brush() const
     //    Qt::PenCapStyle	capStyle() const
@@ -1177,7 +1192,6 @@ impl QPen {
     //    Qt::PenJoinStyle	joinStyle() const
     //    qreal	miterLimit() const
     //    void	setBrush(const QBrush &brush)
-    //    void	setCapStyle(Qt::PenCapStyle style)
     //    void	setCosmetic(bool cosmetic)
     //    void	setDashOffset(qreal offset)
     //    void	setDashPattern(const QVector<qreal> &pattern)
