@@ -1,3 +1,6 @@
+use std::iter::FromIterator;
+use std::ops::{Index, IndexMut};
+
 /* Copyright (C) 2018 Olivier Goffart <ogoffart@woboq.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
@@ -192,6 +195,15 @@ impl QmlEngine {
         let obj_ptr = obj.get_or_create_cpp_object();
         cpp!(unsafe [self as "QmlEngineHolder *", name as "QString", obj_ptr as "QObject *"] {
             self->engine->rootContext()->setContextProperty(name, obj_ptr);
+        })
+    }
+
+    /// Evaluates the expression `program` using [`QJSEngine::evaluate()`][qt-qjs]
+    ///
+    /// [qt-qjs]: https://doc.qt.io/qt-5/qjsengine.html#evaluate
+    pub fn evaluate(&self, program: QString) -> QJSValue {
+        cpp!(unsafe [self as "QmlEngineHolder *", program as "QString"] -> QJSValue as "QJSValue" {
+            return self->engine->evaluate(program);
         })
     }
 
@@ -975,10 +987,50 @@ cpp_class!(
     pub unsafe struct QJSValue as "QJSValue"
 );
 
+/// Wrapper for [`QJSValue::SpecialValue`][qt]
+///
+/// [qt]: https://doc.qt.io/qt-5/qjsvalue.html#SpecialValue-enum
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum QJSValueSpecialValue {
+    NullValue = 0,
+    UndefinedValue = 1,
+}
+
 impl QJSValue {
+    pub fn null() -> Self {
+        cpp!(unsafe [] -> QJSValue as "QJSValue" {
+            return QJSValue(QJSValue::SpecialValue::NullValue);
+        })
+    }
+
+    pub fn undefined() -> Self {
+        cpp!(unsafe [] -> QJSValue as "QJSValue" {
+            return QJSValue(QJSValue::SpecialValue::UndefinedValue);
+        })
+    }
+
+    pub fn call(&self, args: QJSValueList) -> QJSValue {
+        cpp!(unsafe [self as "QJSValue *", args as "QJSValueList"] -> QJSValue as "QJSValue" {
+            return self->call(args);
+        })
+    }
+
     pub fn is_bool(&self) -> bool {
         cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
             return self->isBool();
+        })
+    }
+
+    pub fn is_callable(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isCallable();
+        })
+    }
+
+    pub fn is_null(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isNull();
         })
     }
 
@@ -991,6 +1043,12 @@ impl QJSValue {
     pub fn is_string(&self) -> bool {
         cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
             return self->isString();
+        })
+    }
+
+    pub fn is_undefined(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isUndefined();
         })
     }
 
@@ -1075,6 +1133,14 @@ impl From<bool> for QJSValue {
     }
 }
 
+impl From<QJSValueSpecialValue> for QJSValue {
+    fn from(a: QJSValueSpecialValue) -> QJSValue {
+        cpp!(unsafe [a as "QJSValue::SpecialValue"] -> QJSValue as "QJSValue" {
+            return QJSValue(a);
+        })
+    }
+}
+
 impl QMetaType for QJSValue {
     fn register(_name: Option<&CStr>) -> i32 {
         cpp!(unsafe [] -> i32 as "int" { return qMetaTypeId<QJSValue>(); })
@@ -1094,12 +1160,44 @@ mod qjsvalue_tests {
     }
 
     #[test]
+    fn test_call() {
+        let engine = QmlEngine::new();
+        let func = engine.evaluate(QString::from("(function(a, b){ return a + b; })"));
+
+        let arg_list: QJSValueList = vec![11, 31].into_iter().collect();
+
+        let call_res = func.call(arg_list);
+
+        assert_eq!(call_res.to_number(), 42 as f64);
+    }
+
+    #[test]
     fn test_is_bool() {
         let bool_value = QJSValue::from(true);
         let num_value = QJSValue::from(42);
 
         assert!(bool_value.is_bool());
         assert!(!num_value.is_bool());
+    }
+
+    #[test]
+    fn test_is_callable() {
+        let engine = QmlEngine::new();
+
+        let eval_result = engine.evaluate(QString::from("(function(){})"));
+        let num_value = QJSValue::from(42);
+
+        assert!(eval_result.is_callable());
+        assert!(!num_value.is_callable());
+    }
+
+    #[test]
+    fn test_is_null() {
+        let null_value = QJSValue::from(QJSValueSpecialValue::NullValue);
+        let num_value = QJSValue::from(42);
+
+        assert!(null_value.is_null());
+        assert!(!num_value.is_null());
     }
 
     #[test]
@@ -1121,11 +1219,148 @@ mod qjsvalue_tests {
     }
 
     #[test]
+    fn test_is_undefined() {
+        let undefined_value = QJSValue::from(QJSValueSpecialValue::UndefinedValue);
+        let default_value = QJSValue::default();
+        let num_value = QJSValue::from(42);
+
+        assert!(undefined_value.is_undefined());
+        assert!(default_value.is_undefined());
+        assert!(!num_value.is_undefined());
+    }
+
+    #[test]
     fn test_qvariantlist_from_iter() {
         let v = vec![1u32, 2u32, 3u32];
         let qvl: QVariantList = v.iter().collect();
         assert_eq!(qvl.len(), 3);
         assert_eq!(qvl[1].to_qbytearray().to_string(), "2");
+    }
+}
+
+cpp_class!(
+    /// Wrapper around [`QJSValueList`][type] typedef.
+    ///
+    /// [type]: https://doc.qt.io/qt-5/qjsvalue.html#QJSValueList-typedef
+    pub unsafe struct QJSValueList as "QJSValueList"
+);
+
+impl QJSValueList {
+    /// Wrapper around [`append(const T &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#append
+    pub fn push(&mut self, value: QJSValue) {
+        cpp!(unsafe [self as "QJSValueList*", value as "QJSValue"] {
+            self->append(std::move(value));
+        })
+    }
+
+    /// Wrapper around [`insert(int, const QVariant &)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#insert
+    pub fn insert(&mut self, index: usize, element: QJSValue) {
+        cpp!(unsafe [self as "QJSValueList*", index as "size_t", element as "QJSValue"] {
+            self->insert(index, std::move(element));
+        })
+    }
+
+    /// Wrapper around [`takeAt(int)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#takeAt
+    pub fn remove(&mut self, index: usize) -> QJSValue {
+        cpp!(unsafe [self as "QJSValueList*", index as "size_t"] -> QJSValue as "QJSValue" {
+            return self->takeAt(index);
+        })
+    }
+
+    /// Wrapper around [`size()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#size
+    pub fn len(&self) -> usize {
+        cpp!(unsafe [self as "QJSValueList*"] -> usize as "size_t" {
+            return self->size();
+        })
+    }
+
+    /// Wrapper around [`isEmpty()`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#isEmpty
+    pub fn is_empty(&self) -> bool {
+        cpp!(unsafe [self as "QJSValueList*"] -> bool as "bool" {
+            return self->isEmpty();
+        })
+    }
+}
+
+impl Index<usize> for QJSValueList {
+    type Output = QJSValue;
+
+    /// Wrapper around [`at(int)`][method] method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#at
+    fn index(&self, index: usize) -> &QJSValue {
+        assert!(index < self.len());
+        unsafe {
+            &*cpp!([self as "QJSValueList*", index as "size_t"] -> *const QJSValue as "const QJSValue*" {
+                return &self->at(index);
+            })
+        }
+    }
+}
+impl IndexMut<usize> for QJSValueList {
+    /// Wrapper around [`operator[](int)`][method] operator method.
+    ///
+    /// [method]: https://doc.qt.io/qt-5/qlist.html#operator-5b-5d
+    fn index_mut(&mut self, index: usize) -> &mut QJSValue {
+        assert!(index < self.len());
+        unsafe {
+            &mut *cpp!([self as "QJSValueList*", index as "size_t"] -> *mut QJSValue as "QJSValue*" {
+                return &(*self)[index];
+            })
+        }
+    }
+}
+
+/// Internal class used to iterate over a [`QJSValueList`][]
+///
+/// [`QJSValueList`]: ./struct.QJSValueList.html
+pub struct QJSValueListIterator<'a> {
+    list: &'a QJSValueList,
+    index: usize,
+    size: usize,
+}
+
+impl<'a> Iterator for QJSValueListIterator<'a> {
+    type Item = &'a QJSValue;
+    fn next(&mut self) -> Option<&'a QJSValue> {
+        if self.index == self.size {
+            None
+        } else {
+            self.index += 1;
+            Some(&self.list[self.index - 1])
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a QJSValueList {
+    type Item = &'a QJSValue;
+    type IntoIter = QJSValueListIterator<'a>;
+
+    fn into_iter(self) -> QJSValueListIterator<'a> {
+        QJSValueListIterator::<'a> { list: self, index: 0, size: self.len() }
+    }
+}
+
+impl<T> FromIterator<T> for QJSValueList
+where
+    T: Into<QJSValue>,
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> QJSValueList {
+        let mut l = QJSValueList::default();
+        for i in iter {
+            l.push(i.into());
+        }
+        l
     }
 }
 
