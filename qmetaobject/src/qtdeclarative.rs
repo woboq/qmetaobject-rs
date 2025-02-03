@@ -975,10 +975,38 @@ cpp_class!(
     pub unsafe struct QJSValue as "QJSValue"
 );
 
+/// Wrapper for [`QJSValue::SpecialValue`][qt]
+///
+/// [qt]: https://doc.qt.io/qt-5/qjsvalue.html#SpecialValue-enum
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum QJSValueSpecialValue {
+    NullValue = 0,
+    UndefinedValue = 1,
+}
+
 impl QJSValue {
+    pub fn null() -> Self {
+        cpp!(unsafe [] -> QJSValue as "QJSValue" {
+            return QJSValue(QJSValue::SpecialValue::NullValue);
+        })
+    }
+
+    pub fn undefined() -> Self {
+        cpp!(unsafe [] -> QJSValue as "QJSValue" {
+            return QJSValue(QJSValue::SpecialValue::UndefinedValue);
+        })
+    }
+
     pub fn is_bool(&self) -> bool {
         cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
             return self->isBool();
+        })
+    }
+
+    pub fn is_null(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isNull();
         })
     }
 
@@ -991,6 +1019,12 @@ impl QJSValue {
     pub fn is_string(&self) -> bool {
         cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
             return self->isString();
+        })
+    }
+
+    pub fn is_undefined(&self) -> bool {
+        cpp!(unsafe [self as "const QJSValue *"] -> bool as "bool" {
+            return self->isUndefined();
         })
     }
 
@@ -1075,6 +1109,14 @@ impl From<bool> for QJSValue {
     }
 }
 
+impl From<QJSValueSpecialValue> for QJSValue {
+    fn from(a: QJSValueSpecialValue) -> QJSValue {
+        cpp!(unsafe [a as "QJSValue::SpecialValue"] -> QJSValue as "QJSValue" {
+            return QJSValue(a);
+        })
+    }
+}
+
 impl QMetaType for QJSValue {
     fn register(_name: Option<&CStr>) -> i32 {
         cpp!(unsafe [] -> i32 as "int" { return qMetaTypeId<QJSValue>(); })
@@ -1103,6 +1145,15 @@ mod qjsvalue_tests {
     }
 
     #[test]
+    fn test_is_null() {
+        let null_value = QJSValue::from(QJSValueSpecialValue::NullValue);
+        let num_value = QJSValue::from(42);
+
+        assert!(null_value.is_null());
+        assert!(!num_value.is_null());
+    }
+
+    #[test]
     fn test_is_number() {
         let string_value = QJSValue::from(QString::from("Konqui"));
         let num_value = QJSValue::from(42);
@@ -1118,6 +1169,17 @@ mod qjsvalue_tests {
 
         assert!(string_value.is_string());
         assert!(!num_value.is_string());
+    }
+
+    #[test]
+    fn test_is_undefined() {
+        let undefined_value = QJSValue::from(QJSValueSpecialValue::UndefinedValue);
+        let default_value = QJSValue::default();
+        let num_value = QJSValue::from(42);
+
+        assert!(undefined_value.is_undefined());
+        assert!(default_value.is_undefined());
+        assert!(!num_value.is_undefined());
     }
 
     #[test]
