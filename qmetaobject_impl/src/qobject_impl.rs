@@ -686,7 +686,10 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
     } else {
         quote! {
             #[allow(unused_variables)]
-            let mut obj = &*o;
+            let mut obj: &mut #name #ty_generics = &mut *(::std::mem::transmute::<
+                *mut ::std::os::raw::c_void,
+                *mut #name #ty_generics,
+            >(o));
         }
     };
 
@@ -866,7 +869,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                 // FIXME!  we should probably use the signature verbatim
                 let n = &arg.name;
                 let ty = &arg.typ;
-                quote! { #n : #ty }
+                quote! { mut #n : #ty }
             })
             .collect();
         let args_ptr: Vec<_> = signal
@@ -876,10 +879,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                 let n = &arg.name;
                 let ty = &arg.typ;
                 quote! {
-                    {
-                        let mut n = #n;
-                        (&mut n as *mut #ty as *mut ::std::os::raw::c_void)
-                    }
+                    (&mut #n as *mut #ty as *mut ::std::os::raw::c_void)
                 }
             })
             .collect();
