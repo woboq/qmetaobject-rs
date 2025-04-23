@@ -686,10 +686,8 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
     } else {
         quote! {
             #[allow(unused_variables)]
-            let mut obj: &mut #name #ty_generics = &mut *(::std::mem::transmute::<
-                *mut ::std::os::raw::c_void,
-                *mut #name #ty_generics,
-            >(o));
+            #[allow(clippy::transmute_ptr_to_ref)]
+            let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o);
         }
     };
 
@@ -869,7 +867,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                 // FIXME!  we should probably use the signature verbatim
                 let n = &arg.name;
                 let ty = &arg.typ;
-                quote! { mut #n : #ty }
+                quote! { #n : #ty }
             })
             .collect();
         let args_ptr: Vec<_> = signal
@@ -878,14 +876,13 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
             .map(|arg| {
                 let n = &arg.name;
                 let ty = &arg.typ;
-                quote! {
-                    (&mut #n as *mut #ty as *mut ::std::os::raw::c_void)
-                }
+                quote! { unsafe { ::std::mem::transmute::<& #ty, *mut ::std::os::raw::c_void>(& #n) } }
             })
             .collect();
         let array_size = signal.args.len() + 1;
         quote! {
             #[allow(non_snake_case)]
+            #[allow(clippy::useless_transmute)]
             fn #sig_name(&self #(, #args_decl)*) {
                 let a: [*mut ::std::os::raw::c_void; #array_size] = [ ::std::ptr::null_mut() #(, #args_ptr)* ];
                 unsafe {
