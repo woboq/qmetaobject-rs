@@ -241,6 +241,12 @@ impl From<String> for QString {
     }
 }
 
+impl From<std::borrow::Cow<'_, str>> for QString {
+    fn from(s: std::borrow::Cow<'_, str>) -> QString {
+        QString::from(&*s)
+    }
+}
+
 impl Into<String> for QString {
     fn into(self) -> String {
         String::from_utf16_lossy(self.to_slice())
