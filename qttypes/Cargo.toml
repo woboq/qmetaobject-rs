@@ -18,6 +18,8 @@ rust-version = "1.56"
 # if Qt is not found.
 required = []
 
+# Link against QtWidgets
+qtwidgets = []
 # Link against QtQuick
 qtquick = []
 # Link against QtWebEngine
