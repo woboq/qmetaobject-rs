@@ -28,7 +28,7 @@ cpp! {{
     #include <memory>
     #include <QtQuick/QtQuick>
     #include <QtCore/QDebug>
-    #include <QtWidgets/QApplication>
+    #include <QtGui/QGuiApplication>
     #include <QtQml/QQmlComponent>
 
     struct SingleApplicationGuard {
@@ -47,12 +47,12 @@ cpp! {{
     };
 
     struct QmlEngineHolder : SingleApplicationGuard {
-        std::unique_ptr<QApplication> app;
+        std::unique_ptr<QGuiApplication> app;
         std::unique_ptr<QQmlApplicationEngine> engine;
         std::unique_ptr<QQuickView> view;
 
         QmlEngineHolder(int &argc, char **argv)
-            : app(new QApplication(argc, argv))
+            : app(new QGuiApplication(argc, argv))
             , engine(new QQmlApplicationEngine())
         {}
     };
@@ -248,7 +248,7 @@ impl QmlEngine {
             if (robjs.isEmpty()) {
                 return;
             }
-            
+
             #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name __VA_ARGS__);
             switch (args_size) {
                 case 0: INVOKE_METHOD(); break;
@@ -277,7 +277,7 @@ impl QmlEngine {
             self->engine->clearComponentCache();
         })
     }
-    
+
     /// Give a QObject to the engine by wrapping it in a QJSValue
     ///
     /// This will create the C++ object.
