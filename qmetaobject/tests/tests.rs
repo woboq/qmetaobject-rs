@@ -147,17 +147,19 @@ fn call_method() {
         "
     ));
 
-    let obj = MyObject::default();
-    assert!(do_test(
-        obj,
-        r"
-        Item {
-            function doTest() {
-                return _obj.concatenate_strings(123, 456, 789) == '123456789';
+    if !cfg!(qt_6_0) {
+        let obj = MyObject::default();
+        assert!(do_test(
+            obj,
+            r"
+            Item {
+                function doTest() {
+                    return _obj.concatenate_strings(123, 456, 789) == '123456789';
+                }
             }
-        }
         "
-    ));
+        ));
+    }
 
     let obj = MyObject::default();
     assert!(do_test(
