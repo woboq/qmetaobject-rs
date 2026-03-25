@@ -31,14 +31,19 @@ fn main() {
     }
     config.include(&qt_include_path).build("src/lib.rs");
 
-    for minor in 7..=15 {
-        if qt_version >= Version::new(5, minor, 0) {
-            println!("cargo:rustc-cfg=qt_{}_{}", 5, minor);
+    let versions = [
+        // Qt 5.7 .. Qt 5.15
+        (5, (7..=15)),
+        // Qt 6.0 .. Qt6.10
+        (6, (0..=10)),
+    ];
+
+    for (major, minor) in versions {
+        for minor in minor {
+            if qt_version >= Version::new(major, minor, 0) {
+                println!("cargo:rustc-cfg=qt_{}_{}", major, minor);
+            }
+            println!("cargo:rustc-check-cfg=cfg(qt_{}_{})", major, minor);
         }
-    }
-    let mut minor = 0;
-    while qt_version >= Version::new(6, minor, 0) {
-        println!("cargo:rustc-cfg=qt_{}_{}", 6, minor);
-        minor += 1;
     }
 }
