@@ -59,7 +59,7 @@ fn write_value(result: &mut Vec<u8>, v: &Value) {
             write_string(result, &s);
         }
         Value::Double(d) => {
-            let bits = unsafe { std::mem::transmute::<f64, u64>(*d) };
+            let bits = d.to_bits();
             result.extend_from_slice(&write_u32((bits & 0xffff_ffff) as u32));
             result.extend_from_slice(&write_u32((bits >> 32) as u32));
         }
