@@ -583,7 +583,7 @@ impl<T: QObject + ?Sized> QObjectBox<T> {
 pub fn into_leaked_cpp_ptr<T: QObject>(obj: T) -> *mut c_void {
     let b = Box::new(RefCell::new(obj));
     let obj_ptr = unsafe { QObject::cpp_construct(&b) };
-    Box::into_raw(b);
+    let _ = Box::into_raw(b);
     obj_ptr
 }
 
