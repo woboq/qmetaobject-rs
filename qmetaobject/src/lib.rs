@@ -426,7 +426,7 @@ impl<T: QObject + ?Sized> QPointer<T> {
 
 impl<T: QObject> QPointer<T> {
     /// Returns a pinned reference to the QObject, or None if it was deleted
-    pub fn as_pinned(&self) -> Option<QObjectPinned<T>> {
+    pub fn as_pinned(&self) -> Option<QObjectPinned<'_, T>> {
         let x = self.cpp_ptr();
         if x.is_null() {
             None
@@ -515,7 +515,7 @@ impl<'pin, T: QObject + ?Sized + 'pin> QObjectPinned<'pin, T> {
     pub fn borrow(&self) -> &T {
         unsafe { &*self.0.as_ptr() }
     }
-    pub fn borrow_mut(&self) -> QObjectRefMut<T> {
+    pub fn borrow_mut(&self) -> QObjectRefMut<'_, T> {
         let x = self.0.borrow_mut();
         QObjectRefMut { old_value: x.get_cpp_object(), inner: x }
     }
@@ -569,7 +569,7 @@ impl<T: QObject + Default> Default for QObjectBox<T> {
 }
 
 impl<T: QObject + ?Sized> QObjectBox<T> {
-    pub fn pinned(&self) -> QObjectPinned<T> {
+    pub fn pinned(&self) -> QObjectPinned<'_, T> {
         unsafe { QObjectPinned::new(&self.0) }
     }
 }
