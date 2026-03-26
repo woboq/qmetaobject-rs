@@ -900,15 +900,8 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
         let sig_name = &signal.name;
         // if signal == offset_of(signal field) then *result = index and return.
         quote! { /* externally defined variables: signal, result. */
-            // SAFETY: Calculate the offset of the signal field within the struct.
-            // We use a reference to a dummy instance to avoid UB from null pointer dereference.
-            let offset = unsafe {
-                // Create a dummy instance on the stack to calculate field offset
-                let dummy = ::std::mem::MaybeUninit::<#name #ty_generics>::uninit();
-                let base = dummy.as_ptr();
-                let field = (&(*base).#sig_name) as *const _ as usize;
-                field - (base as usize)
-            };
+            // Calculate the offset of the signal field within the struct.
+            let offset = ::std::mem::offset_of!(#name #ty_generics, #sig_name);
             if signal == offset  {
                 *result = #i as i32;
                 return;
