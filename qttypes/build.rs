@@ -272,5 +272,19 @@ fn main() {
     link_lib("Sql");
     #[cfg(feature = "qttest")]
     link_lib("Test");
+
+    #[cfg(feature = "qtbundledfreetype")]
+    link_lib("BundledFreetype");
+    #[cfg(feature = "qtbundledharfbuzz")]
+    link_lib("BundledHarfbuzz");
+    #[cfg(feature = "qtbundledlibjpeg")]
+    link_lib("BundledLibjpeg");
+    #[cfg(feature = "qtbundledlibpng")]
+    link_lib("BundledLibpng");
+    #[cfg(feature = "qtbundledpcre2")]
+    link_lib("BundledPcre2");
+    #[cfg(feature = "qtbundledzlib")]
+    link_lib("BundledZLIB");
+
     println!("cargo:rerun-if-changed=src");
 }

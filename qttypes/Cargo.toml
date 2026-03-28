@@ -33,6 +33,13 @@ qtsql = []
 # Link against QtTest
 qttest = []
 
+qtbundledfreetype = []
+qtbundledharfbuzz = []
+qtbundledlibjpeg = []
+qtbundledlibpng = []
+qtbundledpcre2 = []
+qtbundledzlib = []
+
 default = ["required"]
 
 [dependencies]
