@@ -33,6 +33,8 @@ qtsql = []
 # Link against QtTest
 qttest = []
 
+staticruntime = []
+
 default = ["required"]
 
 [dependencies]
