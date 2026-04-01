@@ -396,6 +396,52 @@ mod tests {
     }
 
     #[test]
+    fn from_str() {
+        let from_str = QString::from("hello");
+        assert_eq!(from_str.to_string(), "hello");
+
+        let from_empty_str = QString::from("");
+        assert_eq!(from_empty_str.to_string(), "");
+        assert!(from_empty_str.is_empty());
+
+        // "world" in Chinese
+        let from_unicode_str = QString::from("hello 世界");
+        assert_eq!(from_unicode_str.to_string(), "hello 世界");
+    }
+
+    #[test]
+    fn from_string() {
+        let from_string = QString::from(String::from("hello"));
+        assert_eq!(from_string.to_string(), "hello");
+
+        let from_empty_string = QString::from(String::new());
+        assert_eq!(from_empty_string.to_string(), "");
+        assert!(from_empty_string.is_empty());
+    }
+
+    #[test]
+    fn from_cow_str() {
+        use std::borrow::Cow;
+
+        // Test Cow::Borrowed variant
+        let cow_borrowed: Cow<'_, str> = Cow::Borrowed("Hello, world");
+        let from_cow_borrowed: QString = cow_borrowed.into();
+        assert_eq!(from_cow_borrowed.to_string(), "Hello, world");
+
+        // Test Cow::Owned variant
+        let cow_owned: Cow<'_, str> = Cow::Owned(String::from("Hello, world"));
+        let from_cow_owned: QString = cow_owned.into();
+        assert_eq!(from_cow_owned.to_string(), "Hello, world");
+    }
+
+    #[test]
+    fn from_qurl() {
+        let url = QUrl::from_user_input(QString::from("https://example.com/path?query=value"));
+        let from_url: QString = url.into();
+        assert_eq!(from_url.to_string(), "https://example.com/path?query=value");
+    }
+
+    #[test]
     fn append() {
         let mut str1 = QString::from("abc");
         let str2 = QString::from("efg");
