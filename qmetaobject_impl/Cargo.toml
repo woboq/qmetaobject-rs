@@ -14,6 +14,6 @@ repository = "https://github.com/woboq/qmetaobject-rs"
 proc-macro = true
 
 [dependencies]
-syn = { version = "1", features = ["full"] }
+syn = { version = "2", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
