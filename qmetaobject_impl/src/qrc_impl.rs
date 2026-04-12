@@ -90,7 +90,7 @@ impl Parse for Resource {
         let files = {
             let content;
             braced!(content in input);
-            content.parse_terminated::<File, Token![,]>(File::parse)?.into_iter().collect()
+            content.parse_terminated(File::parse, Token![,])?.into_iter().collect()
         };
         Ok(Resource { base_dir, prefix, files })
     }
@@ -135,8 +135,7 @@ impl Parse for QrcMacro {
         let func = input.parse()?;
         input.parse::<Option<Token![,]>>()?;
         // Rest of tokens are `Resource`s separated by comma
-        let data =
-            input.parse_terminated::<Resource, Token![,]>(Resource::parse)?.into_iter().collect();
+        let data = input.parse_terminated(Resource::parse, Token![,])?.into_iter().collect();
         Ok(QrcMacro { func, data })
     }
 }

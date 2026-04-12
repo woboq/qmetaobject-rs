@@ -586,21 +586,23 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
                 }
             }
             for i in f.attrs.iter() {
-                if let Ok(x) = i.parse_meta() {
-                    if x.path().is_ident("qt_base_class") {
-                        if let syn::Meta::NameValue(mnv) = x {
-                            if let syn::Lit::Str(s) = mnv.lit {
-                                base = unwrap_parse_error!(syn::parse_str(&s.value()));
-                                base_prop = f.ident.clone().expect("base prop needs a name");
-                                has_base_property = true;
-                            } else {
-                                panic!("Can't parse qt_base_class");
-                            }
-                        } else {
-                            panic!("Can't parse qt_base_class");
-                        }
-                    }
+                let syn::Meta::NameValue(mnv) = &i.meta else {
+                    continue;
+                };
+                if !mnv.path.is_ident("qt_base_class") {
+                    continue;
                 }
+
+                let syn::Expr::Lit(expr_lit) = &mnv.value else {
+                    panic!("Can't parse qt_base_class");
+                };
+                let syn::Lit::Str(s) = &expr_lit.lit else {
+                    panic!("Can't parse qt_base_class");
+                };
+
+                base = unwrap_parse_error!(syn::parse_str(&s.value()));
+                base_prop = f.ident.clone().expect("base prop needs a name");
+                has_base_property = true;
             }
         }
     } else {
@@ -1143,23 +1145,30 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
 }
 
 fn is_valid_repr_attribute(attribute: &syn::Attribute) -> bool {
-    match attribute.parse_meta() {
-        Ok(syn::Meta::List(list)) => {
-            if list.path.is_ident("repr") && list.nested.len() == 1 {
-                match &list.nested[0] {
-                    syn::NestedMeta::Meta(syn::Meta::Path(word)) => {
-                        const ACCEPTABLE_REPRESENTATIONS: &[&str] =
-                            &["u8", "u16", "u32", "i8", "i16", "i32", "C"];
-                        ACCEPTABLE_REPRESENTATIONS.iter().any(|w| word.is_ident(w))
-                    }
-                    _ => false,
-                }
-            } else {
-                false
-            }
-        }
-        _ => false,
+    let syn::Meta::List(list) = &attribute.meta else {
+        return false;
+    };
+    if !list.path.is_ident("repr") {
+        return false;
     }
+
+    // Parse the tokens inside the list
+    let parser = syn::punctuated::Punctuated::<syn::Meta, Token![,]>::parse_terminated;
+    // parse2 keeps us in proc_macro2 TokenStream domain and preserves spans
+    let Ok(nested) = parser.parse2(list.tokens.clone()) else {
+        return false;
+    };
+
+    if nested.len() != 1 {
+        return false;
+    }
+
+    let syn::Meta::Path(word) = &nested.first().unwrap() else {
+        return false;
+    };
+
+    const ACCEPTABLE_REPRESENTATIONS: &[&str] = &["u8", "u16", "u32", "i8", "i16", "i32", "C"];
+    return ACCEPTABLE_REPRESENTATIONS.iter().any(|w| word.is_ident(w));
 }
 
 pub fn generate_enum(input: TokenStream, qt_version: QtVersion) -> TokenStream {

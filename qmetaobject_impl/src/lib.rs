@@ -35,19 +35,22 @@ mod simplelistitem_impl;
 /// the QMetaObjectCrate is specified
 fn get_crate(input: &DeriveInput) -> impl ToTokens {
     for i in input.attrs.iter() {
-        if let Ok(x) = i.parse_meta() {
-            if x.path().is_ident("QMetaObjectCrate") {
-                if let syn::Meta::NameValue(mnv) = x {
-                    use syn::Lit::*;
-                    let lit: syn::Path = match mnv.lit {
-                        Str(s) => syn::parse_str(&s.value())
-                            .expect("Can't parse QMetaObjectCrate Attribute"),
-                        _ => panic!("Can't parse QMetaObjectCrate Attribute"),
-                    };
-                    return quote!( #lit );
-                }
-            }
+        let syn::Meta::NameValue(mnv) = &i.meta else {
+            continue;
+        };
+        if !mnv.path.is_ident("QMetaObjectCrate") {
+            continue;
         }
+
+        let syn::Expr::Lit(expr_lit) = &mnv.value else {
+            panic!("#[QMetaObjectCrate = \"path::to::crate\"] expects a string literal")
+        };
+        let syn::Lit::Str(s) = &expr_lit.lit else {
+            panic!("Can't parse QMetaObjectCrate Attribute")
+        };
+        let lit: syn::Path =
+            syn::parse_str(&s.value()).expect("Can't parse QMetaObjectCrate Attribute");
+        return quote!( #lit );
     }
 
     quote!(::qmetaobject)
