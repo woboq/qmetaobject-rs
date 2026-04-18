@@ -1188,6 +1188,19 @@ pub trait QQmlExtensionPlugin: QObject {
 
     /// Refer to the Qt documentation of QQmlExtensionPlugin::registerTypes
     fn register_types(&mut self, uri: &CStr);
+
+    /// Refer to the Qt documentation of QQmlExtensionPlugin::initializeEngine
+    ///
+    /// This method is called after `register_types` and provides access to the
+    /// QQmlEngine instance. Use this method to install custom image providers,
+    /// set context properties, or perform other engine-wide initialization.
+    ///
+    /// # Arguments
+    /// * `engine` - A mutable reference to the QQmlEngine instance.
+    fn initialize_engine(&mut self, engine: &mut QQmlEngine, uri: &CStr) {
+        let _ = engine;
+        let _ = uri;
+    }
 }
 
 cpp! {{
@@ -1201,6 +1214,20 @@ cpp! {{
                 uri: *const c_char as "const char *"
             ] {
                 rust_object.borrow_mut().register_types(unsafe { CStr::from_ptr(uri) });
+            });
+        }
+
+        void initializeEngine(QQmlEngine *engine, const char *uri) override {
+            rust!(Rust_QQmlExtensionPlugin_initializeEngine[
+                rust_object: QObjectPinned<dyn QQmlExtensionPlugin> as "TraitObject",
+                engine: *mut QQmlEngine as "QQmlEngine *",
+                uri: *const c_char as "const char *"
+            ] {
+                let engine = unsafe {
+                    engine.as_mut().expect("non-null engine")
+                };
+                let uri = CStr::from_ptr(uri);
+                rust_object.borrow_mut().initialize_engine(engine, uri);
             });
         }
     };
