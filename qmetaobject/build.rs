@@ -26,6 +26,11 @@ fn main() {
         .expect("Parsing Qt version failed");
 
     let mut config = cpp_build::Config::new();
+
+    if cfg!(not(feature = "widgets")) {
+        config.define("NO_WIDGETS", None);
+    }
+
     for f in std::env::var("DEP_QT_COMPILE_FLAGS").unwrap().split_terminator(";") {
         config.flag(f);
     }
