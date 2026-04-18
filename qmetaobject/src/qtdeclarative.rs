@@ -162,6 +162,16 @@ impl std::ops::Deref for QmlEngine {
     }
 }
 
+impl std::ops::DerefMut for QmlEngine {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        let ptr: *mut QQmlEngine = cpp!(unsafe [self as "QmlEngineHolder *"] -> *mut QQmlEngine as "QQmlEngine *" {
+            return self->engine.get();
+        });
+
+        unsafe { ptr.as_mut().expect("valid QQmlEngine") }
+    }
+}
+
 impl QmlEngine {
     /// Create a new QmlEngine
     pub fn new() -> QmlEngine {
