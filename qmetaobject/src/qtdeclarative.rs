@@ -24,6 +24,70 @@ use crate::*;
 /// So this is a guard that will be used to panic if the engine is created twice
 static HAS_ENGINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
+cpp_class!(
+    /// Wrapper around [`QQmlEngine`][class] class.
+    ///
+    /// [class]: https://doc.qt.io/qt-5/qqmlengine.html
+    pub unsafe struct QQmlEngine as "QQmlEngine"
+);
+
+impl QQmlEngine {
+    /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
+    pub fn set_property(&mut self, name: QString, value: QVariant) {
+        cpp!(unsafe [self as "QQmlEngine *", name as "QString", value as "QVariant"] {
+            self->rootContext()->setContextProperty(name, value);
+        })
+    }
+
+    /// Sets an object for this QML context (calls QQmlEngine::rootContext()->setContextObject)
+    pub fn set_object<T: QObject + Sized>(&mut self, obj: QObjectPinned<T>) {
+        let obj_ptr = obj.get_or_create_cpp_object();
+        cpp!(unsafe [self as "QQmlEngine *", obj_ptr as "QObject *"] {
+            self->rootContext()->setContextObject(obj_ptr);
+        })
+    }
+
+    /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
+    ///
+    // (TODO: consider making the lifetime the one of the engine, instead of static)
+    pub fn set_object_property<T: QObject + Sized>(
+        &mut self,
+        name: QString,
+        obj: QObjectPinned<T>,
+    ) {
+        let obj_ptr = obj.get_or_create_cpp_object();
+        cpp!(unsafe [self as "QQmlEngine *", name as "QString", obj_ptr as "QObject *"] {
+            self->rootContext()->setContextProperty(name, obj_ptr);
+        })
+    }
+
+    pub fn trim_component_cache(&self) {
+        cpp!(unsafe [self as "QQmlEngine *"] {
+            self->trimComponentCache();
+        })
+    }
+
+    pub fn clear_component_cache(&self) {
+        cpp!(unsafe [self as "QQmlEngine *"] {
+            self->clearComponentCache();
+        })
+    }
+
+    /// Adds an import path for this QML engine (calls QQmlEngine::addImportPath)
+    pub fn add_import_path(&mut self, path: QString) {
+        cpp!(unsafe [self as "QQmlEngine *", path as "QString"] {
+            self->addImportPath(path);
+        })
+    }
+
+    /// Returns a pointer to the C++ object. The pointer is of the type `QQmlEngine *` in C++.
+    pub fn cpp_ptr(&self) -> *mut c_void {
+        cpp!(unsafe [self as "QQmlEngine *"] -> *mut c_void as "QQmlEngine *" {
+            return self;
+        })
+    }
+}
+
 cpp! {{
     #include <memory>
     #include <QtQuick/QtQuick>
@@ -85,6 +149,19 @@ cpp_class!(
     /// QmlEngine at the same time is not allowed. Doing that will panic.
     pub unsafe struct QmlEngine as "QmlEngineHolder"
 );
+
+impl std::ops::Deref for QmlEngine {
+    type Target = QQmlEngine;
+
+    fn deref(&self) -> &Self::Target {
+        let ptr: *const QQmlEngine = cpp!(unsafe [self as "QmlEngineHolder *"] -> *const QQmlEngine as "QQmlEngine *" {
+            return self->engine.get();
+        });
+
+        unsafe { ptr.as_ref().expect("valid QQmlEngine") }
+    }
+}
+
 impl QmlEngine {
     /// Create a new QmlEngine
     pub fn new() -> QmlEngine {
@@ -166,35 +243,6 @@ impl QmlEngine {
         })
     }
 
-    /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
-    pub fn set_property(&mut self, name: QString, value: QVariant) {
-        cpp!(unsafe [self as "QmlEngineHolder *", name as "QString", value as "QVariant"] {
-            self->engine->rootContext()->setContextProperty(name, value);
-        })
-    }
-
-    /// Sets an object for this QML context (calls QQmlEngine::rootContext()->setContextObject)
-    pub fn set_object<T: QObject + Sized>(&mut self, obj: QObjectPinned<T>) {
-        let obj_ptr = obj.get_or_create_cpp_object();
-        cpp!(unsafe [self as "QmlEngineHolder *", obj_ptr as "QObject *"] {
-            self->engine->rootContext()->setContextObject(obj_ptr);
-        })
-    }
-
-    /// Sets a property for this QML context (calls QQmlEngine::rootContext()->setContextProperty)
-    ///
-    // (TODO: consider making the lifetime the one of the engine, instead of static)
-    pub fn set_object_property<T: QObject + Sized>(
-        &mut self,
-        name: QString,
-        obj: QObjectPinned<T>,
-    ) {
-        let obj_ptr = obj.get_or_create_cpp_object();
-        cpp!(unsafe [self as "QmlEngineHolder *", name as "QString", obj_ptr as "QObject *"] {
-            self->engine->rootContext()->setContextProperty(name, obj_ptr);
-        })
-    }
-
     pub fn invoke_method(&mut self, name: QByteArray, args: &[QVariant]) -> QVariant {
         let args_size = args.len();
         let args_ptr = args.as_ptr();
@@ -248,7 +296,7 @@ impl QmlEngine {
             if (robjs.isEmpty()) {
                 return;
             }
-            
+
             #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name __VA_ARGS__);
             switch (args_size) {
                 case 0: INVOKE_METHOD(); break;
@@ -266,18 +314,6 @@ impl QmlEngine {
         })
     }
 
-    pub fn trim_component_cache(&self) {
-        cpp!(unsafe [self as "QmlEngineHolder *"] {
-            self->engine->trimComponentCache();
-        })
-    }
-
-    pub fn clear_component_cache(&self) {
-        cpp!(unsafe [self as "QmlEngineHolder *"] {
-            self->engine->clearComponentCache();
-        })
-    }
-    
     /// Give a QObject to the engine by wrapping it in a QJSValue
     ///
     /// This will create the C++ object.
@@ -289,20 +325,6 @@ impl QmlEngine {
             obj_ptr as "QObject *"
         ] -> QJSValue as "QJSValue" {
             return self->engine->newQObject(obj_ptr);
-        })
-    }
-
-    /// Adds an import path for this QML engine (calls QQmlEngine::addImportPath)
-    pub fn add_import_path(&mut self, path: QString) {
-        cpp!(unsafe [self as "QmlEngineHolder *", path as "QString"] {
-            self->engine->addImportPath(path);
-        })
-    }
-
-    /// Returns a pointer to the C++ object. The pointer is of the type `QQmlEngine *` in C++.
-    pub fn cpp_ptr(&self) -> *mut c_void {
-        cpp!(unsafe [self as "QmlEngineHolder *"] -> *mut c_void as "QQmlEngine *" {
-            return self->engine.get();
         })
     }
 }
