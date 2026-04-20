@@ -1,6 +1,6 @@
 [package]
 name = "qmetaobject"
-version = "0.2.10"
+version = "0.3.0"
 edition = "2018"
 authors = ["Olivier Goffart <olivier.goffart@slint.dev>"]
 build = "build.rs"
@@ -15,9 +15,10 @@ repository = "https://github.com/woboq/qmetaobject-rs"
 default = ["log"]
 chrono_qdatetime = ["qttypes/chrono"]
 webengine = ["qttypes/qtwebengine"]
+qtwidgets = ["qttypes/qtwidgets"]
 
 [dependencies]
-qttypes = { path = "../qttypes", version = "0.2.0", features = ["qtquick"] }
+qttypes = { path = "../qttypes", version = "0.3.0", features = ["qtquick"] }
 qmetaobject_impl = { path = "../qmetaobject_impl", version = "=0.2.10"}
 lazy_static = "1.0"
 cpp = "0.5.6"
