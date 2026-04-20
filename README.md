@@ -107,6 +107,16 @@ Enables `QtWebEngine` functionality. For more details see the [example](./exampl
 
 This feature is disabled by default.
 
+### `qtwidgets`
+
+Enables `QtWidgets` functionality and uses `QApplication` instead of `QGuiApplication`.
+This is useful for desktop applications that require widget styling and other widget-specific features.
+
+By default, the crate uses `QGuiApplication` which is sufficient for QtQuick-only applications.
+Enable this feature if your application needs `QApplication` or links against QtWidgets.
+
+This feature is disabled by default, and was introduced in qmetaobject 0.3.0.
+
 ## What if a wrapper for the Qt C++ API is missing?
 
 It is quite likely that you would like to call a particular Qt function which
