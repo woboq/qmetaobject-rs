@@ -29,6 +29,10 @@ fn main() {
     for f in std::env::var("DEP_QT_COMPILE_FLAGS").unwrap().split_terminator(";") {
         config.flag(f);
     }
+
+    #[cfg(feature = "qtwidgets")]
+    config.define("QMETAOBJECT_HAS_QTWIDGETS", None);
+
     config.include(&qt_include_path).build("src/lib.rs");
 
     let versions = [
