@@ -195,17 +195,25 @@ impl QmlEngine {
         })
     }
 
-    pub fn invoke_method(&mut self, name: QByteArray, args: &[QVariant]) -> QVariant {
+    /// Calls [invokeMethod](https://doc.qt.io/qt-5/qmetaobject.html#invokeMethod) on first available root object 
+    /// -- typicaly it is your Application Window.
+    /// 
+    /// Returns `None` if either `invokeMethod` returned `false` or there are no root object present.
+    pub fn invoke_method(&mut self, name: QByteArray, args: &[QVariant]) -> Option<QVariant> {
         let args_size = args.len();
         let args_ptr = args.as_ptr();
 
         assert!(args_size <= 9);
 
-        cpp!(unsafe [
+        let mut result: bool = false;
+        let rz_ptr = (&mut result) as *mut bool;
+
+        let return_arg: QVariant = cpp!(unsafe [
             self as "QmlEngineHolder *",
             name as "QByteArray",
             args_size as "size_t",
-            args_ptr as "QVariant *"
+            args_ptr as "QVariant *",
+            rz_ptr as "bool *"
         ] -> QVariant as "QVariant"
         {
             auto robjs = self->engine->rootObjects();
@@ -215,55 +223,72 @@ impl QmlEngine {
             QVariant ret;
             #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name, Q_RETURN_ARG(QVariant, ret) __VA_ARGS__);
             switch (args_size) {
-                case 0: INVOKE_METHOD(); break;
-                case 1: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0])); break;
-                case 2: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1])); break;
-                case 3: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2])); break;
-                case 4: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3])); break;
-                case 5: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4])); break;
-                case 6: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5])); break;
-                case 7: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6])); break;
-                case 8: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7])); break;
-                case 9: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
+                case 0: *rz_ptr = INVOKE_METHOD(); break;
+                case 1: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0])); break;
+                case 2: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1])); break;
+                case 3: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2])); break;
+                case 4: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3])); break;
+                case 5: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4])); break;
+                case 6: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5])); break;
+                case 7: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6])); break;
+                case 8: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7])); break;
+                case 9: *rz_ptr = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
             }
             #undef INVOKE_METHOD
             return ret;
-        })
+        });
+
+        return if result {
+            Some(return_arg)
+        } else {
+            None
+        }
     }
 
     /// This method is the same as [invoke_method] but does not capture or return function's return value
-    pub fn invoke_method_noreturn(&mut self, name: QByteArray, args: &[QVariant]) {
+    /// 
+    /// Returns `None` if either `invokeMethod` returned `false` or there are no root object present.
+    pub fn invoke_method_noreturn(&mut self, name: QByteArray, args: &[QVariant]) -> Option<()> {
         let args_size = args.len();
         let args_ptr = args.as_ptr();
 
         assert!(args_size <= 9);
 
-        cpp!(unsafe [
+        let result: bool = cpp!(unsafe [
             self as "QmlEngineHolder *",
             name as "QByteArray",
             args_size as "size_t",
             args_ptr as "QVariant *"
-        ] {
+        ] -> bool as "bool" {
             auto robjs = self->engine->rootObjects();
             if (robjs.isEmpty()) {
-                return;
+                return false;
             }
             
+            bool rz = false;
             #define INVOKE_METHOD(...) QMetaObject::invokeMethod(robjs.first(), name __VA_ARGS__);
             switch (args_size) {
-                case 0: INVOKE_METHOD(); break;
-                case 1: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0])); break;
-                case 2: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1])); break;
-                case 3: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2])); break;
-                case 4: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3])); break;
-                case 5: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4])); break;
-                case 6: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5])); break;
-                case 7: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6])); break;
-                case 8: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7])); break;
-                case 9: INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
+                case 0: rz = INVOKE_METHOD(); break;
+                case 1: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0])); break;
+                case 2: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1])); break;
+                case 3: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2])); break;
+                case 4: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3])); break;
+                case 5: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4])); break;
+                case 6: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5])); break;
+                case 7: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6])); break;
+                case 8: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7])); break;
+                case 9: rz = INVOKE_METHOD(, Q_ARG(QVariant, args_ptr[0]), Q_ARG(QVariant, args_ptr[1]), Q_ARG(QVariant, args_ptr[2]), Q_ARG(QVariant, args_ptr[3]), Q_ARG(QVariant, args_ptr[4]), Q_ARG(QVariant, args_ptr[5]), Q_ARG(QVariant, args_ptr[6]), Q_ARG(QVariant, args_ptr[7]), Q_ARG(QVariant, args_ptr[8])); break;
             }
             #undef INVOKE_METHOD
-        })
+
+            return rz;
+        });
+
+        return if result {
+            Some(())
+        } else {
+            None
+        }        
     }
 
     pub fn trim_component_cache(&self) {
