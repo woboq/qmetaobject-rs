@@ -688,6 +688,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
     } else {
         quote! {
             #[allow(unused_variables)]
+            #[allow(clippy::transmute_ptr_to_ref)]
             let mut obj = ::std::mem::transmute::<*mut ::std::os::raw::c_void, &mut #name #ty_generics>(o);
         }
     };
@@ -883,6 +884,7 @@ pub fn generate(input: TokenStream, is_qobject: bool, qt_version: QtVersion) -> 
         let array_size = signal.args.len() + 1;
         quote! {
             #[allow(non_snake_case)]
+            #[allow(clippy::useless_transmute)]
             fn #sig_name(&self #(, #args_decl)*) {
                 let a: [*mut ::std::os::raw::c_void; #array_size] = [ ::std::ptr::null_mut() #(, #args_ptr)* ];
                 unsafe {
