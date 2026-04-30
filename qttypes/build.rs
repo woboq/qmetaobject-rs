@@ -272,5 +272,13 @@ fn main() {
     link_lib("Sql");
     #[cfg(feature = "qttest")]
     link_lib("Test");
+
+    #[cfg(feature = "staticruntime")]
+    if cargo_target_env == "msvc" {
+        let qt_plugins_path = qmake_query("QT_INSTALL_PLUGINS");
+        println!("cargo:rustc-link-search={}", &qt_plugins_path);
+        println!("cargo:rustc-link-lib=static=platforms/qwindows");
+    }
+
     println!("cargo:rerun-if-changed=src");
 }

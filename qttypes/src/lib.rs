@@ -190,6 +190,13 @@ cpp! {{
     #include <QtGui/QBrush>
 }}
 
+#[cfg(feature = "staticruntime")]
+cpp! {{
+    #include <QtCore/QtPlugin>
+
+    Q_IMPORT_PLUGIN (QWindowsIntegrationPlugin)
+}}
+
 cpp_class!(
     /// Wrapper around [`QDate`][class] class.
     ///
